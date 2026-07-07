@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+*.log
+server.out.log
+server.err.log
+*.zip
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db

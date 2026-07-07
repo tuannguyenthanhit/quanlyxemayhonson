@@ -1,0 +1,9 @@
+{
+  "name": "coco-bay-internal-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "COCO BAY INTERNAL MANAGEMENT - he thong quan ly xe va thiet bi noi bo.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
