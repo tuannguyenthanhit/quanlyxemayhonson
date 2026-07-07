@@ -4,6 +4,7 @@ const path = require("path");
 
 const root = __dirname;
 const port = Number(process.env.PORT || 4173);
+const host = process.env.HOST || "0.0.0.0";
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -50,6 +51,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`COCO BAY app running at http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`COCO BAY app running on ${host}:${port}`);
 });
