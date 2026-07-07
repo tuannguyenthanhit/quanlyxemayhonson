@@ -766,8 +766,8 @@ function loginView() {
             <details class="password-login">
               <summary><span>▣</span> Đăng nhập bằng mật khẩu <b>→</b></summary>
               <form id="login-form" class="password-panel">
-                <div class="field"><label>Email</label><input name="email" type="email" value="admin@cocobay.vn" autocomplete="username" required></div>
-                <div class="field"><label>Mật khẩu</label><input name="password" type="password" value="123456" autocomplete="current-password" required></div>
+                <div class="field"><label>Email</label><input name="email" type="email" placeholder="Nhập email đăng nhập" autocomplete="username" required></div>
+                <div class="field"><label>Mật khẩu</label><input name="password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password" required></div>
                 <button class="primary" type="submit" style="width:100%">Đăng nhập</button>
               </form>
             </details>
