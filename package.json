@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "COCO BAY INTERNAL MANAGEMENT - he thong quan ly xe va thiet bi noi bo.",
+  "engines": {
+    "node": ">=18 <23"
+  },
   "scripts": {
     "start": "node server.js"
   }
