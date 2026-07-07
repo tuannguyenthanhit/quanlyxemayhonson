@@ -1,5 +1,12 @@
 const DB_KEY = "cocoBayInternalDb.v1";
 const SESSION_KEY = "cocoBaySession.v1";
+const API_BASE = "/api";
+
+const apiState = {
+  enabled: false,
+  saveTimer: null,
+  lastError: ""
+};
 
 const roles = {
   admin: "Admin",
@@ -336,6 +343,63 @@ function getDb() {
   return db;
 }
 
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    ...options
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "API request failed");
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
+async function loadRemoteSession() {
+  try {
+    const health = await apiRequest("/health");
+    apiState.enabled = health.mode === "mysql";
+  } catch {
+    apiState.enabled = false;
+    return false;
+  }
+  try {
+    const payload = await apiRequest("/me");
+    if (payload.db) localStorage.setItem(DB_KEY, JSON.stringify(payload.db));
+    if (payload.user) {
+      state.user = { ...payload.user };
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: payload.user.id }));
+    }
+    return true;
+  } catch (error) {
+    if (error.status !== 401) apiState.lastError = error.message;
+    state.user = null;
+    localStorage.removeItem(SESSION_KEY);
+    return false;
+  }
+}
+
+function queueRemoteSave(db) {
+  if (!apiState.enabled || !state.user) return;
+  window.clearTimeout(apiState.saveTimer);
+  const payload = JSON.stringify(db);
+  apiState.saveTimer = window.setTimeout(async () => {
+    try {
+      await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: JSON.parse(payload) }) });
+      apiState.lastError = "";
+    } catch (error) {
+      apiState.lastError = error.message;
+      showToast("Chưa đồng bộ được dữ liệu lên MySQL. Hệ thống sẽ giữ bản local.");
+    }
+  }, 350);
+}
+
 function repairTextEncoding(value) {
   const cp1252 = {
     "€": 0x80, "‚": 0x82, "ƒ": 0x83, "„": 0x84, "…": 0x85, "†": 0x86, "‡": 0x87, "ˆ": 0x88,
@@ -558,6 +622,7 @@ function migrateDb(db) {
 function setDb(db) {
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
+    queueRemoteSave(db);
   } catch (error) {
     showToast("Không lưu được dữ liệu. Hãy xóa bớt ảnh hoặc chọn ảnh dung lượng nhỏ hơn.");
     throw error;
@@ -617,10 +682,13 @@ function statusClass(status) {
   return "muted";
 }
 
-function appInit() {
+async function appInit() {
+  await loadRemoteSession();
   syncStatuses();
-  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-  if (session) state.user = getDb().users.find((u) => u.id === session.userId) || null;
+  if (!apiState.enabled) {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    if (session) state.user = getDb().users.find((u) => u.id === session.userId) || null;
+  }
   render();
 }
 
@@ -797,9 +865,22 @@ function loginView() {
 }
 
 function bindLogin() {
-  document.getElementById("login-form").addEventListener("submit", (event) => {
+  document.getElementById("login-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
+    if (apiState.enabled) {
+      try {
+        const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
+        if (payload.db) localStorage.setItem(DB_KEY, JSON.stringify(payload.db));
+        state.user = { ...payload.user };
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: payload.user.id }));
+        showToast(`Xin chào ${payload.user.name}`);
+        render();
+      } catch (error) {
+        showToast(error.message || "Email hoặc mật khẩu không đúng.");
+      }
+      return;
+    }
     const db = getDb();
     const user = db.users.find((u) => u.email === data.email && u.password === data.password && u.active);
     if (!user) {
@@ -3499,6 +3580,7 @@ function handleAction(event) {
     render();
   }
   if (action === "logout") {
+    if (apiState.enabled) apiRequest("/logout", { method: "POST" }).catch(() => {});
     state.user = null;
     localStorage.removeItem(SESSION_KEY);
     render();

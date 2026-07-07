@@ -1,10 +1,32 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+
+let mysql = null;
+try {
+  mysql = require("mysql2/promise");
+} catch {
+  mysql = null;
+}
 
 const root = __dirname;
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
+const sessions = new Map();
+
+const dbConfig = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 5),
+  charset: "utf8mb4"
+};
+
+const hasMysqlConfig = Boolean(dbConfig.host && dbConfig.user && dbConfig.database && mysql);
+const pool = hasMysqlConfig ? mysql.createPool(dbConfig) : null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -17,8 +39,226 @@ const types = {
   ".jpeg": "image/jpeg"
 };
 
-const server = http.createServer((req, res) => {
+function defaultDb() {
+  return {
+    users: [{
+      id: "u-admin",
+      name: "Chủ Coco Bay",
+      email: process.env.ADMIN_EMAIL || "admin@cocobay.vn",
+      password: process.env.ADMIN_PASSWORD || "123456",
+      role: "admin",
+      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit"],
+      active: true,
+      lastLoginAt: ""
+    }],
+    owners: [],
+    motorbikes: [],
+    rentals: [],
+    equipment: [],
+    tickets: [],
+    notifications: [],
+    hotels: [],
+    rooms: [],
+    hotelBookings: [],
+    recoveryRequests: [],
+    hrEmployees: [],
+    jobApplicants: [],
+    attendanceShifts: [],
+    attendanceRecords: [],
+    bikeTypes: [],
+    equipmentTypes: [],
+    auditLogs: [],
+    settings: {
+      timezone: "Asia/Ho_Chi_Minh",
+      currency: "VND",
+      dateFormat: "dd/mm/yyyy"
+    }
+  };
+}
+
+async function ensureSchema() {
+  if (!pool) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_data (
+      id INT PRIMARY KEY,
+      json_data LONGTEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+  const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
+  if (!rows.length) {
+    await pool.query("INSERT INTO app_data (id, json_data) VALUES (1, ?)", [JSON.stringify(defaultDb())]);
+  }
+}
+
+async function readDb() {
+  await ensureSchema();
+  const [rows] = await pool.query("SELECT json_data FROM app_data WHERE id = 1 LIMIT 1");
+  if (!rows.length) return defaultDb();
+  try {
+    return JSON.parse(rows[0].json_data);
+  } catch {
+    return defaultDb();
+  }
+}
+
+async function writeDb(data) {
+  await ensureSchema();
+  await pool.query(
+    "INSERT INTO app_data (id, json_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE json_data = VALUES(json_data)",
+    [JSON.stringify(data)]
+  );
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 25 * 1024 * 1024) {
+        reject(new Error("Payload too large"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (!body) return resolve({});
+      try {
+        resolve(JSON.parse(body));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store"
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(String(req.headers.cookie || "").split(";").map((item) => item.trim()).filter(Boolean).map((item) => {
+    const index = item.indexOf("=");
+    return [decodeURIComponent(item.slice(0, index)), decodeURIComponent(item.slice(index + 1))];
+  }));
+}
+
+function currentSession(req) {
+  const token = parseCookies(req).coco_session;
+  return token ? sessions.get(token) : null;
+}
+
+function setSessionCookie(res, token) {
+  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", "coco_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+}
+
+async function handleApi(req, res, urlPath) {
+  if (!pool) {
+    sendJson(res, 503, { ok: false, mode: "localStorage", message: "MySQL is not configured on this server." });
+    return true;
+  }
+
+  if (urlPath === "/api/health") {
+    try {
+      await ensureSchema();
+      sendJson(res, 200, { ok: true, mode: "mysql" });
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (urlPath === "/api/login" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const db = await readDb();
+      const user = (db.users || []).find((item) => item.email === body.email && item.password === body.password && item.active);
+      if (!user) {
+        sendJson(res, 401, { ok: false, message: "Email hoặc mật khẩu không đúng." });
+        return true;
+      }
+      user.lastLoginAt = new Date().toISOString();
+      db.auditLogs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
+      db.auditLogs.unshift({
+        id: `LOG-${Date.now()}`,
+        user: user.name,
+        role: user.role,
+        action: "Đăng nhập",
+        record: user.email,
+        before: "",
+        after: `Lần đăng nhập gần nhất: ${user.lastLoginAt}`,
+        createdAt: user.lastLoginAt
+      });
+      await writeDb(db);
+      const token = crypto.randomBytes(32).toString("hex");
+      sessions.set(token, { userId: user.id, createdAt: Date.now() });
+      setSessionCookie(res, token);
+      sendJson(res, 200, { ok: true, user, db });
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (urlPath === "/api/logout" && req.method === "POST") {
+    const token = parseCookies(req).coco_session;
+    if (token) sessions.delete(token);
+    clearSessionCookie(res);
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  const session = currentSession(req);
+  if (!session) {
+    sendJson(res, 401, { ok: false, message: "Chưa đăng nhập." });
+    return true;
+  }
+
+  if (urlPath === "/api/me" && req.method === "GET") {
+    const db = await readDb();
+    const user = (db.users || []).find((item) => item.id === session.userId && item.active);
+    if (!user) {
+      sendJson(res, 401, { ok: false, message: "Phiên đăng nhập không hợp lệ." });
+      return true;
+    }
+    sendJson(res, 200, { ok: true, user, db });
+    return true;
+  }
+
+  if (urlPath === "/api/data" && req.method === "PUT") {
+    try {
+      const body = await readBody(req);
+      if (!body || typeof body.db !== "object") {
+        sendJson(res, 400, { ok: false, message: "Dữ liệu không hợp lệ." });
+        return true;
+      }
+      await writeDb(body.db);
+      sendJson(res, 200, { ok: true, savedAt: new Date().toISOString() });
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  sendJson(res, 404, { ok: false, message: "API not found." });
+  return true;
+}
+
+const server = http.createServer(async (req, res) => {
   const urlPath = decodeURIComponent(req.url.split("?")[0]);
+
+  if (urlPath.startsWith("/api/")) {
+    await handleApi(req, res, urlPath);
+    return;
+  }
+
   const safePath = path.normalize(urlPath === "/" ? "/index.html" : urlPath).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(root, safePath);
 
@@ -52,5 +292,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`COCO BAY app running on ${host}:${port}`);
+  console.log(`COCO BAY app running on ${host}:${port} (${pool ? "MySQL mode" : "localStorage mode"})`);
 });
