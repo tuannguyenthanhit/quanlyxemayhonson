@@ -3080,6 +3080,8 @@ function settingsView() {
         <p class="hint">Tải database JSON và gói website ZIP để lưu trữ hoặc chuyển sang máy/hosting khác.</p>
         <div class="actions">
           <button class="secondary" type="button" data-action="backup-json">Sao lưu database JSON</button>
+          <label class="secondary import-json-button" for="import-json-file">Nhập JSON lên MySQL</label>
+          <input id="import-json-file" class="visually-hidden" type="file" accept=".json,application/json" data-import-json>
           <button class="secondary" type="button" data-action="backup-website">Backup website ZIP</button>
           <button class="secondary" data-action="reset-sample">Khôi phục dữ liệu mẫu</button>
           <button class="danger" data-action="clear-sample">Xóa dữ liệu mẫu</button>
@@ -3249,9 +3251,12 @@ function rentalForm(id) {
   const db = getDb();
   const r = db.rentals.find((x) => x.id === id) || {};
   const bikes = db.motorbikes.filter((b) => b.status === "Có sẵn" || b.id === r.bikeId);
+  const bikePicker = id
+    ? selectField("bikeId", "Xe thuê", bikes.map((b) => [b.id, `${b.code}  · ${b.name}`]), r.bikeId, true)
+    : multiBikeRentalPicker(bikes);
   return `<div class="form-grid">
     ${field("customer", "Tên khách", r.customer, true)}${field("phone", "Số điện thoại", r.phone, true)}
-    ${field("room", "Số phòng", r.room)}${selectField("bikeId", "Xe thuê", bikes.map((b) => [b.id, `${b.code}  · ${b.name}`]), r.bikeId, true)}
+    ${field("room", "Số phòng", r.room)}${bikePicker}
     ${field("start", "Thời gian nhận", r.start || `${todayISO()}T09:00`, true, "datetime-local")}${field("end", "Thời gian trả", r.end || `${todayISO(1)}T09:00`, true, "datetime-local")}
     ${field("price", "Đơn giá", r.price || 180000, true, "number")}${field("surcharge", "Phụ thu", r.surcharge || 0, false, "number")}
     ${field("discount", "Giảm giá", r.discount || 0, false, "number")}${field("deposit", "Tiền cọc", r.deposit || 0, false, "number")}
@@ -3259,6 +3264,22 @@ function rentalForm(id) {
     ${selectField("status", "Trạng thái", rentalStatuses, r.status || "Đã đặt")}
     <div class="field full"><label>Ghi chú</label><textarea name="notes">${r.notes || ""}</textarea></div>
   </div>`;
+}
+
+function multiBikeRentalPicker(bikes) {
+  return `
+    <div class="field full">
+      <label>Xe thuê <span class="hint">Chọn 1 hoặc nhiều xe</span></label>
+      <div class="multi-bike-picker">
+        ${bikes.map((bike, index) => `
+          <label class="multi-bike-option">
+            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === 0 ? "checked" : ""}>
+            <span><strong>${bike.code} · ${bike.name}</strong><small>${bike.plate || "-"} · ${bike.type || ""}</small></span>
+          </label>
+        `).join("") || `<p class="hint">Không có xe sẵn sàng cho thuê.</p>`}
+      </div>
+    </div>
+  `;
 }
 
 function ticketForm(editId, assetType = "Xe máy", preselectedAssetId = "") {
@@ -3563,6 +3584,7 @@ function bindApp() {
   document.querySelector("input[name='afterPhoto']")?.addEventListener("change", previewPhoto);
   document.querySelector("input[name='bikeImages']")?.addEventListener("change", previewBikeImages);
   document.querySelector("input[name='employeePhoto']")?.addEventListener("change", previewEmployeePhoto);
+  document.querySelector("[data-import-json]")?.addEventListener("change", importJsonToMysql);
 }
 
 function handleBikeImagePreviewClick(event) {
@@ -3690,7 +3712,8 @@ async function saveModal(event) {
   const type = form.dataset.form;
   const id = form.dataset.id;
   const extra = form.dataset.extra;
-  const data = Object.fromEntries(new FormData(form));
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
   if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
     showToast("T\u00e0i kho\u1ea3n n\u00e0y kh\u00f4ng c\u00f3 quy\u1ec1n ghi/s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.");
     return;
@@ -3707,12 +3730,21 @@ async function saveModal(event) {
     data.permissions = Array.from(form.querySelectorAll("input[name='permission']:checked")).map((input) => input.value);
     data.active = data.active === "true";
   }
+  if (type === "rental" && !id) {
+    data.bikeIds = formData.getAll("bikeIds").filter(Boolean);
+    if (!data.bikeIds.length) {
+      showToast("Hãy chọn ít nhất 1 xe để tạo phiếu thuê.");
+      return;
+    }
+    data.bikeId = data.bikeIds[0];
+  }
   if (type === "booking" && bookingHasConflict(getDb(), data, id)) {
     showToast("Ph\u00f2ng n\u00e0y \u0111\u00e3 c\u00f3 kh\u00e1ch trong kho\u1ea3ng th\u1eddi gian \u0111\u00e3 ch\u1ecdn.");
     return;
   }
-  if (type === "rental" && hasRentalConflict(data.bikeId, data.start, data.end, id)) {
-    showToast("Không thể đặt trùng lịch cùng một xe.");
+  if (type === "rental" && rentalConflictBikes(data, id).length) {
+    const conflicts = rentalConflictBikes(data, id);
+    showToast(`Không thể đặt trùng lịch: ${conflicts.map((bike) => bike.code).join(", ")}.`);
     return;
   }
   mutateDb((db) => {
@@ -3776,13 +3808,51 @@ function upsertBikeType(db, data, id) {
 }
 
 function upsertRental(db, data, id) {
+  const bikeIds = id ? [data.bikeId] : (data.bikeIds?.length ? data.bikeIds : [data.bikeId]);
+  const count = Math.max(1, bikeIds.length);
+  bikeIds.forEach((bikeId, index) => {
+    const payload = rentalPayloadForBike(data, bikeId, count, index);
+    if (id) Object.assign(db.rentals.find((r) => r.id === id), payload);
+    else db.rentals.push({ id: uid("R"), code: uid("RT"), ...payload });
+    const bike = db.motorbikes.find((b) => b.id === bikeId);
+    if (bike && ["Đã đặt", "Đang thuê"].includes(payload.status)) bike.status = payload.status;
+  });
+}
+
+function rentalPayloadForBike(data, bikeId, count, index) {
   const days = Math.max(1, Math.ceil((new Date(data.end) - new Date(data.start)) / 86400000));
-  const total = days * Number(data.price) + Number(data.surcharge || 0) - Number(data.discount || 0);
-  const payload = { ...data, price: +data.price, surcharge: +data.surcharge, discount: +data.discount, deposit: +data.deposit, paid: +data.paid, total, kmOut: "", fuelOut: "", kmIn: "", fuelIn: "", beforePhoto: "", afterPhoto: "" };
-  if (id) Object.assign(db.rentals.find((r) => r.id === id), payload);
-  else db.rentals.push({ id: uid("R"), code: uid("RT"), ...payload });
-  const bike = db.motorbikes.find((b) => b.id === data.bikeId);
-  if (bike && payload.status === "Đã đặt") bike.status = "Đã đặt";
+  const surcharge = splitAmount(data.surcharge, count, index);
+  const discount = splitAmount(data.discount, count, index);
+  const deposit = splitAmount(data.deposit, count, index);
+  const paid = splitAmount(data.paid, count, index);
+  const total = days * Number(data.price) + surcharge - discount;
+  const groupNote = count > 1 ? `Tạo nhanh theo đoàn ${count} xe.` : "";
+  const notes = [data.notes || "", groupNote].filter(Boolean).join("\n");
+  const { bikeIds, ...rest } = data;
+  return {
+    ...rest,
+    bikeId,
+    price: +data.price,
+    surcharge,
+    discount,
+    deposit,
+    paid,
+    total,
+    kmOut: "",
+    fuelOut: "",
+    kmIn: "",
+    fuelIn: "",
+    beforePhoto: "",
+    afterPhoto: "",
+    notes
+  };
+}
+
+function splitAmount(value, count, index) {
+  const total = Number(value || 0);
+  if (count <= 1) return total;
+  const base = Math.floor(total / count);
+  return index === count - 1 ? total - base * (count - 1) : base;
 }
 
 function upsertTicket(db, data, id) {
@@ -3932,6 +4002,15 @@ function hasRentalConflict(bikeId, start, end, ignoreId = "") {
   const startTime = new Date(start).getTime();
   const endTime = new Date(end).getTime();
   return getDb().rentals.some((r) => r.id !== ignoreId && r.bikeId === bikeId && !["Đã trả", "Đã hủy"].includes(r.status) && startTime < new Date(r.end).getTime() && endTime > new Date(r.start).getTime());
+}
+
+function rentalConflictBikes(data, ignoreId = "") {
+  const db = getDb();
+  const bikeIds = data.bikeIds?.length ? data.bikeIds : [data.bikeId];
+  return bikeIds
+    .filter((bikeId) => hasRentalConflict(bikeId, data.start, data.end, ignoreId))
+    .map((bikeId) => db.motorbikes.find((bike) => bike.id === bikeId))
+    .filter(Boolean);
 }
 
 function handoverRental(id) {
@@ -4104,6 +4183,40 @@ function backupJson() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
   downloadBlob(blob, `coco-bay-backup-${todayISO()}.json`);
   showToast("Đã sao lưu dữ liệu JSON.");
+}
+
+async function importJsonToMysql(event) {
+  const input = event.currentTarget;
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    const importedDb = payload.data && typeof payload.data === "object" ? payload.data : payload;
+    if (!isValidImportedDb(importedDb)) {
+      showToast("File JSON không đúng định dạng database Coco Bay.");
+      input.value = "";
+      return;
+    }
+    migrateDb(importedDb);
+    localStorage.setItem(DB_KEY, JSON.stringify(importedDb));
+    if (apiState.enabled && state.user) {
+      await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: importedDb }) });
+      showToast("Đã nhập JSON và đồng bộ lên MySQL.");
+    } else {
+      showToast("Đã nhập JSON vào máy này. Chưa đồng bộ MySQL vì chưa chạy chế độ online.");
+    }
+    render();
+  } catch (error) {
+    console.error(error);
+    showToast("Không đọc được file JSON. Hãy chọn đúng file sao lưu.");
+  } finally {
+    input.value = "";
+  }
+}
+
+function isValidImportedDb(db) {
+  return Boolean(db && typeof db === "object" && Array.isArray(db.users) && db.settings && typeof db.settings === "object");
 }
 
 async function backupWebsite() {
