@@ -337,6 +337,32 @@ button {
   resize: vertical;
 }
 
+.time-picker {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-picker select {
+  min-height: 48px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.time-picker span {
+  color: #f8ffff;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.time-picker-field .hint {
+  color: rgba(220, 246, 255, 0.76);
+  font-size: 12px;
+}
+
 .primary,
 .secondary,
 .ghost,

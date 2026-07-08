@@ -3507,8 +3507,8 @@ function attendanceShiftForm(id) {
   const item = getDb().attendanceShifts.find((x) => x.id === id) || {};
   return `<div class="form-grid">
     ${field("name", "Tên ca", item.name || "", true)}
-    ${field("start", "Giờ bắt đầu", item.start || "08:00", true, "time")}
-    ${field("end", "Giờ kết thúc", item.end || "17:00", true, "time")}
+    ${timePickerField("start", "Giờ bắt đầu", item.start || "08:00")}
+    ${timePickerField("end", "Giờ kết thúc", item.end || "17:00")}
     ${field("breakMinutes", "Thời gian nghỉ giữa ca (phút)", item.breakMinutes || 0, false, "number")}
     <div class="field full"><label>Ghi chú ca làm</label><textarea name="note">${item.note || ""}</textarea></div>
   </div>`;
@@ -3597,6 +3597,35 @@ function detailBikeModal(b) {
 
 function field(name, label, value = "", required = false, type = "text") {
   return `<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${value ?? ""}" ${required ? "required" : ""}></div>`;
+}
+
+function timeParts(value = "08:00") {
+  const [rawHour = "08", rawMinute = "00"] = String(value || "08:00").split(":");
+  const hour = Math.min(23, Math.max(0, Number(rawHour) || 0));
+  const minute = Math.min(55, Math.max(0, Math.round((Number(rawMinute) || 0) / 5) * 5));
+  return {
+    hour: String(hour).padStart(2, "0"),
+    minute: String(minute).padStart(2, "0")
+  };
+}
+
+function composeTime(hour, minute) {
+  return `${String(hour || "00").padStart(2, "0")}:${String(minute || "00").padStart(2, "0")}`;
+}
+
+function timePickerField(name, label, value = "08:00") {
+  const parts = timeParts(value);
+  const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+  const minutes = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
+  return `<div class="field time-picker-field">
+    <label>${label}</label>
+    <div class="time-picker" role="group" aria-label="${label}">
+      <select name="${name}Hour" aria-label="${label} giờ" required>${hours.map((hour) => `<option value="${hour}" ${parts.hour === hour ? "selected" : ""}>${hour}</option>`).join("")}</select>
+      <span>:</span>
+      <select name="${name}Minute" aria-label="${label} phút" required>${minutes.map((minute) => `<option value="${minute}" ${parts.minute === minute ? "selected" : ""}>${minute}</option>`).join("")}</select>
+    </div>
+    <span class="hint">Chọn theo định dạng 24 giờ, ví dụ 13:00 là 1 giờ chiều.</span>
+  </div>`;
 }
 
 function selectField(name, label, options, value = "", required = false) {
@@ -3838,6 +3867,14 @@ async function saveModal(event) {
   if (type === "user") {
     data.permissions = Array.from(form.querySelectorAll("input[name='permission']:checked")).map((input) => input.value);
     data.active = data.active === "true";
+  }
+  if (type === "attendanceShift") {
+    data.start = composeTime(data.startHour, data.startMinute);
+    data.end = composeTime(data.endHour, data.endMinute);
+    delete data.startHour;
+    delete data.startMinute;
+    delete data.endHour;
+    delete data.endMinute;
   }
   if (type === "rental" && !id) {
     data.bikeIds = formData.getAll("bikeIds").filter(Boolean);
