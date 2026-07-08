@@ -2150,7 +2150,7 @@ function rentalsView() {
         <div class="rental-footer"><span>Hiển thị ${rows.length ? `1 - ${rows.length}` : "0"} trong ${rows.length} phiếu thuê</span><div class="rental-pager"><button disabled>‹</button><button class="active">1</button><button disabled>›</button><select><option>10 / trang</option></select></div></div>
       </div>
 
-      <div class="rental-note"><span>ⓘ</span><p><strong>Lưu ý:</strong><br>Khi trả xe, vui lòng kiểm tra tình trạng xe, chụp ảnh và cập nhật nếu có hư hỏng để hệ thống tự động tạo phiếu sửa chữa.</p></div>
+      <div class="rental-note"><span>ⓘ</span><p><strong>Lưu ý:</strong><br>Khi trả xe, chỉ cần nhập km và chụp ảnh. Hệ thống tự ghi nhận thanh toán đủ và đưa xe về trạng thái có sẵn.</p></div>
     </section>
   `;
 }
@@ -3530,14 +3530,15 @@ function userForm(id) {
 }
 
 function returnModal(r) {
+  const db = getDb();
+  const bike = db.motorbikes.find((item) => item.id === r.bikeId);
+  const defaultKm = r.kmIn || bike?.odometer || r.kmOut || 0;
   return `<div class="modal-backdrop"><form class="modal" id="return-form" data-id="${r.id}">
     <header><h3>Trả xe ${r.code}</h3><button class="ghost" data-action="close-modal" type="button">Đóng</button></header>
     <div class="modal-body form-grid">
-      ${field("kmIn", "Kilomet lúc trả", r.kmIn || "", true, "number")}${field("fuelIn", "Mức xăng lúc trả", r.fuelIn || "50%", true)}
-      ${field("paid", "Tổng đã thanh toán", r.paid || 0, true, "number")}
-      ${selectField("hasDamage", "Tình trạng xe", [["no", "Bình thường"], ["yes", "Có hư hỏng, tạo phiếu sửa"]], "no")}
-      <div class="field full"><label>Ảnh sau khi nhận</label><input name="afterPhoto" type="file" accept="image/*" capture="environment"><div class="photo-preview" id="photo-preview">Chọn ảnh để xem trước</div></div>
-      <div class="field full"><label>Ghi chú kiểm tra</label><textarea name="notes">${r.notes || ""}</textarea></div>
+      ${field("kmIn", "Kilomet lúc trả", defaultKm, true, "number")}
+      <div class="field full"><label>Ảnh sau khi nhận</label><input name="afterPhoto" type="file" accept="image/*" capture="environment"><div class="photo-preview" id="photo-preview">${r.afterPhoto ? `<img src="${r.afterPhoto}" alt="Ảnh trả xe">` : "Chọn ảnh để xem trước"}</div></div>
+      <p class="hint full">Hệ thống tự ghi nhận đã thanh toán đủ ${money(r.total || 0)}, xe bình thường và chuyển xe về trạng thái có sẵn.</p>
     </div>
     <footer><button class="ghost" data-action="close-modal" type="button">Hủy</button><button class="primary" type="submit">Hoàn tất trả xe</button></footer>
   </form></div>`;
@@ -4127,26 +4128,38 @@ function handoverRental(id) {
   showToast("Đã giao xe và chuyển trạng thái đang thuê.");
 }
 
-function saveReturn(event) {
+async function saveReturn(event) {
   event.preventDefault();
   const id = event.currentTarget.dataset.id;
-  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  const afterPhoto = await readReturnPhoto(form, id);
   mutateDb((db) => {
     const r = db.rentals.find((x) => x.id === id);
     const bike = db.motorbikes.find((b) => b.id === r.bikeId);
-    Object.assign(r, { kmIn: data.kmIn, fuelIn: data.fuelIn, paid: +data.paid, notes: data.notes, status: Number(data.paid) >= Number(r.total) ? "Đã trả" : "Chưa thanh toán đủ" });
+    Object.assign(r, {
+      kmIn: data.kmIn,
+      fuelIn: r.fuelOut || bike?.fuel || "",
+      paid: Number(r.total || 0),
+      afterPhoto,
+      status: "Đã trả"
+    });
     if (bike) {
       bike.odometer = +data.kmIn;
-      bike.fuel = data.fuelIn;
-      bike.status = data.hasDamage === "yes" ? "Hư hỏng" : "Có sẵn";
-    }
-    if (data.hasDamage === "yes") {
-      db.tickets.push({ id: uid("T"), code: uid("MT"), assetType: "Xe máy", assetId: r.bikeId, issue: `Hư hỏng phát hiện khi trả xe ${r.code}`, priority: "Cao", reporterId: state.user.id, assigneeId: "u-tech", foundDate: todayISO(), dueDate: todayISO(2), cause: "", solution: "", parts: "", estimatedCost: 0, actualCost: 0, status: "Mới tạo", notes: data.notes });
+      bike.fuel = r.fuelOut || bike.fuel || "";
+      bike.status = "Có sẵn";
     }
     state.modal = null;
     return { record: r.code };
   }, "Trả xe");
   showToast("Đã hoàn tất trả xe.");
+}
+
+async function readReturnPhoto(form, id) {
+  const input = form.querySelector("input[name='afterPhoto']");
+  const file = input?.files?.[0];
+  if (!file) return getDb().rentals.find((item) => item.id === id)?.afterPhoto || "";
+  return compressImageFile(file, 720, 0.5, 90000);
 }
 
 function saveBikeKm(event) {
