@@ -167,6 +167,7 @@ const state = {
 const bikeStatuses = ["Có sẵn", "Đã đặt", "Đang thuê", "Quá hạn", "Chờ kiểm tra", "Hư hỏng", "Đang sửa", "Chờ phụ tùng", "Ngừng sử dụng"];
 const rentalStatuses = ["Đã đặt", "Đang thuê", "Quá hạn", "Đã trả", "Chưa thanh toán đủ", "Đã hủy"];
 const ticketStatuses = ["Mới tạo", "Đang kiểm tra", "Chờ duyệt chi phí", "Đang sửa", "Chờ phụ tùng", "Chờ nghiệm thu", "Hoàn thành", "Đã hủy"];
+const BIKE_IMAGE_LIMIT = 10;
 
 function todayISO(offset = 0) {
   const d = new Date();
@@ -512,6 +513,16 @@ function migrateDb(db) {
     db.recoveryRequests = [];
     changed = true;
   }
+  if (!Array.isArray(db.owners)) {
+    db.owners = [];
+    changed = true;
+  }
+  db.owners.forEach((owner) => {
+    if (owner.hidden === undefined) {
+      owner.hidden = false;
+      changed = true;
+    }
+  });
   if (!Array.isArray(db.hrEmployees)) {
     db.hrEmployees = seedDb().hrEmployees;
     changed = true;
@@ -620,11 +631,17 @@ function migrateDb(db) {
 }
 
 function setDb(db) {
+  const payload = JSON.stringify(db);
   try {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    localStorage.setItem(DB_KEY, payload);
     queueRemoteSave(db);
   } catch (error) {
-    showToast("Không lưu được dữ liệu. Hãy xóa bớt ảnh hoặc chọn ảnh dung lượng nhỏ hơn.");
+    if (apiState.enabled) {
+      queueRemoteSave(db);
+      showToast("Dữ liệu ảnh đã lưu lên MySQL. Bộ nhớ trình duyệt đã đầy nên cache local có thể không cập nhật.");
+      return;
+    }
+    showToast("Không lưu được dữ liệu. Ảnh đã được nén, nhưng bộ nhớ trình duyệt vẫn đầy. Hãy xóa bớt ảnh cũ hoặc dùng MySQL backend.");
     throw error;
   }
 }
@@ -1895,7 +1912,7 @@ function motorbikesView() {
         <div class="motorbike-filters">
           <label class="search-box"><input type="search" placeholder="Tìm kiếm (biển số, tên xe, chủ xe...)" value="${state.query}" data-filter="query"><span>⌕</span></label>
           <select data-filter="status"><option value="all">Tất cả trạng thái</option>${bikeStatuses.map((status) => `<option value="${status}" ${state.filter === status ? "selected" : ""}>${status}</option>`).join("")}</select>
-          <select data-bike-filter="owner"><option value="all">Tất cả chủ xe</option>${db.owners.map((owner) => `<option value="${owner.id}" ${state.bikeFilters.owner === owner.id ? "selected" : ""}>${owner.name}</option>`).join("")}</select>
+          <select data-bike-filter="owner"><option value="all">Tất cả chủ xe</option>${db.owners.filter((owner) => !owner.hidden).map((owner) => `<option value="${owner.id}" ${state.bikeFilters.owner === owner.id ? "selected" : ""}>${owner.name}</option>`).join("")}</select>
           <select data-bike-sort><option value="code-asc" ${state.bikeFilters.sort === "code-asc" ? "selected" : ""}>↕ Sắp xếp: Mã xe</option><option value="code-desc" ${state.bikeFilters.sort === "code-desc" ? "selected" : ""}>Mã xe giảm dần</option><option value="name-asc" ${state.bikeFilters.sort === "name-asc" ? "selected" : ""}>Tên xe A-Z</option><option value="price-desc" ${state.bikeFilters.sort === "price-desc" ? "selected" : ""}>Giá thuê cao nhất</option></select>
           <button class="ghost square-action" data-action="reset-bike-filters" title="Làm mới bộ lọc">⟳</button>
           <button class="secondary export-bike-btn" data-action="export-bikes-excel">⇩ Xuất Excel</button>
@@ -1936,7 +1953,7 @@ function motorbikeStats(rows, db = getDb()) {
     renting: rows.filter((bike) => bike.status === "Đang thuê").length,
     repairing: rows.filter((bike) => ["Đang sửa", "Chờ phụ tùng", "Chờ kiểm tra", "Hư hỏng"].includes(bike.status)).length,
     overdue: rows.filter((bike) => bike.status === "Quá hạn" || isBikeKmDue(bike)).length,
-    ownerCount: db.owners.length,
+    ownerCount: db.owners.filter((owner) => !owner.hidden).length,
     ownedBikeCount: rows.filter((bike) => bike.ownerId).length
   };
 }
@@ -1946,7 +1963,7 @@ function motorbikeStatCard(icon, label, value, caption, tone) {
 }
 
 function motorbikeOwnerSummary(db = getDb()) {
-  const rows = db.owners.map((owner) => {
+  const rows = db.owners.filter((owner) => !owner.hidden).map((owner) => {
     const bikes = db.motorbikes.filter((bike) => bike.ownerId === owner.id);
     return { owner, bikes };
   }).sort((a, b) => b.bikes.length - a.bikes.length || a.owner.name.localeCompare(b.owner.name, "vi"));
@@ -2545,18 +2562,73 @@ function maintenanceBucket(title, items) {
 
 function ownersView() {
   const db = getDb();
-  const rows = filterRows(db.owners, ["name", "phone", "type"]);
+  const rows = filterRows(db.owners, ["name", "phone", "type", "note"]);
   const financialRows = ownerRevenueRows(db);
   return `
-    ${pageHeader("Chủ sở hữu xe", "Quản lý xe thuộc khách sạn hoặc xe ký gửi.", can("manage") ? `<button class="primary" data-modal="owner">Th\u00eam ch\u1ee7 xe</button>` : "")}
+    ${pageHeader("Chủ sở hữu xe", "Quản lý xe thuộc khách sạn hoặc xe ký gửi. Có thể sửa, ẩn/hiện hoặc xóa chủ xe khi không còn xe liên kết.", can("manage") ? `<button class="primary" data-modal="owner">Th\u00eam ch\u1ee7 xe</button>` : "")}
     ${filters([])}
-    <div class="table-wrap"><table><thead><tr><th>Tên</th><th>Điện thoại</th><th>Hình thức</th><th>Số xe</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Ghi chú</th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>Tên</th><th>Điện thoại</th><th>Hình thức</th><th>Số xe</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>
     ${rows.map((o) => {
       const summary = financialRows.find((row) => row.owner.id === o.id);
-      return `<tr><td><strong>${o.name}</strong></td><td>${o.phone}</td><td>${o.type}</td><td>${summary?.bikeCount || 0}</td><td>${can("finance") ? money(summary?.revenue || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${can("finance") ? money(summary?.profit || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${o.note || ""}</td></tr>`;
+      const actions = can("manage") ? `<div class="actions"><button class="ghost" data-modal="owner:${o.id}">Sửa</button><button class="secondary" type="button" data-action="toggle-owner:${o.id}">${o.hidden ? "Hiện" : "Ẩn"}</button><button class="danger" type="button" data-action="delete-owner:${o.id}">Xóa</button></div>` : "";
+      return `<tr class="${o.hidden ? "muted-row" : ""}"><td><strong>${o.name}</strong></td><td>${o.phone}</td><td>${o.type}</td><td>${summary?.bikeCount || 0}</td><td>${can("finance") ? money(summary?.revenue || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${can("finance") ? money(summary?.profit || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${pill(o.hidden ? "Đang ẩn" : "Đang hiển thị")}</td><td>${o.note || ""}</td><td>${actions}</td></tr>`;
     }).join("")}
     </tbody></table></div>
+    <p class="hint">Chủ xe đã ẩn sẽ không hiện trong danh sách chọn nhanh khi thêm xe mới, nhưng dữ liệu xe và báo cáo cũ vẫn được giữ.</p>
   `;
+}
+
+function upsertOwner(db, data, id) {
+  if (!Array.isArray(db.owners)) db.owners = [];
+  const name = String(data.name || "").trim();
+  if (!name) {
+    showToast("Hãy nhập tên chủ xe.");
+    throw new Error("Missing owner name");
+  }
+  if (db.owners.some((owner) => owner.id !== id && String(owner.name || "").trim().toLowerCase() === name.toLowerCase())) {
+    showToast("Tên chủ xe đã tồn tại.");
+    throw new Error("Duplicate owner");
+  }
+  const payload = {
+    name,
+    phone: String(data.phone || "").trim(),
+    type: data.type || "Ký gửi",
+    hidden: data.hidden === "true",
+    note: data.note || ""
+  };
+  if (id) Object.assign(db.owners.find((owner) => owner.id === id), payload);
+  else db.owners.push({ id: uid("O"), ...payload });
+}
+
+function toggleOwnerVisibility(id) {
+  mutateDb((db) => {
+    const owner = db.owners.find((item) => item.id === id);
+    if (!owner) return { record: id };
+    owner.hidden = !owner.hidden;
+    return { record: owner.name, after: owner.hidden ? "Đang ẩn" : "Đang hiển thị" };
+  }, "Cập nhật hiển thị chủ xe");
+  showToast("Đã cập nhật trạng thái chủ xe.");
+}
+
+function deleteOwner(id) {
+  const db = getDb();
+  const owner = db.owners.find((item) => item.id === id);
+  if (!owner) {
+    showToast("Không tìm thấy chủ xe cần xóa.");
+    return;
+  }
+  const linkedBikes = db.motorbikes.filter((bike) => bike.ownerId === id);
+  if (linkedBikes.length) {
+    showToast(`Chủ xe này đang có ${linkedBikes.length} xe. Hãy ẩn hoặc chuyển xe sang chủ khác trước khi xóa.`);
+    return;
+  }
+  if (!confirm(`Xóa chủ xe ${owner.name}?`)) return;
+  mutateDb((draft) => {
+    draft.owners = draft.owners.filter((item) => item.id !== id);
+    state.modal = null;
+    return { record: owner.name, before: "Đã tồn tại", after: "Đã xóa" };
+  }, "Xóa chủ xe");
+  showToast("Đã xóa chủ xe.");
 }
 
 function financeView() {
@@ -3181,7 +3253,7 @@ function modalFields(type, id, extra) {
   if (type === "ticket" || type === "ticketEdit") return ticketForm(type === "ticketEdit" ? id : "", id, extra);
   if (type === "equipment") return equipmentForm(id);
   if (type === "equipmentType") return equipmentTypeForm(id);
-  if (type === "owner") return ownerForm();
+  if (type === "owner") return ownerForm(id);
   if (type === "hrEmployee") return hrEmployeeForm(id);
   if (type === "applicant") return applicantForm(id);
   if (type === "attendanceRecord") return attendanceRecordForm(id);
@@ -3197,7 +3269,9 @@ function bikeForm(id) {
     state.bikeImageDraft = { formId: id || "new", images: [...(b.images || [])] };
   }
   const draftImages = state.bikeImageDraft.images || [];
-  const ownerOptions = db.owners.map((owner) => [owner.id, `${owner.name} · ${owner.type}`]);
+  const ownerOptions = db.owners
+    .filter((owner) => !owner.hidden || owner.id === b.ownerId)
+    .map((owner) => [owner.id, `${owner.name} · ${owner.type}${owner.hidden ? " · Đang ẩn" : ""}`]);
   const typeOptions = (db.bikeTypes || []).map((type) => [type.name, type.name]);
   const selectedType = (db.bikeTypes || []).find((type) => type.name === (b.type || typeOptions[0]?.[0]));
   return `<div class="form-grid">
@@ -3205,7 +3279,7 @@ function bikeForm(id) {
     ${field("name", "Tên xe", b.name, true)}${selectField("type", "Loại xe", typeOptions.length ? typeOptions : ["Tay ga", "Xe số", "Xe điện"], b.type || selectedType?.name)}
     ${field("brand", "Hãng xe", b.brand)}${field("model", "Dòng xe", b.model)}
     ${field("color", "Màu sắc", b.color)}${selectField("status", "Trạng thái", bikeStatuses, b.status || "Có sẵn")}
-    ${selectField("ownerId", "Chủ xe", ownerOptions.length ? ownerOptions : [["", "Chưa có chủ xe"]], b.ownerId || db.owners[0]?.id || "", true)}
+    ${selectField("ownerId", "Chủ xe", ownerOptions.length ? ownerOptions : [["", "Chưa có chủ xe"]], b.ownerId || db.owners.find((owner) => !owner.hidden)?.id || db.owners[0]?.id || "", true)}
     ${selectField("ownership", "Hình thức sở hữu", ["Khách sạn sở hữu", "Ký gửi", "Thuê ngoài"], b.ownership || "Khách sạn sở hữu")}
     ${field("weekdayPrice", "Giá ngày thường", b.weekdayPrice || 180000, true, "number")}${field("weekendPrice", "Giá cuối tuần", b.weekendPrice || 220000, true, "number")}
     ${field("holidayPrice", "Giá ngày lễ", b.holidayPrice || 260000, true, "number")}${field("odometer", "Kilomet hiện tại", b.odometer || 0, false, "number")}
@@ -3217,7 +3291,7 @@ function bikeForm(id) {
     ${field("maintenanceIntervalKm", "Nhắc bảo trì mỗi bao nhiêu km", b.maintenanceIntervalKm || selectedType?.maintenanceIntervalKm || 3000, false, "number")}
     ${field("lastMaintenance", "Bảo trì gần nhất", b.lastMaintenance || todayISO(), false, "date")}${field("nextMaintenance", "Bảo trì tiếp theo", b.nextMaintenance || todayISO(30), false, "date")}
     <div class="field full">
-      <label>Hình ảnh xe và giấy tờ (tối đa 5 hình, hình đầu tiên là ảnh đại diện)</label>
+      <label>Hình ảnh xe và giấy tờ (tối đa ${BIKE_IMAGE_LIMIT} hình, hình đầu tiên là ảnh đại diện)</label>
       <input name="bikeImages" type="file" accept="image/*" multiple>
       <div class="image-grid" id="bike-image-preview">
         ${renderEditableBikeImages(draftImages)}
@@ -3228,7 +3302,7 @@ function bikeForm(id) {
 }
 
 function renderEditableBikeImages(images = []) {
-  if (!images.length) return `<span>Chưa có hình. Chọn tối đa 5 hình để lưu cùng xe.</span>`;
+  if (!images.length) return `<span>Chưa có hình. Chọn tối đa ${BIKE_IMAGE_LIMIT} hình để lưu cùng xe.</span>`;
   return images.map((src, index) => `<div class="image-thumb">
     <img src="${src}" alt="Hình xe ${index + 1}">
     <button type="button" data-action="remove-bike-image:${index}" title="Xóa hình này">×</button>
@@ -3333,8 +3407,15 @@ function equipmentTypeForm(id) {
   </div>`;
 }
 
-function ownerForm() {
-  return `<div class="form-grid">${field("name", "Tên chủ xe", "", true)}${field("phone", "Điện thoại", "")}${selectField("type", "Hình thức", ["Khách sạn sở hữu", "Ký gửi", "Thuê ngoài"], "Ký gửi")}<div class="field full"><label>Ghi chú</label><textarea name="note"></textarea></div></div>`;
+function ownerForm(id) {
+  const owner = getDb().owners.find((item) => item.id === id) || {};
+  return `<div class="form-grid">
+    ${field("name", "Tên chủ xe", owner.name || "", true)}
+    ${field("phone", "Điện thoại", owner.phone || "")}
+    ${selectField("type", "Hình thức", ["Khách sạn sở hữu", "Ký gửi", "Thuê ngoài"], owner.type || "Ký gửi")}
+    ${selectField("hidden", "Trạng thái hiển thị", [["false", "Đang hiển thị"], ["true", "Đang ẩn"]], String(Boolean(owner.hidden)))}
+    <div class="field full"><label>Ghi chú</label><textarea name="note">${owner.note || ""}</textarea></div>
+  </div>`;
 }
 
 function hrEmployeeForm(id) {
@@ -3633,6 +3714,8 @@ function handleAction(event) {
   if (action?.startsWith("mark-equipment-maintained:")) markEquipmentMaintained(action.split(":")[1]);
   if (action?.startsWith("handover:")) handoverRental(action.split(":")[1]);
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
+  if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
+  if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
   if (action?.startsWith("toggle-room:")) toggleRoomVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-room:")) deleteRoom(action.split(":")[1]);
   if (action?.startsWith("approve:")) approveTicket(action.split(":")[1]);
@@ -3757,7 +3840,7 @@ async function saveModal(event) {
     if (type === "ticket" || type === "ticketEdit") upsertTicket(db, data, type === "ticketEdit" ? id : "", extra);
     if (type === "equipment") upsertEquipment(db, data, id);
     if (type === "equipmentType") upsertEquipmentType(db, data, id);
-    if (type === "owner") db.owners.push({ id: uid("O"), ...data });
+    if (type === "owner") upsertOwner(db, data, id);
     if (type === "hrEmployee") upsertHrEmployee(db, data, id);
     if (type === "applicant") upsertApplicant(db, data, id);
     if (type === "attendanceRecord") upsertAttendanceRecord(db, data, id);
@@ -4694,10 +4777,10 @@ async function readBikeImages(form, id) {
   if (!files.length) {
     return getDb().motorbikes.find((b) => b.id === id)?.images || [];
   }
-  if (files.length > 5) {
-    showToast("Chỉ lưu tối đa 5 hình cho mỗi xe.");
+  if (files.length > BIKE_IMAGE_LIMIT) {
+    showToast(`Chỉ lưu tối đa ${BIKE_IMAGE_LIMIT} hình cho mỗi xe.`);
   }
-  return Promise.all(files.slice(0, 5).map(compressImageFile));
+  return Promise.all(files.slice(0, BIKE_IMAGE_LIMIT).map(compressImageFile));
 }
 
 async function readEmployeePhoto(form, id) {
@@ -4706,7 +4789,7 @@ async function readEmployeePhoto(form, id) {
   if (!file) {
     return getDb().hrEmployees.find((item) => item.id === id)?.photo || "";
   }
-  return fileToDataUrl(file);
+  return compressImageFile(file, 720, 0.62, 180000);
 }
 
 function fileToDataUrl(file) {
@@ -4718,21 +4801,38 @@ function fileToDataUrl(file) {
   });
 }
 
-function compressImageFile(file, maxSize = 1000, quality = 0.78) {
+function compressImageFile(file, maxSize = 900, quality = 0.62, maxBytes = 220000) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        const attempts = [
+          [maxSize, quality],
+          [800, 0.58],
+          [680, 0.52],
+          [560, 0.46]
+        ];
+        let best = "";
+        for (const [size, q] of attempts) {
+          const scale = Math.min(1, size / Math.max(image.width, image.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const webp = canvas.toDataURL("image/webp", q);
+          const jpeg = canvas.toDataURL("image/jpeg", q);
+          const candidate = webp.startsWith("data:image/webp") && webp.length < jpeg.length ? webp : jpeg;
+          best = !best || candidate.length < best.length ? candidate : best;
+          if (candidate.length <= maxBytes) {
+            resolve(candidate);
+            return;
+          }
+        }
+        resolve(best);
       };
       image.onerror = reject;
       image.src = reader.result;
@@ -4748,16 +4848,16 @@ async function previewBikeImages(event) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
   const current = state.bikeImageDraft?.images || [];
-  const slots = Math.max(0, 5 - current.length);
+  const slots = Math.max(0, BIKE_IMAGE_LIMIT - current.length);
   if (!slots) {
-    showToast("Đã đủ 5 hình. Hãy xóa bớt hình trước khi thêm.");
+    showToast(`Đã đủ ${BIKE_IMAGE_LIMIT} hình. Hãy xóa bớt hình trước khi thêm.`);
     event.target.value = "";
     return;
   }
   if (files.length > slots) showToast(`Chỉ thêm được ${slots} hình nữa. Hệ thống sẽ lấy hình đầu tiên.`);
   const urls = await Promise.all(files.slice(0, slots).map(compressImageFile));
   state.bikeImageDraft = state.bikeImageDraft || { formId: "new", images: [] };
-  state.bikeImageDraft.images = [...current, ...urls].slice(0, 5);
+  state.bikeImageDraft.images = [...current, ...urls].slice(0, BIKE_IMAGE_LIMIT);
   preview.innerHTML = renderEditableBikeImages(state.bikeImageDraft.images);
   event.target.value = "";
 }
