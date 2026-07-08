@@ -72,7 +72,8 @@ function defaultDb() {
     settings: {
       timezone: "Asia/Ho_Chi_Minh",
       currency: "VND",
-      dateFormat: "dd/mm/yyyy"
+      dateFormat: "dd/mm/yyyy",
+      deletedSeedBookings: []
     }
   };
 }
@@ -232,6 +233,42 @@ async function handleApi(req, res, urlPath) {
       return true;
     }
     sendJson(res, 200, { ok: true, user, db });
+    return true;
+  }
+
+  if (urlPath.startsWith("/api/bookings/") && req.method === "DELETE") {
+    try {
+      const db = await readDb();
+      const user = (db.users || []).find((item) => item.id === session.userId && item.active);
+      const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
+      if (!user || (user.role !== "admin" && !userPermissions.includes("booking_edit"))) {
+        sendJson(res, 403, { ok: false, message: "Tài khoản này không có quyền xóa/sửa đặt phòng." });
+        return true;
+      }
+      const id = decodeURIComponent(urlPath.slice("/api/bookings/".length));
+      const booking = (db.hotelBookings || []).find((item) => item.id === id);
+      db.hotelBookings = (db.hotelBookings || []).filter((item) => item.id !== id);
+      db.settings = db.settings || {};
+      db.settings.deletedSeedBookings = Array.isArray(db.settings.deletedSeedBookings) ? db.settings.deletedSeedBookings : [];
+      if (!booking && !db.settings.deletedSeedBookings.includes(id)) {
+        db.settings.deletedSeedBookings.push(id);
+      }
+      db.auditLogs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
+      db.auditLogs.unshift({
+        id: `LOG-${Date.now()}`,
+        user: user.name,
+        role: user.role,
+        action: "Xóa đặt phòng",
+        record: booking?.group || id,
+        before: booking ? "Đã tồn tại" : "Đặt phòng mẫu",
+        after: "Đã xóa",
+        createdAt: new Date().toISOString()
+      });
+      await writeDb(db);
+      sendJson(res, 200, { ok: true, deletedId: id });
+    } catch (error) {
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
+    }
     return true;
   }
 

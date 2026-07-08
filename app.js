@@ -401,6 +401,19 @@ function queueRemoteSave(db) {
   }, 350);
 }
 
+async function syncDeletedBooking(id) {
+  if (!apiState.enabled || !state.user) return;
+  try {
+    await apiRequest(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" });
+    apiState.lastError = "";
+    showToast("Đã xóa đặt phòng và đồng bộ MySQL.");
+  } catch (error) {
+    apiState.lastError = error.message;
+    queueRemoteSave(getDb());
+    showToast("Đã xóa trên máy này. Chưa đồng bộ được MySQL, hệ thống sẽ thử lại bằng bản local.");
+  }
+}
+
 function repairTextEncoding(value) {
   const cp1252 = {
     "€": 0x80, "‚": 0x82, "ƒ": 0x83, "„": 0x84, "…": 0x85, "†": 0x86, "‡": 0x87, "ˆ": 0x88,
@@ -567,6 +580,11 @@ function migrateDb(db) {
     db.settings = { ...(db.settings || {}), bookingPermissionsMigrated: true };
     changed = true;
   }
+  db.settings = db.settings || {};
+  if (!Array.isArray(db.settings.deletedSeedBookings)) {
+    db.settings.deletedSeedBookings = [];
+    changed = true;
+  }
   if (!Array.isArray(db.bikeTypes)) {
     db.bikeTypes = seedDb().bikeTypes;
     changed = true;
@@ -630,23 +648,23 @@ function migrateDb(db) {
   return changed;
 }
 
-function setDb(db) {
+function setDb(db, options = {}) {
   const payload = JSON.stringify(db);
   try {
     localStorage.setItem(DB_KEY, payload);
-    queueRemoteSave(db);
+    if (!options.skipRemote) queueRemoteSave(db);
   } catch (error) {
     const compactDb = compactDbForLocalStorage(db);
     try {
       localStorage.setItem(DB_KEY, JSON.stringify(compactDb));
-      queueRemoteSave(db);
+      if (!options.skipRemote) queueRemoteSave(db);
       showToast("Đã lưu dữ liệu sau khi dọn bớt nhật ký cũ để còn chỗ cho hình ảnh.");
       return;
     } catch (compactError) {
       // Continue to the remote/local error handling below.
     }
     if (apiState.enabled) {
-      queueRemoteSave(db);
+      if (!options.skipRemote) queueRemoteSave(db);
       showToast("Dữ liệu ảnh đã lưu lên MySQL. Bộ nhớ trình duyệt đã đầy nên cache local có thể không cập nhật.");
       return;
     }
@@ -670,7 +688,7 @@ function compactDbForRemoteSave(db) {
   return compact;
 }
 
-function mutateDb(mutator, action = "Cập nhật dữ liệu") {
+function mutateDb(mutator, action = "Cập nhật dữ liệu", options = {}) {
   const db = getDb();
   const before = JSON.parse(JSON.stringify(db));
   const result = mutator(db);
@@ -684,7 +702,7 @@ function mutateDb(mutator, action = "Cập nhật dữ liệu") {
     after: result?.after || "",
     createdAt: nowLocal()
   });
-  setDb(db);
+  setDb(db, options);
   syncStatuses();
   render();
 }
@@ -1554,8 +1572,10 @@ function personAvatar(person) {
 
 
 function bookingSeedData(yearMonth = todayISO().slice(0, 7)) {
-  const hotels = getDb().hotels || defaultHotelCatalog();
-  const rooms = (getDb().rooms || defaultRoomCatalog()).filter((room) => !room.hidden);
+  const db = getDb();
+  const hotels = db.hotels || defaultHotelCatalog();
+  const rooms = (db.rooms || defaultRoomCatalog()).filter((room) => !room.hidden);
+  const deletedSeedBookings = new Set(db.settings?.deletedSeedBookings || []);
   const sampleRows = [
     ["BK250616-001", "101", "Nh\u00f3m Anh Nam", 4, 16, 19, "\u0110ang \u1edf", "green", "Anh Nam", "0901 234 567", 12500000, 6000000],
     ["BK250616-002", "102", "Nh\u00f3m Anh Nam", 4, 16, 19, "\u0110\u00e3 x\u00e1c nh\u1eadn", "green", "Anh Nam", "0901 234 567", 8500000, 4000000],
@@ -1571,7 +1591,7 @@ function bookingSeedData(yearMonth = todayISO().slice(0, 7)) {
     ["BK250616-013", "C01", "Nh\u00f3m Kh\u00e1ch \u0110o\u00e0n", 7, 16, 20, "\u0110\u00e3 c\u1ecdc", "blue", "Kh\u00e1ch \u0111o\u00e0n", "0909 555 777", 10500000, 4500000],
     ["BK250622-014", "C02", "Nh\u00f3m C\u00f4ng ty M", 5, 22, 25, "\u0110ang \u1edf", "orange", "C\u00f4ng ty M", "0912 123 123", 7800000, 5000000]
   ];
-  const bookings = sampleRows.map(([id, room, group, guests, startDay, endDay, status, tone, customer, phone, total, paid]) => {
+  const bookings = sampleRows.filter(([id]) => !deletedSeedBookings.has(id)).map(([id, room, group, guests, startDay, endDay, status, tone, customer, phone, total, paid]) => {
     const maxDay = daysInMonth(yearMonth);
     const safeStartDay = Math.min(startDay, Math.max(1, maxDay - 1));
     const safeEndDay = Math.min(Math.max(endDay, safeStartDay + 1), maxDay);
@@ -1592,7 +1612,7 @@ function bookingSeedData(yearMonth = todayISO().slice(0, 7)) {
       notes: "Kh\u00e1ch quen, h\u1ed7 tr\u1ee3 \u0103n s\u00e1ng"
     };
   });
-  const savedBookings = (getDb().hotelBookings || []).map((booking) => ({ ...booking, tone: booking.tone || bookingStatusTone(booking.status) }));
+  const savedBookings = (db.hotelBookings || []).map((booking) => ({ ...booking, tone: booking.tone || bookingStatusTone(booking.status) }));
   const services = [
     { name: "Thu\u00ea xe m\u00e1y", date: "16/06 - 19/06", qty: "2 xe", tone: "green" },
     { name: "Tour 3 \u0111\u1ea3o", date: "17/06/2025", qty: "4 kh\u00e1ch", tone: "blue" },
@@ -3803,13 +3823,25 @@ function deleteBooking(id) {
     showToast("T\u00e0i kho\u1ea3n n\u00e0y kh\u00f4ng c\u00f3 quy\u1ec1n x\u00f3a/s\u1eeda \u0111\u1eb7t ph\u00f2ng.");
     return;
   }
+  const selected = bookingSeedData().bookings.find((item) => item.id === id);
+  if (!selected) {
+    showToast("Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u1eb7t ph\u00f2ng c\u1ea7n x\u00f3a.");
+    return;
+  }
+  const useRemoteDelete = apiState.enabled && Boolean(state.user);
   mutateDb((db) => {
     const booking = (db.hotelBookings || []).find((item) => item.id === id);
     db.hotelBookings = (db.hotelBookings || []).filter((item) => item.id !== id);
+    db.settings = db.settings || {};
+    db.settings.deletedSeedBookings = Array.isArray(db.settings.deletedSeedBookings) ? db.settings.deletedSeedBookings : [];
+    if (!booking && !db.settings.deletedSeedBookings.includes(id)) {
+      db.settings.deletedSeedBookings.push(id);
+    }
     state.modal = null;
-    return { record: booking?.group || id };
-  }, "X\u00f3a \u0111\u1eb7t ph\u00f2ng");
-  showToast("\u0110\u00e3 x\u00f3a \u0111\u1eb7t ph\u00f2ng.");
+    return { record: booking?.group || selected.group || id };
+  }, "X\u00f3a \u0111\u1eb7t ph\u00f2ng", { skipRemote: useRemoteDelete });
+  if (useRemoteDelete) syncDeletedBooking(id);
+  else showToast("\u0110\u00e3 x\u00f3a \u0111\u1eb7t ph\u00f2ng.");
 }
 
 function deleteBike(id) {
