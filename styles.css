@@ -1976,10 +1976,13 @@ tr:last-child td {
   display: none;
   max-width: min(420px, calc(100vw - 40px));
   border-radius: 8px;
-  padding: 13px 16px;
-  color: var(--white);
-  background: var(--sea-dark);
-  box-shadow: var(--shadow);
+  border: 2px solid #26e0d1;
+  padding: 14px 18px;
+  color: #052235;
+  background: #f8fffe;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .38);
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .toast.show {

@@ -636,6 +636,15 @@ function setDb(db) {
     localStorage.setItem(DB_KEY, payload);
     queueRemoteSave(db);
   } catch (error) {
+    const compactDb = compactDbForLocalStorage(db);
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(compactDb));
+      queueRemoteSave(db);
+      showToast("Đã lưu dữ liệu sau khi dọn bớt nhật ký cũ để còn chỗ cho hình ảnh.");
+      return;
+    } catch (compactError) {
+      // Continue to the remote/local error handling below.
+    }
     if (apiState.enabled) {
       queueRemoteSave(db);
       showToast("Dữ liệu ảnh đã lưu lên MySQL. Bộ nhớ trình duyệt đã đầy nên cache local có thể không cập nhật.");
@@ -644,6 +653,14 @@ function setDb(db) {
     showToast("Không lưu được dữ liệu. Ảnh đã được nén, nhưng bộ nhớ trình duyệt vẫn đầy. Hãy xóa bớt ảnh cũ hoặc dùng MySQL backend.");
     throw error;
   }
+}
+
+function compactDbForLocalStorage(db) {
+  const compact = JSON.parse(JSON.stringify(db));
+  compact.auditLogs = (compact.auditLogs || []).slice(0, 80);
+  compact.notifications = (compact.notifications || []).slice(0, 80);
+  compact.recoveryRequests = (compact.recoveryRequests || []).slice(0, 20);
+  return compact;
 }
 
 function mutateDb(mutator, action = "Cập nhật dữ liệu") {
@@ -3803,6 +3820,7 @@ async function saveModal(event) {
   }
   if (type === "bike") {
     data.images = state.bikeImageDraft?.images || await readBikeImages(form, id);
+    data.images = await normalizeBikeImages(data.images);
     delete data.bikeImages;
   }
   if (type === "hrEmployee") {
@@ -4759,15 +4777,12 @@ function printEquipmentTable(db) {
   </tbody></table>`;
 }
 
-function previewPhoto(event) {
+async function previewPhoto(event) {
   const file = event.target.files[0];
   const preview = document.getElementById("photo-preview");
   if (!file || !preview) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    preview.innerHTML = `<img src="${reader.result}" alt="Ảnh sau khi nhận xe">`;
-  };
-  reader.readAsDataURL(file);
+  const src = await compressImageFile(file, 720, 0.5, 90000);
+  preview.innerHTML = `<img src="${src}" alt="Ảnh sau khi nhận xe">`;
 }
 
 async function readBikeImages(form, id) {
@@ -4783,13 +4798,23 @@ async function readBikeImages(form, id) {
   return Promise.all(files.slice(0, BIKE_IMAGE_LIMIT).map(compressImageFile));
 }
 
+async function normalizeBikeImages(images = []) {
+  const uniqueImages = images.filter(Boolean).slice(0, BIKE_IMAGE_LIMIT);
+  return Promise.all(uniqueImages.map((src) => {
+    if (String(src).startsWith("data:image/") && src.length > 95000) {
+      return compressImageSource(src, 760, 0.5, 90000);
+    }
+    return src;
+  }));
+}
+
 async function readEmployeePhoto(form, id) {
   const input = form.querySelector("input[name='employeePhoto']");
   const file = input?.files?.[0];
   if (!file) {
     return getDb().hrEmployees.find((item) => item.id === id)?.photo || "";
   }
-  return compressImageFile(file, 720, 0.62, 180000);
+  return compressImageFile(file, 640, 0.46, 80000);
 }
 
 function fileToDataUrl(file) {
@@ -4801,44 +4826,48 @@ function fileToDataUrl(file) {
   });
 }
 
-function compressImageFile(file, maxSize = 900, quality = 0.62, maxBytes = 220000) {
+async function compressImageFile(file, maxSize = 760, quality = 0.5, maxBytes = 90000) {
+  const src = await fileToDataUrl(file);
+  return compressImageSource(src, maxSize, quality, maxBytes);
+}
+
+function compressImageSource(src, maxSize = 760, quality = 0.5, maxBytes = 90000) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        const attempts = [
-          [maxSize, quality],
-          [800, 0.58],
-          [680, 0.52],
-          [560, 0.46]
-        ];
-        let best = "";
-        for (const [size, q] of attempts) {
-          const scale = Math.min(1, size / Math.max(image.width, image.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round(image.width * scale));
-          canvas.height = Math.max(1, Math.round(image.height * scale));
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-          const webp = canvas.toDataURL("image/webp", q);
-          const jpeg = canvas.toDataURL("image/jpeg", q);
-          const candidate = webp.startsWith("data:image/webp") && webp.length < jpeg.length ? webp : jpeg;
-          best = !best || candidate.length < best.length ? candidate : best;
-          if (candidate.length <= maxBytes) {
-            resolve(candidate);
-            return;
-          }
+    if (!String(src).startsWith("data:image/")) {
+      resolve(src);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => {
+      const attempts = [
+        [maxSize, quality],
+        [640, 0.46],
+        [520, 0.42],
+        [420, 0.38]
+      ];
+      let best = "";
+      for (const [size, q] of attempts) {
+        const scale = Math.min(1, size / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const webp = canvas.toDataURL("image/webp", q);
+        const jpeg = canvas.toDataURL("image/jpeg", q);
+        const candidate = webp.startsWith("data:image/webp") && webp.length < jpeg.length ? webp : jpeg;
+        best = !best || candidate.length < best.length ? candidate : best;
+        if (candidate.length <= maxBytes) {
+          resolve(candidate);
+          return;
         }
-        resolve(best);
-      };
-      image.onerror = reject;
-      image.src = reader.result;
+      }
+      resolve(best);
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    image.onerror = reject;
+    image.src = src;
   });
 }
 
@@ -4855,6 +4884,7 @@ async function previewBikeImages(event) {
     return;
   }
   if (files.length > slots) showToast(`Chỉ thêm được ${slots} hình nữa. Hệ thống sẽ lấy hình đầu tiên.`);
+  preview.innerHTML = `<span>Đang nén ảnh để lưu được nhiều hình hơn...</span>`;
   const urls = await Promise.all(files.slice(0, slots).map(compressImageFile));
   state.bikeImageDraft = state.bikeImageDraft || { formId: "new", images: [] };
   state.bikeImageDraft.images = [...current, ...urls].slice(0, BIKE_IMAGE_LIMIT);
