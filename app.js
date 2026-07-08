@@ -389,14 +389,14 @@ async function loadRemoteSession() {
 function queueRemoteSave(db) {
   if (!apiState.enabled || !state.user) return;
   window.clearTimeout(apiState.saveTimer);
-  const payload = JSON.stringify(db);
+  const payload = JSON.stringify(compactDbForRemoteSave(db));
   apiState.saveTimer = window.setTimeout(async () => {
     try {
       await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: JSON.parse(payload) }) });
       apiState.lastError = "";
     } catch (error) {
       apiState.lastError = error.message;
-      showToast("Chưa đồng bộ được dữ liệu lên MySQL. Hệ thống sẽ giữ bản local.");
+      showToast(`Chưa đồng bộ được dữ liệu lên MySQL.${error.status === 413 ? " Dữ liệu hình ảnh đang quá lớn." : ""} Hệ thống sẽ giữ bản local.`);
     }
   }, 350);
 }
@@ -660,6 +660,13 @@ function compactDbForLocalStorage(db) {
   compact.auditLogs = (compact.auditLogs || []).slice(0, 80);
   compact.notifications = (compact.notifications || []).slice(0, 80);
   compact.recoveryRequests = (compact.recoveryRequests || []).slice(0, 20);
+  return compact;
+}
+
+function compactDbForRemoteSave(db) {
+  const compact = compactDbForLocalStorage(db);
+  compact.auditLogs = (compact.auditLogs || []).slice(0, 200);
+  compact.notifications = (compact.notifications || []).slice(0, 150);
   return compact;
 }
 

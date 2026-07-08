@@ -13,6 +13,7 @@ try {
 const root = __dirname;
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
+const maxBodyBytes = Number(process.env.MAX_BODY_MB || 120) * 1024 * 1024;
 const sessions = new Map();
 
 const dbConfig = {
@@ -115,8 +116,10 @@ function readBody(req) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 25 * 1024 * 1024) {
-        reject(new Error("Payload too large"));
+      if (body.length > maxBodyBytes) {
+        const error = new Error("Payload too large");
+        error.statusCode = 413;
+        reject(error);
         req.destroy();
       }
     });
@@ -170,7 +173,7 @@ async function handleApi(req, res, urlPath) {
       await ensureSchema();
       sendJson(res, 200, { ok: true, mode: "mysql" });
     } catch (error) {
-      sendJson(res, 500, { ok: false, error: error.message });
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }
     return true;
   }
@@ -202,7 +205,7 @@ async function handleApi(req, res, urlPath) {
       setSessionCookie(res, token);
       sendJson(res, 200, { ok: true, user, db });
     } catch (error) {
-      sendJson(res, 500, { ok: false, error: error.message });
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }
     return true;
   }
@@ -242,7 +245,7 @@ async function handleApi(req, res, urlPath) {
       await writeDb(body.db);
       sendJson(res, 200, { ok: true, savedAt: new Date().toISOString() });
     } catch (error) {
-      sendJson(res, 500, { ok: false, error: error.message });
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }
     return true;
   }
