@@ -3396,9 +3396,25 @@ table td,
 .type-name-cell strong,
 .type-km-cell strong,
 .type-checklist span,
+.bike-name,
+.owner-cell strong,
 .maintenance-cell strong,
 .plate-badge {
   color: #f3f9ff;
+}
+
+.motorbike-table .bike-name {
+  color: #ffffff !important;
+  font-weight: 950;
+  text-shadow: 0 1px 10px rgba(5, 20, 35, 0.45);
+}
+
+.motorbike-table .bike-sub,
+.motorbike-table .price-line,
+.motorbike-table .maintenance-cell span,
+.motorbike-table .status-stack span,
+.motorbike-table .owner-cell span {
+  color: #c8dff1 !important;
 }
 
 .calendar-title-icon,
