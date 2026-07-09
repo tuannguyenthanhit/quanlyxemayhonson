@@ -2089,8 +2089,55 @@ tr:last-child td {
   z-index: 20;
 }
 
-.image-thumb:hover img {
+.image-thumb:hover > img {
   transform: scale(1.06);
+}
+
+.image-thumb-zoom {
+  position: fixed;
+  z-index: 10020;
+  left: min(360px, 30vw);
+  top: 82px;
+  display: none;
+  width: min(520px, 52vw);
+  max-height: calc(100vh - 120px);
+  border: 2px solid rgba(38, 224, 209, 0.86);
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.46);
+}
+
+.image-thumb-zoom img {
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - 150px);
+  aspect-ratio: auto;
+  object-fit: contain;
+  border: 0;
+  background: #ffffff;
+  transform: none !important;
+}
+
+.image-thumb:hover .image-thumb-zoom,
+.image-thumb:focus-within .image-thumb-zoom {
+  display: block;
+}
+
+.image-error-label {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  border-radius: 8px;
+  color: #b42318;
+  background: #fff1f0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.image-load-error .image-error-label {
+  display: grid;
 }
 
 .image-thumb button {

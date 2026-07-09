@@ -3348,7 +3348,9 @@ function bikeForm(id) {
 function renderEditableBikeImages(images = []) {
   if (!images.length) return `<span>Chưa có hình. Chọn tối đa ${BIKE_IMAGE_LIMIT} hình để lưu cùng xe.</span>`;
   return images.map((src, index) => `<div class="image-thumb">
-    <img src="${src}" alt="Hình xe ${index + 1}">
+    <img src="${src}" alt="Hình xe ${index + 1}" onerror="this.closest('.image-thumb')?.classList.add('image-load-error')">
+    <div class="image-thumb-zoom"><img src="${src}" alt="Hình xe ${index + 1} phóng to"></div>
+    <strong class="image-error-label">Ảnh lỗi</strong>
     <button type="button" data-action="remove-bike-image:${index}" title="Xóa hình này">×</button>
     ${index === 0 ? `<small>Ảnh đại diện</small>` : ""}
   </div>`).join("");
@@ -4917,7 +4919,12 @@ function fileToDataUrl(file) {
 
 async function compressImageFile(file, maxSize = 760, quality = 0.5, maxBytes = 90000) {
   const src = await fileToDataUrl(file);
-  return compressImageSource(src, maxSize, quality, maxBytes);
+  try {
+    return await compressImageSource(src, maxSize, quality, maxBytes);
+  } catch (error) {
+    console.warn("Không nén được ảnh, dùng ảnh gốc để vẫn hiển thị.", error);
+    return src;
+  }
 }
 
 function compressImageSource(src, maxSize = 760, quality = 0.5, maxBytes = 90000) {
@@ -4944,9 +4951,7 @@ function compressImageSource(src, maxSize = 760, quality = 0.5, maxBytes = 90000
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const webp = canvas.toDataURL("image/webp", q);
-        const jpeg = canvas.toDataURL("image/jpeg", q);
-        const candidate = webp.startsWith("data:image/webp") && webp.length < jpeg.length ? webp : jpeg;
+        const candidate = canvas.toDataURL("image/jpeg", q);
         best = !best || candidate.length < best.length ? candidate : best;
         if (candidate.length <= maxBytes) {
           resolve(candidate);
