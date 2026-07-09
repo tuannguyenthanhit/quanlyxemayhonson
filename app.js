@@ -3347,13 +3347,18 @@ function bikeForm(id) {
 
 function renderEditableBikeImages(images = []) {
   if (!images.length) return `<span>Chưa có hình. Chọn tối đa ${BIKE_IMAGE_LIMIT} hình để lưu cùng xe.</span>`;
-  return images.map((src, index) => `<div class="image-thumb">
+  return images.map((src, index) => `<div class="image-thumb ${isLikelyBrokenImage(src) ? "image-load-error" : ""}">
     <img src="${src}" alt="Hình xe ${index + 1}" onerror="this.closest('.image-thumb')?.classList.add('image-load-error')">
     <div class="image-thumb-zoom"><img src="${src}" alt="Hình xe ${index + 1} phóng to"></div>
-    <strong class="image-error-label">Ảnh lỗi</strong>
+    <strong class="image-error-label">Ảnh lỗi, hãy xóa và tải lại</strong>
     <button type="button" data-action="remove-bike-image:${index}" title="Xóa hình này">×</button>
     ${index === 0 ? `<small>Ảnh đại diện</small>` : ""}
   </div>`).join("");
+}
+
+function isLikelyBrokenImage(src = "") {
+  const value = String(src || "");
+  return value.startsWith("data:image/") && value.length < 1800;
 }
 
 function bikeTypeForm(id) {
@@ -4891,9 +4896,11 @@ async function readBikeImages(form, id) {
 
 async function normalizeBikeImages(images = []) {
   const uniqueImages = images.filter(Boolean).slice(0, BIKE_IMAGE_LIMIT);
-  return Promise.all(uniqueImages.map((src) => {
+  return Promise.all(uniqueImages.map(async (src) => {
+    if (isLikelyBrokenImage(src)) return src;
     if (String(src).startsWith("data:image/") && src.length > 95000) {
-      return compressImageSource(src, 760, 0.5, 90000);
+      const compressed = await compressImageSource(src, 760, 0.5, 90000);
+      return await isBrokenCompressedImage(compressed) ? src : compressed;
     }
     return src;
   }));
@@ -4920,11 +4927,32 @@ function fileToDataUrl(file) {
 async function compressImageFile(file, maxSize = 760, quality = 0.5, maxBytes = 90000) {
   const src = await fileToDataUrl(file);
   try {
-    return await compressImageSource(src, maxSize, quality, maxBytes);
+    const compressed = await compressImageSource(src, maxSize, quality, maxBytes);
+    if (await isBrokenCompressedImage(compressed)) return src;
+    return compressed;
   } catch (error) {
     console.warn("Không nén được ảnh, dùng ảnh gốc để vẫn hiển thị.", error);
     return src;
   }
+}
+
+function imageDimensions(src) {
+  return new Promise((resolve) => {
+    if (!String(src || "").startsWith("data:image/")) {
+      resolve({ width: 0, height: 0 });
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth || image.width || 0, height: image.naturalHeight || image.height || 0 });
+    image.onerror = () => resolve({ width: 0, height: 0 });
+    image.src = src;
+  });
+}
+
+async function isBrokenCompressedImage(src) {
+  if (isLikelyBrokenImage(src)) return true;
+  const size = await imageDimensions(src);
+  return size.width <= 4 || size.height <= 4;
 }
 
 function compressImageSource(src, maxSize = 760, quality = 0.5, maxBytes = 90000) {
