@@ -2061,11 +2061,14 @@ function motorbikeModernRow(bike, db) {
 }
 
 function motorbikePhotoCode(bike) {
-  const image = Array.isArray(bike.images) ? bike.images[0] : "";
+  const images = Array.isArray(bike.images) ? bike.images.filter(Boolean).slice(0, 5) : [];
+  const image = images[0] || "";
   const photo = image
-    ? `<div class="bike-photo-hover" tabindex="0"><img src="${image}" alt="${bike.name}"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
+    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
     : `<div class="bike-photo-empty">XE</div>`;
-  return `<div class="bike-photo-code">${photo}<span>${String(bike.code || "").replace(/^[^0-9]*/, "") || bike.code}</span></div>`;
+  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
+  const more = Array.isArray(bike.images) && bike.images.length > 5 ? `<em>+${bike.images.length - 5}</em>` : "";
+  return `<div class="bike-photo-code"><div class="bike-photo-stack">${photo}<div class="bike-photo-strip">${thumbs}${more}</div></div><span>${String(bike.code || "").replace(/^[^0-9]*/, "") || bike.code}</span></div>`;
 }
 
 function motorbikeStatusBlock(bike) {

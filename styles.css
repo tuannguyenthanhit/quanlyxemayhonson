@@ -2571,10 +2571,32 @@ tr:last-child td {
 .motorbike-table th { padding: 16px 18px; color: #07566a; background: #ebfbfa; font-size: 14px; }
 .motorbike-table td { padding: 18px; vertical-align: middle; }
 .motorbike-table tr { background: var(--white); }
-.bike-photo-code { display: grid; grid-template-columns: 112px 54px; align-items: center; gap: 18px; }
-.bike-photo-hover { position: relative; width: 112px; height: 78px; overflow: visible; }
+.bike-photo-code { display: grid; grid-template-columns: 120px 54px; align-items: center; gap: 14px; }
+.bike-photo-stack { display: grid; gap: 6px; width: 120px; }
+.bike-photo-hover { position: relative; overflow: visible; }
+.bike-photo-hover.main { width: 112px; height: 78px; }
 .bike-photo-code img, .bike-photo-empty { width: 112px; height: 78px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: #ffffff; }
 .bike-photo-empty { display: grid; place-items: center; color: var(--sea-dark); font-weight: 900; }
+.bike-photo-strip { display: flex; align-items: center; gap: 4px; min-height: 28px; }
+.bike-photo-hover.thumb > img {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border-color: rgba(38, 224, 209, 0.38);
+  object-fit: cover;
+}
+.bike-photo-strip em {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: #dffcff;
+  background: rgba(8, 80, 96, 0.72);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
 .bike-photo-zoom {
   position: fixed;
   z-index: 9999;
@@ -2590,8 +2612,8 @@ tr:last-child td {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
 }
 .bike-photo-zoom img {
-  width: 100%;
-  height: auto;
+  width: 100% !important;
+  height: auto !important;
   max-height: 560px;
   object-fit: contain;
   border: 0;
@@ -4454,10 +4476,14 @@ table td,
 }
 
 .modal .image-thumb img,
-.motorbike-table .bike-photo-code img,
+.motorbike-table .bike-photo-hover.main > img,
 .motorbike-table .bike-photo-empty,
 .motorbike-table .bike-photo-zoom,
 .motorbike-table .bike-photo-zoom img {
+  background: #ffffff !important;
+}
+
+.motorbike-table .bike-photo-hover.thumb > img {
   background: #ffffff !important;
 }
 
