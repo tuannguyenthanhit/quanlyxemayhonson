@@ -138,6 +138,7 @@ const state = {
   mobileNav: false,
   bikeFilters: {
     owner: "all",
+    type: "all",
     sort: "code-asc"
   },
   rentalDate: "",
@@ -1932,6 +1933,7 @@ function motorbikesView() {
   const db = getDb();
   const { rows, allRows } = filteredMotorbikeRows(db);
   const stats = motorbikeStats(allRows, db);
+  const bikeTypeOptions = motorbikeTypeOptions(db);
   return `
     <section class="motorbike-page">
       <div class="motorbike-hero">
@@ -1956,6 +1958,7 @@ function motorbikesView() {
         <div class="motorbike-filters">
           <label class="search-box"><input type="search" placeholder="Tìm kiếm (biển số, tên xe, chủ xe...)" value="${state.query}" data-filter="query"><span>⌕</span></label>
           <select data-filter="status"><option value="all">Tất cả trạng thái</option>${bikeStatuses.map((status) => `<option value="${status}" ${state.filter === status ? "selected" : ""}>${status}</option>`).join("")}</select>
+          <select data-bike-filter="type"><option value="all">Tất cả loại xe</option>${bikeTypeOptions.map((type) => `<option value="${type}" ${state.bikeFilters.type === type ? "selected" : ""}>${type}</option>`).join("")}</select>
           <select data-bike-filter="owner"><option value="all">Tất cả chủ xe</option>${db.owners.filter((owner) => !owner.hidden).map((owner) => `<option value="${owner.id}" ${state.bikeFilters.owner === owner.id ? "selected" : ""}>${owner.name}</option>`).join("")}</select>
           <select data-bike-sort><option value="code-asc" ${state.bikeFilters.sort === "code-asc" ? "selected" : ""}>↕ Sắp xếp: Mã xe</option><option value="code-desc" ${state.bikeFilters.sort === "code-desc" ? "selected" : ""}>Mã xe giảm dần</option><option value="name-asc" ${state.bikeFilters.sort === "name-asc" ? "selected" : ""}>Tên xe A-Z</option><option value="price-desc" ${state.bikeFilters.sort === "price-desc" ? "selected" : ""}>Giá thuê cao nhất</option></select>
           <button class="ghost square-action" data-action="reset-bike-filters" title="Làm mới bộ lọc">⟳</button>
@@ -1971,15 +1974,24 @@ function motorbikesView() {
   `;
 }
 
+function motorbikeTypeOptions(db = getDb()) {
+  const names = [
+    ...(db.bikeTypes || []).map((type) => type.name),
+    ...(db.motorbikes || []).map((bike) => bike.type)
+  ].filter(Boolean);
+  return [...new Set(names)].sort((a, b) => String(a).localeCompare(String(b), "vi", { numeric: true }));
+}
+
 function filteredMotorbikeRows(db = getDb()) {
   const query = state.query.trim().toLowerCase();
   const allRows = db.motorbikes.map((bike) => ({ bike, owner: db.owners.find((owner) => owner.id === bike.ownerId) }));
   const rows = allRows.filter(({ bike, owner }) => {
     const matchesQuery = !query || [bike.code, bike.plate, bike.name, bike.type, bike.brand, bike.model, bike.color, owner?.name, owner?.phone].some((value) => String(value || "").toLowerCase().includes(query));
     const matchesStatus = state.filter === "all" || bike.status === state.filter;
+    const matchesType = state.bikeFilters.type === "all" || bike.type === state.bikeFilters.type;
     const matchesOwner = state.bikeFilters.owner === "all"
       || (state.bikeFilters.owner === "missing" ? !bike.ownerId : bike.ownerId === state.bikeFilters.owner);
-    return matchesQuery && matchesStatus && matchesOwner;
+    return matchesQuery && matchesStatus && matchesType && matchesOwner;
   }).map((row) => row.bike);
   rows.sort((a, b) => {
     if (state.bikeFilters.sort === "code-desc") return String(b.code).localeCompare(String(a.code), "vi", { numeric: true });
@@ -3808,7 +3820,7 @@ function handleAction(event) {
   if (action === "reset-bike-filters") {
     state.query = "";
     state.filter = "all";
-    state.bikeFilters = { owner: "all", sort: "code-asc" };
+    state.bikeFilters = { owner: "all", type: "all", sort: "code-asc" };
     render();
   }
   if (action === "reset-audit-filters") {
