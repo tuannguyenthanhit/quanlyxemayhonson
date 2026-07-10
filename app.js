@@ -336,13 +336,38 @@ function getDb() {
   const raw = localStorage.getItem(DB_KEY);
   if (!raw) {
     const db = seedDb();
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    safeLocalSet(DB_KEY, JSON.stringify(db));
     return db;
   }
   const db = JSON.parse(raw);
   const migrated = migrateDb(db);
   if (migrated) setDb(db);
   return db;
+}
+
+function isStorageQuotaError(error) {
+  return error && (
+    error.name === "QuotaExceededError" ||
+    error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    error.code === 22 ||
+    error.code === 1014 ||
+    String(error.message || "").toLowerCase().includes("quota")
+  );
+}
+
+function safeLocalSet(key, value, options = {}) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    if (isStorageQuotaError(error)) {
+      if (!options.silent) {
+        showToast("Bộ nhớ trình duyệt đã đầy. Dữ liệu vẫn lưu trên MySQL, nhưng máy này không lưu được bản cache.");
+      }
+      return false;
+    }
+    throw error;
+  }
 }
 
 async function apiRequest(path, options = {}) {
@@ -373,10 +398,10 @@ async function loadRemoteSession() {
   }
   try {
     const payload = await apiRequest("/me");
-    if (payload.db) localStorage.setItem(DB_KEY, JSON.stringify(payload.db));
+    if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
     if (payload.user) {
       state.user = { ...payload.user };
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: payload.user.id }));
+      safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
     }
     return true;
   } catch (error) {
@@ -931,9 +956,9 @@ function bindLogin() {
     if (apiState.enabled) {
       try {
         const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
-        if (payload.db) localStorage.setItem(DB_KEY, JSON.stringify(payload.db));
+        if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
         state.user = { ...payload.user };
-        localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: payload.user.id }));
+        safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
         showToast(`Xin chào ${payload.user.name}`);
         render();
       } catch (error) {
@@ -960,7 +985,7 @@ function bindLogin() {
     });
     setDb(db);
     state.user = { ...user };
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id }));
+    safeLocalSet(SESSION_KEY, JSON.stringify({ userId: user.id }), { silent: true });
     showToast(`Xin chào ${user.name}`);
     render();
   });
