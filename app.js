@@ -2997,17 +2997,18 @@ function hrView() {
       <div class="card">
         <div class="panel-title"><h3>Người xin việc</h3><span class="pill warning">${applicants.length} hồ sơ</span></div>
         <div class="table-wrap compact-table"><table>
-          <thead><tr><th>Ảnh</th><th>Mã</th><th>Ứng viên</th><th>Vị trí</th><th>Nộp hồ sơ</th><th>Lương mong muốn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Ảnh</th><th>Mã</th><th>Ứng viên</th><th>Số điện thoại</th><th>Vị trí</th><th>Nộp hồ sơ</th><th>Lương mong muốn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>${applicants.map((item) => `<tr>
             <td>${personAvatar(item)}</td>
             <td><strong>${item.code}</strong></td>
-            <td><strong>${item.name}</strong><br><span class="hint">${item.phone}  · ${item.email || "-"}</span></td>
+            <td><strong>${item.name}</strong><br><span class="hint">${item.email || "-"}</span></td>
+            <td><strong>${item.phone || "-"}</strong></td>
             <td>${item.position}<br><span class="hint">${item.source}</span></td>
             <td>${formatDate(item.applyDate)}<br><span class="hint">PV: ${item.interviewDate ? formatDate(item.interviewDate) : "Chưa hẹn"}</span></td>
             <td>${money(item.expectedSalary)}</td>
             <td>${pill(item.status)}</td>
             <td><button class="ghost" data-modal="applicant:${item.id}">Sửa</button></td>
-          </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có hồ sơ ứng viên.</td></tr>`}</tbody>
+          </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có hồ sơ ứng viên.</td></tr>`}</tbody>
         </table></div>
       </div>
     </div>
