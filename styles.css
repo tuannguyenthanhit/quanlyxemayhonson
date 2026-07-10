@@ -4511,3 +4511,500 @@ table td,
   color: #31526b !important;
   font-weight: 800;
 }
+
+/* Mobile-first working layout: use readable cards instead of wide tables */
+@media (max-width: 760px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    width: min(330px, 86vw);
+    padding: 12px 10px 18px;
+    box-shadow: 18px 0 48px rgba(0, 0, 0, 0.36);
+  }
+
+  .brand-logo {
+    width: 72px;
+    height: 64px;
+  }
+
+  .nav {
+    gap: 8px;
+  }
+
+  .nav button {
+    min-height: 50px;
+    border-radius: 13px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .nav-symbol {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    align-items: center;
+    padding: 9px 10px;
+    background: rgba(4, 31, 48, 0.94);
+    border-color: rgba(121, 209, 224, 0.22);
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .topbar h1 {
+    max-width: 42vw;
+    overflow: hidden;
+    color: #ffffff !important;
+    font-size: 17px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar small {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .topbar-actions .ghost,
+  .topbar-actions .bell,
+  .mobile-menu {
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: #f5fcff !important;
+    background: rgba(11, 57, 83, 0.92) !important;
+    border-color: rgba(121, 209, 224, 0.24) !important;
+  }
+
+  .topbar-actions .ghost:not(.mobile-menu) {
+    max-width: 118px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .page-head,
+  .motorbike-hero,
+  .rental-hero,
+  .bike-type-hero,
+  .calendar-hero,
+  .booking-head {
+    gap: 12px;
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .page-head h2,
+  .motorbike-title h2,
+  .rental-title h2,
+  .bike-type-title h2,
+  .calendar-title h2,
+  .booking-head h2 {
+    font-size: 25px !important;
+    line-height: 1.15;
+  }
+
+  .page-head p,
+  .motorbike-title p,
+  .rental-title p,
+  .bike-type-title p,
+  .calendar-title p,
+  .booking-head p {
+    font-size: 14px !important;
+    line-height: 1.45;
+  }
+
+  .page-head .primary,
+  .motorbike-hero .primary,
+  .rental-add,
+  .bike-type-add,
+  .booking-head .primary {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+  }
+
+  .motorbike-title,
+  .rental-title,
+  .bike-type-title,
+  .calendar-title {
+    gap: 12px;
+  }
+
+  .motorbike-title-icon,
+  .rental-title-icon,
+  .bike-type-title-icon,
+  .calendar-title-icon {
+    width: 54px !important;
+    height: 54px !important;
+    flex: 0 0 54px;
+    font-size: 26px !important;
+  }
+
+  .motorbike-stats,
+  .rental-stats,
+  .bike-type-stats,
+  .calendar-stats,
+  .ops-kpi-grid,
+  .overview-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .motorbike-stat,
+  .owner-summary-card,
+  .rental-stat,
+  .bike-type-stat,
+  .calendar-stat,
+  .ops-kpi {
+    min-height: 94px !important;
+    padding: 13px !important;
+    border-radius: 12px !important;
+  }
+
+  .motorbike-stat,
+  .rental-stat,
+  .bike-type-stat,
+  .calendar-stat {
+    grid-template-columns: 48px 1fr !important;
+    gap: 10px !important;
+  }
+
+  .motorbike-stat > span,
+  .rental-stat > span,
+  .bike-type-stat > span,
+  .calendar-stat > span {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 14px !important;
+    font-size: 23px !important;
+  }
+
+  .motorbike-stat strong,
+  .owner-summary-card strong,
+  .rental-stat strong,
+  .bike-type-stat strong,
+  .calendar-stat strong,
+  .ops-kpi strong {
+    font-size: 22px !important;
+  }
+
+  .motorbike-stat small,
+  .motorbike-stat em,
+  .owner-summary-card span,
+  .owner-summary-card small,
+  .rental-stat small,
+  .rental-stat em,
+  .bike-type-stat small,
+  .calendar-stat small {
+    font-size: 12px !important;
+  }
+
+  .motorbike-filters,
+  .rental-filters,
+  .bike-type-toolbar,
+  .booking-toolbar,
+  .calendar-controls {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .motorbike-filters select,
+  .search-box input,
+  .rental-search input,
+  .rental-filters select,
+  .rental-date-filter,
+  .booking-toolbar select,
+  .booking-toolbar input,
+  .booking-toolbar button,
+  .calendar-controls select,
+  .calendar-controls input,
+  .calendar-controls button {
+    min-height: 46px !important;
+    font-size: 16px !important;
+  }
+
+  .square-action,
+  .export-bike-btn,
+  .rental-export {
+    width: 100% !important;
+    min-height: 46px !important;
+    justify-content: center;
+  }
+
+  .table-wrap {
+    overflow: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .motorbike-table,
+  .rental-table,
+  .bike-type-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+
+  .motorbike-table thead,
+  .rental-table thead,
+  .bike-type-table thead {
+    display: none;
+  }
+
+  .motorbike-table tbody,
+  .motorbike-table tr,
+  .motorbike-table td,
+  .rental-table tbody,
+  .rental-table tr,
+  .rental-table td,
+  .bike-type-table tbody,
+  .bike-type-table tr,
+  .bike-type-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .motorbike-table tr,
+  .rental-table tr,
+  .bike-type-table tr {
+    padding: 13px;
+    border: 1px solid rgba(96, 180, 205, 0.28);
+    border-radius: 16px;
+    background: rgba(10, 48, 72, 0.92) !important;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+  }
+
+  .motorbike-table td,
+  .rental-table td,
+  .bike-type-table td {
+    padding: 9px 0 !important;
+    border: 0 !important;
+    color: #eef9ff !important;
+  }
+
+  .motorbike-table td::before,
+  .rental-table td::before,
+  .bike-type-table td::before {
+    display: block;
+    margin-bottom: 5px;
+    color: #82dfe9;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .motorbike-table td:nth-child(1)::before { content: "Xe"; }
+  .motorbike-table td:nth-child(2)::before { content: "Thông tin xe"; }
+  .motorbike-table td:nth-child(3)::before { content: "Chủ xe"; }
+  .motorbike-table td:nth-child(4)::before { content: "Giá thuê"; }
+  .motorbike-table td:nth-child(5)::before { content: "Bảo trì"; }
+  .motorbike-table td:nth-child(6)::before { content: "Trạng thái"; }
+  .motorbike-table td:nth-child(7)::before { content: "Thao tác"; }
+
+  .rental-table td:nth-child(1)::before { content: "Phiếu thuê"; }
+  .rental-table td:nth-child(2)::before { content: "Khách hàng"; }
+  .rental-table td:nth-child(3)::before { content: "Ảnh xe"; }
+  .rental-table td:nth-child(4)::before { content: "Xe"; }
+  .rental-table td:nth-child(5)::before { content: "Thời gian"; }
+  .rental-table td:nth-child(6)::before { content: "Thanh toán"; }
+  .rental-table td:nth-child(7)::before { content: "Trạng thái"; }
+  .rental-table td:nth-child(8)::before { content: "Thao tác"; }
+
+  .bike-type-table td:nth-child(1)::before { content: "Loại xe"; }
+  .bike-type-table td:nth-child(2)::before { content: "Thay nhớt"; }
+  .bike-type-table td:nth-child(3)::before { content: "Bảo trì"; }
+  .bike-type-table td:nth-child(4)::before { content: "Checklist"; }
+  .bike-type-table td:nth-child(5)::before { content: "Ghi chú"; }
+  .bike-type-table td:nth-child(6)::before { content: "Thao tác"; }
+
+  .bike-photo-code {
+    grid-template-columns: minmax(104px, 132px) 54px;
+    justify-content: start;
+  }
+
+  .bike-photo-stack,
+  .bike-photo-hover.main,
+  .bike-photo-code img,
+  .bike-photo-empty {
+    width: 126px;
+  }
+
+  .bike-photo-hover.main,
+  .bike-photo-code img,
+  .bike-photo-empty {
+    height: 92px;
+  }
+
+  .bike-photo-zoom {
+    left: 10px !important;
+    right: 10px !important;
+    top: 84px !important;
+    width: auto !important;
+    min-height: 0;
+    max-height: 70vh;
+    overflow: auto;
+  }
+
+  .bike-photo-zoom img {
+    max-height: 64vh;
+  }
+
+  .bike-name,
+  .rental-code-cell strong,
+  .rental-customer strong,
+  .rental-bike-code,
+  .bike-type-name,
+  .maintenance-cell strong,
+  .owner-cell strong {
+    color: #ffffff !important;
+  }
+
+  .bike-sub,
+  .price-line,
+  .maintenance-cell span,
+  .status-stack span,
+  .owner-cell span,
+  .rental-code-cell small,
+  .rental-customer small,
+  .rental-bike-name,
+  .rental-paid + span,
+  .rental-status-cell > span:last-child {
+    color: #cce7f6 !important;
+  }
+
+  .owner-cell,
+  .rental-code-cell,
+  .rental-customer {
+    align-items: flex-start;
+  }
+
+  .motorbike-actions,
+  .rental-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 48px;
+    gap: 10px;
+  }
+
+  .motorbike-actions button,
+  .rental-actions button {
+    min-height: 46px;
+  }
+
+  .motorbike-actions .secondary,
+  .rental-actions .primary,
+  .rental-actions .ghost:not(.icon-only) {
+    width: 100%;
+  }
+
+  .motorbike-footer,
+  .rental-footer {
+    padding: 12px 0;
+  }
+
+  .pager,
+  .rental-pager {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: none;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .modal-card header,
+  .modal-card footer {
+    position: sticky;
+    z-index: 2;
+    background: rgba(4, 31, 48, 0.96);
+  }
+
+  .modal-card header {
+    top: 0;
+  }
+
+  .modal-card footer {
+    bottom: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .modal-card footer button {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+  }
+
+  .form-grid,
+  .grid.cols-2,
+  .grid.cols-3,
+  .grid.cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .image-grid {
+    min-height: 120px;
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .motorbike-stats,
+  .rental-stats,
+  .bike-type-stats,
+  .calendar-stats,
+  .ops-kpi-grid,
+  .overview-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .topbar h1 {
+    max-width: 36vw;
+  }
+}
