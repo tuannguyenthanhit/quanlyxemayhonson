@@ -2997,8 +2997,9 @@ function hrView() {
       <div class="card">
         <div class="panel-title"><h3>Người xin việc</h3><span class="pill warning">${applicants.length} hồ sơ</span></div>
         <div class="table-wrap compact-table"><table>
-          <thead><tr><th>Mã</th><th>Ứng viên</th><th>Vị trí</th><th>Nộp hồ sơ</th><th>Lương mong muốn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Ảnh</th><th>Mã</th><th>Ứng viên</th><th>Vị trí</th><th>Nộp hồ sơ</th><th>Lương mong muốn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>${applicants.map((item) => `<tr>
+            <td>${personAvatar(item)}</td>
             <td><strong>${item.code}</strong></td>
             <td><strong>${item.name}</strong><br><span class="hint">${item.phone}  · ${item.email || "-"}</span></td>
             <td>${item.position}<br><span class="hint">${item.source}</span></td>
@@ -3006,7 +3007,7 @@ function hrView() {
             <td>${money(item.expectedSalary)}</td>
             <td>${pill(item.status)}</td>
             <td><button class="ghost" data-modal="applicant:${item.id}">Sửa</button></td>
-          </tr>`).join("") || `<tr><td colspan="7" class="empty">Chưa có hồ sơ ứng viên.</td></tr>`}</tbody>
+          </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có hồ sơ ứng viên.</td></tr>`}</tbody>
         </table></div>
       </div>
     </div>
@@ -3551,6 +3552,13 @@ function applicantForm(id) {
     ${field("interviewDate", "Ngày phỏng vấn", item.interviewDate || "", false, "date")}
     ${field("expectedSalary", "Lương mong muốn", item.expectedSalary || 0, false, "number")}
     ${selectField("status", "Trạng thái", ["Mới", "Phỏng vấn", "Đạt", "Không đạt", "Đã tuyển"], item.status || "Mới")}
+    <div class="field full">
+      <label>Hình ảnh ứng viên</label>
+      <input name="applicantPhoto" type="file" accept="image/*">
+      <div class="image-grid employee-photo-preview" id="applicant-photo-preview">
+        ${item.photo ? `<img src="${item.photo}" alt="Ảnh ứng viên ${item.name || item.code}">` : `<span>Chưa có ảnh. Chọn 1 hình nhỏ để làm ảnh đại diện ứng viên.</span>`}
+      </div>
+    </div>
     <div class="field full"><label>Kinh nghiệm/kỹ năng</label><textarea name="experience">${item.experience || ""}</textarea></div>
     <div class="field full"><label>Ghi chú tuyển dụng</label><textarea name="note">${item.note || ""}</textarea></div>
   </div>`;
@@ -3786,6 +3794,7 @@ function bindApp() {
   document.querySelector("input[name='afterPhoto']")?.addEventListener("change", previewPhoto);
   document.querySelector("input[name='bikeImages']")?.addEventListener("change", previewBikeImages);
   document.querySelector("input[name='employeePhoto']")?.addEventListener("change", previewEmployeePhoto);
+  document.querySelector("input[name='applicantPhoto']")?.addEventListener("change", previewApplicantPhoto);
   document.querySelector("[data-import-json]")?.addEventListener("change", importJsonToMysql);
 }
 
@@ -3942,6 +3951,10 @@ async function saveModal(event) {
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
     delete data.employeePhoto;
+  }
+  if (type === "applicant") {
+    data.photo = await readApplicantPhoto(form, id);
+    delete data.applicantPhoto;
   }
   if (type === "user") {
     data.permissions = Array.from(form.querySelectorAll("input[name='permission']:checked")).map((input) => input.value);
@@ -4955,6 +4968,15 @@ async function readEmployeePhoto(form, id) {
   return compressImageFile(file, 640, 0.46, 80000);
 }
 
+async function readApplicantPhoto(form, id) {
+  const input = form.querySelector("input[name='applicantPhoto']");
+  const file = input?.files?.[0];
+  if (!file) {
+    return getDb().jobApplicants.find((item) => item.id === id)?.photo || "";
+  }
+  return compressImageFile(file, 640, 0.46, 80000);
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -5060,6 +5082,14 @@ async function previewEmployeePhoto(event) {
   if (!preview || !file) return;
   const src = await fileToDataUrl(file);
   preview.innerHTML = `<img src="${src}" alt="Ảnh nhân viên">`;
+}
+
+async function previewApplicantPhoto(event) {
+  const preview = document.getElementById("applicant-photo-preview");
+  const file = event.target.files?.[0];
+  if (!preview || !file) return;
+  const src = await fileToDataUrl(file);
+  preview.innerHTML = `<img src="${src}" alt="Ảnh ứng viên">`;
 }
 
 window.addEventListener("error", (event) => {
