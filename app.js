@@ -1511,13 +1511,16 @@ function barChart(title, items, unit, isMoney = false) {
 
 function alertTone(title) {
   if (title.includes("quá hạn") || title.includes("Ưu tiên cao")) return "danger";
-  if (title.includes("Chưa thanh toán") || title.includes("Sắp giao")) return "warning";
+  if (title.includes("Chưa thanh toán") || title.includes("Sắp giao") || title.includes("Phiếu sửa")) return "warning";
   return "";
 }
 
 function alertItems() {
   const db = getDb();
   const items = [];
+  db.notifications
+    .filter((n) => !n.read && /phiếu sửa|sửa xe|sửa thiết bị/i.test(`${n.title} ${n.message} ${n.type}`))
+    .forEach((n) => items.push({ title: n.title, message: n.message, date: n.createdAt }));
   db.rentals.filter((r) => r.status === "Quá hạn").forEach((r) => items.push({ title: `Xe quá hạn: ${r.code}`, message: `${r.customer} - phòng ${r.room} - hạn trả ${formatDateTime(r.end)}` }));
   db.rentals.filter((r) => r.status === "Đã đặt" && new Date(r.start) <= new Date(Date.now() + 4 * 60 * 60 * 1000)).forEach((r) => items.push({ title: `Sắp giao xe: ${r.code}`, message: `${r.customer} nhận xe lúc ${formatDateTime(r.start)}` }));
   db.tickets.filter((t) => !["Hoàn thành", "Đã hủy"].includes(t.status) && new Date(t.dueDate) < new Date()).forEach((t) => items.push({ title: `Phiếu sửa chữa quá hạn: ${t.code}`, message: t.issue }));
@@ -2434,6 +2437,7 @@ function bikeMaintenanceOverview(db = getDb()) {
       ${metric("Tổng lần sửa/bảo trì", repairTotal)}
     </div>
     ${oilChangeAlertTable(rows)}
+    ${ticketNotificationPanel(db, "Xe máy")}
     <div class="card">
       <div class="panel-title"><h3>Theo dõi thay nhớt và bảo trì theo km</h3><span class="pill">${rows.length} xe</span></div>
       <div class="table-wrap compact-table"><table>
@@ -2485,8 +2489,43 @@ function oilChangeAlertTable(rows) {
           <button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật</button>
         </div></td>
       </tr>`).join("") || `<tr><td colspan="7" class="empty">Chưa có xe cần cảnh báo theo ngày thay nhớt.</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+}
+
+function ticketNotificationPanel(db = getDb(), assetType = "Xe máy") {
+  const rows = db.tickets
+    .filter((ticket) => ticket.assetType === assetType && !["Hoàn thành", "Đã hủy"].includes(ticket.status))
+    .sort((a, b) => new Date(b.createdAt || b.foundDate || todayISO()) - new Date(a.createdAt || a.foundDate || todayISO()))
+    .slice(0, 5);
+  const title = assetType === "Xe máy" ? "Thông báo phiếu sửa xe mới" : "Thông báo phiếu sửa thiết bị mới";
+  return `<div class="card oil-alert-card ticket-notice-card">
+    <div class="panel-title">
+      <div><h3>${title}</h3><span class="hint">Các phiếu mới/chưa hoàn thành sẽ hiện ở đây và đồng thời báo ở Tổng quan.</span></div>
+      <span class="pill warning">${rows.length} phiếu</span>
+    </div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Ưu tiên</th><th>Ngày tạo</th><th>Hạn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${rows.map((ticket) => `<tr>
+        <td><strong>${ticket.code}</strong></td>
+        <td>${ticketAssetLabel(db, ticket)}</td>
+        <td><strong>${ticket.issue || "-"}</strong></td>
+        <td>${pill(ticket.priority)}</td>
+        <td>${formatDate(ticket.createdAt || ticket.foundDate)}</td>
+        <td>${formatDate(ticket.dueDate)}</td>
+        <td>${pill(ticket.status)}</td>
+        <td><button class="secondary" data-modal="ticketEdit:${ticket.id}">Cập nhật</button></td>
+      </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có phiếu sửa mới.</td></tr>`}</tbody>
     </table></div>
   </div>`;
+}
+
+function ticketAssetLabel(db, ticket) {
+  const asset = ticket.assetType === "Xe máy"
+    ? db.motorbikes.find((bike) => bike.id === ticket.assetId)
+    : db.equipment.find((item) => item.id === ticket.assetId);
+  if (!asset) return "-";
+  return `<strong>${asset.code || "-"}</strong><br><span class="hint">${asset.name || ""}${asset.plate ? ` · ${asset.plate}` : ""}${asset.room ? ` · Phòng ${asset.room}` : ""}</span>`;
 }
 
 function equipmentMaintenanceOverview(db = getDb()) {
@@ -3987,13 +4026,14 @@ async function saveModal(event) {
     return;
   }
   mutateDb((db) => {
+    let savedTicket = null;
     if (type === "hotel") upsertHotel(db, data, id);
     if (type === "room") upsertRoom(db, data, id);
     if (type === "bike") upsertBike(db, data, id);
     if (type === "bikeType") upsertBikeType(db, data, id);
     if (type === "rental") upsertRental(db, data, id);
     if (type === "booking") upsertBooking(db, data, id);
-    if (type === "ticket" || type === "ticketEdit") upsertTicket(db, data, type === "ticketEdit" ? id : "", extra);
+    if (type === "ticket" || type === "ticketEdit") savedTicket = upsertTicket(db, data, type === "ticketEdit" ? id : "", extra);
     if (type === "equipment") upsertEquipment(db, data, id);
     if (type === "equipmentType") upsertEquipmentType(db, data, id);
     if (type === "owner") upsertOwner(db, data, id);
@@ -4004,9 +4044,11 @@ async function saveModal(event) {
     if (type === "user") upsertUser(db, data, id);
     state.modal = null;
     state.bikeImageDraft = null;
-    return { record: id || data.code || data.name };
+    return { record: savedTicket?.code || id || data.code || data.name };
   }, `Lưu ${type}`);
-  showToast("Đã lưu dữ liệu.");
+  if (type === "ticket") showToast("Đã tạo phiếu sửa/bảo trì và gửi thông báo.");
+  else if (type === "ticketEdit") showToast("Đã cập nhật phiếu sửa/bảo trì.");
+  else showToast("Đã lưu dữ liệu.");
 }
 
 function upsertBike(db, data, id) {
@@ -4095,9 +4137,26 @@ function splitAmount(value, count, index) {
 }
 
 function upsertTicket(db, data, id) {
-  const payload = { ...data, estimatedCost: +data.estimatedCost, actualCost: +data.actualCost, reporterId: state.user.id, beforePhoto: "", afterPhoto: "", approverId: "" };
-  if (id) Object.assign(db.tickets.find((t) => t.id === id), payload);
-  else db.tickets.push({ id: uid("T"), code: uid("MT"), ...payload });
+  const existing = db.tickets.find((t) => t.id === id);
+  const payload = {
+    ...data,
+    estimatedCost: +data.estimatedCost,
+    actualCost: +data.actualCost,
+    reporterId: state.user.id,
+    beforePhoto: existing?.beforePhoto || "",
+    afterPhoto: existing?.afterPhoto || "",
+    approverId: existing?.approverId || "",
+    createdAt: existing?.createdAt || nowLocal()
+  };
+  let ticket;
+  if (id) {
+    ticket = db.tickets.find((t) => t.id === id);
+    Object.assign(ticket, payload);
+  } else {
+    ticket = { id: uid("T"), code: uid("MT"), ...payload };
+    db.tickets.push(ticket);
+    addTicketNotification(db, ticket);
+  }
   if (data.assetType === "Xe máy") {
     const bike = db.motorbikes.find((b) => b.id === data.assetId);
     if (bike && !["Hoàn thành", "Đã hủy"].includes(data.status)) bike.status = data.status === "Chờ phụ tùng" ? "Chờ phụ tùng" : "Đang sửa";
@@ -4105,6 +4164,25 @@ function upsertTicket(db, data, id) {
     const equipment = db.equipment.find((e) => e.id === data.assetId);
     if (equipment && !["Hoàn thành", "Đã hủy"].includes(data.status)) equipment.condition = "Đang sửa";
   }
+  return ticket;
+}
+
+function addTicketNotification(db, ticket) {
+  const isBike = ticket.assetType === "Xe máy";
+  const asset = isBike
+    ? db.motorbikes.find((bike) => bike.id === ticket.assetId)
+    : db.equipment.find((item) => item.id === ticket.assetId);
+  const title = isBike ? `Phiếu sửa xe mới: ${ticket.code}` : `Phiếu sửa thiết bị mới: ${ticket.code}`;
+  const assetText = asset ? `${asset.code || ""} · ${asset.name || ""}` : ticket.assetType;
+  db.notifications.unshift({
+    id: uid("N"),
+    title,
+    message: `${assetText} - ${ticket.issue || "Có phiếu sửa mới"} - hạn ${formatDate(ticket.dueDate)}`,
+    type: isBike ? "Sửa xe" : "Sửa thiết bị",
+    read: false,
+    createdAt: ticket.createdAt || nowLocal(),
+    refId: ticket.id
+  });
 }
 
 function upsertEquipment(db, data, id) {
