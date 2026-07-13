@@ -1195,7 +1195,7 @@ function dashboardView() {
         ${can("finance") ? opsProfitCard(todayProfit) : ""}
         <div class="card ops-alert-card">
           <div class="ops-card-title"><h3>CẢNH BÁO</h3><button class="ghost" data-view="notifications">Xem tất cả</button></div>
-          <div class="ops-alert-list">${alerts.length ? alerts.slice(0, 6).map((a) => opsAlertItem(a)).join("") : `<div class="empty">Không có cảnh báo mới.</div>`}</div>
+          ${opsAlertGroups(alerts)}
         </div>
       </div>
 
@@ -1257,6 +1257,31 @@ function opsProfitCard(value) {
 
 function opsAlertItem(item) {
   return `<div class="ops-alert ${alertTone(item.title)}"><span>${alertIcon(item.title)}</span><div><strong>${item.title}</strong><small>${item.message}</small></div><time>${item.date ? formatDate(item.date) : "-"}</time></div>`;
+}
+
+function opsAlertGroups(alerts = []) {
+  const groups = [
+    { key: "bike", title: "Xe máy", icon: navIcon("motorbikes"), items: [] },
+    { key: "equipment", title: "Thiết bị", icon: navIcon("equipment"), items: [] },
+    { key: "guest", title: "Khách/Tour", icon: navIcon("bookingTimeline"), items: [] }
+  ];
+  alerts.forEach((item) => {
+    groups.find((group) => group.key === alertCategory(item))?.items.push(item);
+  });
+  if (!alerts.length) return `<div class="empty">Không có cảnh báo mới.</div>`;
+  return `<div class="ops-alert-groups">
+    ${groups.map((group) => `<section class="ops-alert-group ${group.key}">
+      <div class="ops-alert-group-head"><span>${group.icon}</span><strong>${group.title}</strong><em>${group.items.length}</em></div>
+      <div class="ops-alert-list">${group.items.length ? group.items.slice(0, 3).map((item) => opsAlertItem(item)).join("") : `<div class="empty compact">Chưa có lượt tạo phiếu mới.</div>`}</div>
+    </section>`).join("")}
+  </div>`;
+}
+
+function alertCategory(item = {}) {
+  const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
+  if (/thiết bị|máy lạnh|máy giặt|bảo trì thiết bị|sửa thiết bị|ưu tiên cao/.test(text)) return "equipment";
+  if (/xe|thay nhớt|sửa xe|bảo trì theo km|motorbike/.test(text)) return "bike";
+  return "guest";
 }
 
 function opStatCard(label, value, caption, icon, tone) {
@@ -1529,7 +1554,8 @@ function alertItems() {
   db.motorbikes.filter(isBikeOilDue).forEach((b) => items.push({ title: `Đến hạn thay nhớt: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastOilChangeKm)} km từ lần thay nhớt gần nhất.` }));
   db.motorbikes.filter(isBikeMaintenanceKmDue).forEach((b) => items.push({ title: `Đến hạn bảo trì theo km: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastMaintenanceKm)} km từ lần bảo trì gần nhất.` }));
   db.rentals.filter((r) => Number(r.total) > Number(r.paid)).forEach((r) => items.push({ title: `Chưa thanh toán đủ: ${r.code}`, message: `Còn phải thu ${money(Number(r.total) - Number(r.paid))}` }));
-  return items.slice(0, 8);
+  upcomingGuestItems().slice(0, 3).forEach((item) => items.push({ title: `Khách sắp đến: ${item.title}`, message: item.detail, date: item.time }));
+  return items.slice(0, 15);
 }
 
 function nextOilChangeKm(bike) {

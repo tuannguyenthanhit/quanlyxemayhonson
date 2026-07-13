@@ -5008,3 +5008,88 @@ table td,
     max-width: 36vw;
   }
 }
+
+/* Grouped dashboard alerts */
+.ops-alert-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.ops-alert-group {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-alert-group-head {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(112, 219, 231, 0.2);
+  border-radius: 10px;
+  background: rgba(8, 45, 66, 0.72);
+}
+
+.ops-alert-group-head span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #20ead7;
+  background: rgba(32, 234, 215, 0.12);
+}
+
+.ops-alert-group.equipment .ops-alert-group-head span {
+  color: #a98cff;
+  background: rgba(169, 140, 255, 0.14);
+}
+
+.ops-alert-group.guest .ops-alert-group-head span {
+  color: #ffc857;
+  background: rgba(255, 200, 87, 0.15);
+}
+
+.ops-alert-group-head svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ops-alert-group-head strong {
+  color: #f7fcff;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.ops-alert-group-head em {
+  min-width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #062132;
+  background: #dffcff;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.ops-alert-group .ops-alert-list {
+  gap: 7px;
+}
+
+.ops-alert-group .empty.compact {
+  padding: 9px 10px;
+  border: 1px dashed rgba(154, 202, 218, 0.28);
+  border-radius: 10px;
+  color: #b7d5e6;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 800;
+}
