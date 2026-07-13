@@ -5018,6 +5018,12 @@ table td,
 .ops-alert-group {
   display: grid;
   gap: 8px;
+  padding-bottom: 6px;
+}
+
+.ops-alert-group + .ops-alert-group {
+  padding-top: 8px;
+  border-top: 1px solid rgba(127, 196, 220, 0.2);
 }
 
 .ops-alert-group-head {
@@ -5046,9 +5052,19 @@ table td,
   background: rgba(169, 140, 255, 0.14);
 }
 
+.ops-alert-group.equipment .ops-alert-group-head {
+  border-color: rgba(169, 140, 255, 0.32);
+  background: rgba(48, 37, 88, 0.62);
+}
+
 .ops-alert-group.guest .ops-alert-group-head span {
   color: #ffc857;
   background: rgba(255, 200, 87, 0.15);
+}
+
+.ops-alert-group.guest .ops-alert-group-head {
+  border-color: rgba(255, 200, 87, 0.35);
+  background: rgba(88, 63, 18, 0.42);
 }
 
 .ops-alert-group-head svg {

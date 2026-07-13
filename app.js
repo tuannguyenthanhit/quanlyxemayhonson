@@ -1278,6 +1278,7 @@ function opsAlertGroups(alerts = []) {
 }
 
 function alertCategory(item = {}) {
+  if (["bike", "equipment", "guest"].includes(item.category)) return item.category;
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
   if (/thiết bị|máy lạnh|máy giặt|bảo trì thiết bị|sửa thiết bị|ưu tiên cao/.test(text)) return "equipment";
   if (/xe|thay nhớt|sửa xe|bảo trì theo km|motorbike/.test(text)) return "bike";
@@ -1545,17 +1546,23 @@ function alertItems() {
   const items = [];
   db.notifications
     .filter((n) => !n.read && /phiếu sửa|sửa xe|sửa thiết bị/i.test(`${n.title} ${n.message} ${n.type}`))
-    .forEach((n) => items.push({ title: n.title, message: n.message, date: n.createdAt }));
-  db.rentals.filter((r) => r.status === "Quá hạn").forEach((r) => items.push({ title: `Xe quá hạn: ${r.code}`, message: `${r.customer} - phòng ${r.room} - hạn trả ${formatDateTime(r.end)}` }));
-  db.rentals.filter((r) => r.status === "Đã đặt" && new Date(r.start) <= new Date(Date.now() + 4 * 60 * 60 * 1000)).forEach((r) => items.push({ title: `Sắp giao xe: ${r.code}`, message: `${r.customer} nhận xe lúc ${formatDateTime(r.start)}` }));
-  db.tickets.filter((t) => !["Hoàn thành", "Đã hủy"].includes(t.status) && new Date(t.dueDate) < new Date()).forEach((t) => items.push({ title: `Phiếu sửa chữa quá hạn: ${t.code}`, message: t.issue }));
-  db.equipment.filter((e) => e.type === "Máy lạnh" && e.condition === "Đang hư" && e.note.toLowerCase().includes("có khách")).forEach((e) => items.push({ title: `Ưu tiên cao: ${e.name}`, message: "Máy lạnh phòng đang có khách bị hư." }));
-  db.equipment.filter((e) => new Date(e.nextMaintenance) <= new Date(todayISO(7))).forEach((e) => items.push({ title: `Thiết bị đến hạn bảo trì: ${e.code}`, message: `${e.name} - hạn ${formatDate(e.nextMaintenance)}` }));
-  db.motorbikes.filter(isBikeOilDue).forEach((b) => items.push({ title: `Đến hạn thay nhớt: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastOilChangeKm)} km từ lần thay nhớt gần nhất.` }));
-  db.motorbikes.filter(isBikeMaintenanceKmDue).forEach((b) => items.push({ title: `Đến hạn bảo trì theo km: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastMaintenanceKm)} km từ lần bảo trì gần nhất.` }));
-  db.rentals.filter((r) => Number(r.total) > Number(r.paid)).forEach((r) => items.push({ title: `Chưa thanh toán đủ: ${r.code}`, message: `Còn phải thu ${money(Number(r.total) - Number(r.paid))}` }));
-  upcomingGuestItems().slice(0, 3).forEach((item) => items.push({ title: `Khách sắp đến: ${item.title}`, message: item.detail, date: item.time }));
+    .forEach((n) => items.push({ title: n.title, message: n.message, date: n.createdAt, category: notificationAlertCategory(n) }));
+  db.rentals.filter((r) => r.status === "Quá hạn").forEach((r) => items.push({ title: `Xe quá hạn: ${r.code}`, message: `${r.customer} - phòng ${r.room} - hạn trả ${formatDateTime(r.end)}`, category: "guest" }));
+  db.rentals.filter((r) => r.status === "Đã đặt" && new Date(r.start) <= new Date(Date.now() + 4 * 60 * 60 * 1000)).forEach((r) => items.push({ title: `Sắp giao xe: ${r.code}`, message: `${r.customer} nhận xe lúc ${formatDateTime(r.start)}`, category: "guest" }));
+  db.tickets.filter((t) => !["Hoàn thành", "Đã hủy"].includes(t.status) && new Date(t.dueDate) < new Date()).forEach((t) => items.push({ title: `Phiếu sửa chữa quá hạn: ${t.code}`, message: t.issue, category: t.assetType === "Thiết bị" ? "equipment" : "bike" }));
+  db.equipment.filter((e) => e.type === "Máy lạnh" && e.condition === "Đang hư" && e.note.toLowerCase().includes("có khách")).forEach((e) => items.push({ title: `Ưu tiên cao: ${e.name}`, message: "Máy lạnh phòng đang có khách bị hư.", category: "equipment" }));
+  db.equipment.filter((e) => new Date(e.nextMaintenance) <= new Date(todayISO(7))).forEach((e) => items.push({ title: `Thiết bị đến hạn bảo trì: ${e.code}`, message: `${e.name} - hạn ${formatDate(e.nextMaintenance)}`, category: "equipment" }));
+  db.motorbikes.filter(isBikeOilDue).forEach((b) => items.push({ title: `Đến hạn thay nhớt: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastOilChangeKm)} km từ lần thay nhớt gần nhất.`, category: "bike" }));
+  db.motorbikes.filter(isBikeMaintenanceKmDue).forEach((b) => items.push({ title: `Đến hạn bảo trì theo km: ${b.code}`, message: `${b.name} đã chạy ${Number(b.odometer) - Number(b.lastMaintenanceKm)} km từ lần bảo trì gần nhất.`, category: "bike" }));
+  db.rentals.filter((r) => Number(r.total) > Number(r.paid)).forEach((r) => items.push({ title: `Chưa thanh toán đủ: ${r.code}`, message: `Còn phải thu ${money(Number(r.total) - Number(r.paid))}`, category: "guest" }));
+  upcomingGuestItems().slice(0, 3).forEach((item) => items.push({ title: `Khách sắp đến: ${item.title}`, message: item.detail, date: item.time, category: "guest" }));
   return items.slice(0, 15);
+}
+
+function notificationAlertCategory(notification = {}) {
+  if (notification.type === "Sửa thiết bị") return "equipment";
+  if (notification.type === "Sửa xe") return "bike";
+  return alertCategory(notification);
 }
 
 function nextOilChangeKm(bike) {
