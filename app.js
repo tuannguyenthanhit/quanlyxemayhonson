@@ -2634,7 +2634,7 @@ function ticketNotificationPanel(db = getDb(), assetType = "Xe máy") {
         <td>${formatDate(ticket.createdAt || ticket.foundDate)}</td>
         <td>${formatDate(ticket.dueDate)}</td>
         <td>${pill(ticket.status)}</td>
-        <td><button class="secondary" data-modal="ticketEdit:${ticket.id}">Cập nhật</button></td>
+        <td>${ticketEditButton(ticket)}</td>
       </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có phiếu sửa mới.</td></tr>`}</tbody>
     </table></div>
     ${panelPagination(pageKey, paged)}
@@ -2656,18 +2656,24 @@ function ticketHistoryPanel(db = getDb(), assetType = "Xe máy") {
     <div class="table-wrap compact-table"><table>
       <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Giờ tạo</th><th>Ngày tạo</th><th>Chi phí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>${paged.rows.map((ticket) => `<tr>
-        <td><strong>${ticket.code}</strong><br><span class="hint">${ticket.priority || "-"}</span></td>
+        <td><strong>${ticket.code}</strong><br><span class="hint">${ticket.priority || "-"}</span>${ticketEditButton(ticket, "mini")}</td>
         <td>${ticketAssetLabel(db, ticket)}</td>
         <td><strong>${ticket.issue || "-"}</strong></td>
         <td><strong>${formatTime(ticket.createdAt || ticket.foundDate)}</strong></td>
         <td>${formatDate(ticket.createdAt || ticket.foundDate)}</td>
         <td>${can("costs") ? money(ticketCost(ticket)) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
         <td>${pill(ticket.status)}</td>
-        <td><button class="secondary" data-modal="ticketEdit:${ticket.id}">Chi tiết</button></td>
+        <td>${ticketEditButton(ticket)}</td>
       </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có lịch sử tạo phiếu.</td></tr>`}</tbody>
     </table></div>
     ${panelPagination(pageKey, paged)}
   </div>`;
+}
+
+function ticketEditButton(ticket, variant = "") {
+  if (!canAny(["manage", "maintenance"])) return `<span class="hint">Chỉ xem</span>`;
+  const className = variant === "mini" ? "ticket-edit-mini" : "secondary";
+  return `<button class="${className}" type="button" data-modal="ticketEdit:${ticket.id}">Sửa phiếu</button>`;
 }
 
 function bookingHistoryPanel(data = bookingSeedData()) {
