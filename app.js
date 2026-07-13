@@ -141,6 +141,14 @@ const state = {
     type: "all",
     sort: "code-asc"
   },
+  panelPages: {
+    bikeTickets: 1,
+    equipmentTickets: 1,
+    oilAlerts: 1,
+    bikeTicketHistory: 1,
+    equipmentTicketHistory: 1,
+    bookingHistory: 1
+  },
   rentalDate: "",
   attendance: {
     period: "month",
@@ -1145,6 +1153,47 @@ function dashboardStats() {
   };
 }
 
+function recentDayKeys(count = 7) {
+  return Array.from({ length: count }, (_, index) => todayISO(index - count + 1));
+}
+
+function dayLabel(isoDate) {
+  const [year, month, day] = String(isoDate || "").slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return "-";
+  return new Date(year, month - 1, day).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
+
+function ticketCost(ticket) {
+  return Number(ticket.actualCost || ticket.estimatedCost || 0);
+}
+
+function dashboardDailyFinance(days = recentDayKeys(7)) {
+  const db = getDb();
+  const revenue = days.map((day) => db.rentals
+    .filter((rental) => String(rental.start || "").slice(0, 10) === day)
+    .reduce((sum, rental) => sum + Number(rental.paid || 0), 0));
+  const bikeCost = days.map((day) => db.tickets
+    .filter((ticket) => ticket.assetType === "Xe máy" && String(ticket.createdAt || ticket.foundDate || ticket.dueDate || "").slice(0, 10) === day)
+    .reduce((sum, ticket) => sum + ticketCost(ticket), 0));
+  const equipmentCost = days.map((day) => db.tickets
+    .filter((ticket) => ticket.assetType === "Thiết bị" && String(ticket.createdAt || ticket.foundDate || ticket.dueDate || "").slice(0, 10) === day)
+    .reduce((sum, ticket) => sum + ticketCost(ticket), 0));
+  const totalCost = days.map((_, index) => bikeCost[index] + equipmentCost[index]);
+  return {
+    days,
+    labels: days.map(dayLabel),
+    revenue,
+    bikeCost,
+    equipmentCost,
+    totalCost,
+    profit: days.map((_, index) => revenue[index] - totalCost[index])
+  };
+}
+
+function lastSeriesValue(series = []) {
+  return Number(series[series.length - 1] || 0);
+}
+
 function dashboardView() {
   const s = dashboardStats();
   const alerts = alertItems();
@@ -1155,8 +1204,12 @@ function dashboardView() {
   const arrivals = upcomingGuestItems();
   const activities = todayActivityItems();
   const db = getDb();
-  const todayCost = s.bikeRepair + s.equipmentRepair;
-  const todayProfit = s.todayRevenue - todayCost;
+  const financeDays = dashboardDailyFinance();
+  const todayRevenue = lastSeriesValue(financeDays.revenue);
+  const todayBikeCost = lastSeriesValue(financeDays.bikeCost);
+  const todayEquipmentCost = lastSeriesValue(financeDays.equipmentCost);
+  const todayCost = lastSeriesValue(financeDays.totalCost);
+  const todayProfit = todayRevenue - todayCost;
   return `
     <div class="ops-dashboard">
       <div class="ops-topbar">
@@ -1190,9 +1243,9 @@ function dashboardView() {
       </div>
 
       <div class="ops-main-grid">
-        ${can("finance") ? opsFinanceCard("DOANH THU HÔM NAY", money(s.todayRevenue), "↑ 12% so với hôm qua", "green", [["Doanh thu tháng", money(s.monthRevenue)], ["Tiền chưa thanh toán", money(s.unpaid)], ["Doanh thu năm", money(s.monthRevenue * 12)]]) : ""}
-        ${can("finance") ? opsFinanceCard("CHI PHÍ HÔM NAY", money(todayCost), "Chi tiết →", "red", [["Sửa xe", money(s.bikeRepair)], ["Sửa thiết bị", money(s.equipmentRepair)], ["Chi phí khác", money(0)]]) : ""}
-        ${can("finance") ? opsProfitCard(todayProfit) : ""}
+        ${can("finance") ? opsFinanceCard("DOANH THU THEO NGÀY", money(todayRevenue), "7 ngày gần nhất", "green", [["Doanh thu tháng", money(s.monthRevenue)], ["Tiền chưa thanh toán", money(s.unpaid)], ["Doanh thu năm", money(s.monthRevenue * 12)]], financeDays.revenue, financeDays.labels) : ""}
+        ${can("finance") ? opsFinanceCard("CHI PHÍ THEO NGÀY", money(todayCost), "Theo ngày phát sinh phiếu", "red", [["Sửa xe", money(todayBikeCost)], ["Sửa thiết bị", money(todayEquipmentCost)], ["Chi phí khác", money(0)]], financeDays.totalCost, financeDays.labels) : ""}
+        ${can("finance") ? opsProfitCard(todayProfit, financeDays.profit, financeDays.labels) : ""}
         <div class="card ops-alert-card">
           <div class="ops-card-title"><h3>CẢNH BÁO</h3><button class="ghost" data-view="notifications">Xem tất cả</button></div>
           ${opsAlertGroups(alerts)}
@@ -1233,14 +1286,32 @@ function opsStatCard(icon, label, value, caption, tone, active = false) {
   return `<div class="ops-stat ${active ? "active" : ""}"><span class="ops-icon ${tone}">${icon}</span><div><p>${label}</p><strong>${value}</strong><small>${caption}</small></div></div>`;
 }
 
-function opsFinanceCard(title, value, caption, tone, items) {
-  return `<div class="card ops-finance ${tone}"><h3>${title}</h3><strong>${value}</strong><p>${caption}</p>${opsLineChart(tone)}<div class="ops-chart-times"><span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>24:00</span></div><div class="ops-finance-split">${items.map(([label, val]) => `<span><small>${label}</small><b>${val}</b></span>`).join("")}</div></div>`;
+function opsFinanceCard(title, value, caption, tone, items, series = [], labels = []) {
+  return `<div class="card ops-finance ${tone}"><h3>${title}</h3><strong>${value}</strong><p>${caption}</p>${opsLineChart(tone, series)}${opsChartLabels(labels)}<div class="ops-finance-split">${items.map(([label, val]) => `<span><small>${label}</small><b>${val}</b></span>`).join("")}</div></div>`;
 }
 
-function opsLineChart(tone) {
-  const points = tone === "red"
-    ? "0,70 18,67 36,58 54,55 72,48 90,58 108,42 126,54 144,34 162,44 180,38 198,48 216,36 234,25 252,20 270,27 288,26"
-    : "0,72 18,72 36,67 54,58 72,60 90,56 108,48 126,54 144,36 162,44 180,34 198,40 216,46 234,37 252,31 270,22 288,27";
+function opsChartLabels(labels = []) {
+  const safeLabels = labels.length ? labels : ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"];
+  return `<div class="ops-chart-times">${safeLabels.map((label) => `<span>${label}</span>`).join("")}</div>`;
+}
+
+function opsLineChart(tone, series = []) {
+  const width = 288;
+  const bottom = 92;
+  const range = 70;
+  let points = "";
+  if (series.length) {
+    const max = Math.max(1, ...series.map((value) => Math.max(0, Number(value || 0))));
+    points = series.map((value, index) => {
+      const x = series.length === 1 ? 0 : (index / (series.length - 1)) * width;
+      const y = bottom - (Math.max(0, Number(value || 0)) / max) * range;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  } else {
+    points = tone === "red"
+      ? "0,70 18,67 36,58 54,55 72,48 90,58 108,42 126,54 144,34 162,44 180,38 198,48 216,36 234,25 252,20 270,27 288,26"
+      : "0,72 18,72 36,67 54,58 72,60 90,56 108,48 126,54 144,36 162,44 180,34 198,40 216,46 234,37 252,31 270,22 288,27";
+  }
   const area = `${points} 288,92 0,92`;
   return `<div class="ops-line-chart ${tone}">
     <svg viewBox="0 0 288 96" preserveAspectRatio="none" aria-hidden="true">
@@ -1250,9 +1321,16 @@ function opsLineChart(tone) {
   </div>`;
 }
 
-function opsProfitCard(value) {
+function opsProfitCard(value, series = [], labels = []) {
   const tone = value >= 0 ? "green" : "red";
-  return `<div class="card ops-profit ${tone}"><h3>LỢI NHUẬN ƯỚC TÍNH</h3><strong>${money(value)}</strong><p>Hôm nay</p><div class="ops-bars">${[18, -34, 52, 8, -25, 42, 64, 20, -18, 50].map((height) => `<i class="${height < 0 ? "neg" : ""}" style="height:${Math.abs(height)}px"></i>`).join("")}</div><div class="ops-chart-times"><span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>24:00</span></div><small>Lợi nhuận tháng</small><b>${money(dashboardStats().profit)}</b></div>`;
+  const values = series.length ? series : [18, -34, 52, 8, -25, 42, 64];
+  const max = Math.max(1, ...values.map((item) => Math.abs(Number(item || 0))));
+  const bars = values.map((item) => {
+    const numeric = Number(item || 0);
+    const height = Math.max(8, Math.round((Math.abs(numeric) / max) * 64));
+    return `<i class="${numeric < 0 ? "neg" : ""}" style="height:${height}px"></i>`;
+  }).join("");
+  return `<div class="card ops-profit ${tone}"><h3>LỢI NHUẬN ƯỚC TÍNH</h3><strong>${money(value)}</strong><p>Theo ngày</p><div class="ops-bars">${bars}</div>${opsChartLabels(labels)}<small>Lợi nhuận tháng</small><b>${money(dashboardStats().profit)}</b></div>`;
 }
 
 function opsAlertItem(item) {
@@ -1773,6 +1851,7 @@ function bookingTimelineView() {
         <div class="booking-legend"><span class="green">\u0110\u00e3 x\u00e1c nh\u1eadn</span><span class="blue">\u0110\u00e3 c\u1ecdc</span><span class="orange">\u0110ang \u1edf</span><span class="purple">Tr\u1ea3 ph\u00f2ng</span><span class="red">\u0110\u00e3 h\u1ee7y</span></div>
       </div>
       <div class="booking-layout"><div class="booking-board" style="${boardStyle}"><div class="booking-grid-head"><div></div>${days.map((day) => `<div class="${day.weekend ? "weekend" : ""}"><strong>${day.day}</strong><small>${day.label}</small></div>`).join("")}</div><div class="booking-rows">${visibleHotels.map((hotel) => bookingHotelBlock(hotel, data.rooms.filter((room) => room.hotelId === hotel.id), visibleBookings, days)).join("")}</div>${todayPosition === null ? "" : `<div class="today-line" style="left:${todayPosition}%"><span>H\u00f4m nay ${current.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>`}</div>${bookingDetailPanel(selected, data.services)}</div>
+      ${bookingHistoryPanel(data)}
     </section>`;
 }
 
@@ -1853,7 +1932,8 @@ function upsertBooking(db, data, id) {
     guests: +data.guests,
     total: +data.total,
     paid: +data.paid,
-    tone: bookingStatusTone(data.status)
+    tone: bookingStatusTone(data.status),
+    createdAt: id ? (db.hotelBookings.find((item) => item.id === id)?.createdAt || nowLocal()) : nowLocal()
   };
   if (id) Object.assign(db.hotelBookings.find((item) => item.id === id), payload);
   else db.hotelBookings.push({ id: uid("BK"), ...payload });
@@ -2470,7 +2550,10 @@ function bikeMaintenanceOverview(db = getDb()) {
       ${metric("Tổng lần sửa/bảo trì", repairTotal)}
     </div>
     ${oilChangeAlertTable(rows)}
-    ${ticketNotificationPanel(db, "Xe máy")}
+    <div class="maintenance-history-grid">
+      ${ticketNotificationPanel(db, "Xe máy")}
+      ${ticketHistoryPanel(db, "Xe máy")}
+    </div>
     <div class="card">
       <div class="panel-title"><h3>Theo dõi thay nhớt và bảo trì theo km</h3><span class="pill">${rows.length} xe</span></div>
       <div class="table-wrap compact-table"><table>
@@ -2498,21 +2581,22 @@ function bikeMaintenanceOverview(db = getDb()) {
 }
 
 function oilChangeAlertTable(rows) {
-  const alertRows = rows
+  const allRows = rows
     .map((row) => ({ ...row, days: daysSinceOilChange(row.bike), alert: isOilDateAlert(row.bike) }))
     .filter((row) => row.alert || row.bike.oilAlertEnabled !== false)
     .sort((a, b) => b.days - a.days);
+  const paged = paginatePanel(allRows, "oilAlerts", 5);
   return `<div class="card oil-alert-card">
     <div class="panel-title">
       <div><h3>Thông báo cảnh báo thay nhớt quá 60 ngày</h3><span class="hint">Bảng riêng để bật/tắt cảnh báo và cập nhật khi xe đã được thay nhớt.</span></div>
-      <span class="pill warning">${alertRows.filter((row) => row.alert).length} cảnh báo</span>
+      <span class="pill warning">${allRows.filter((row) => row.alert).length} cảnh báo</span>
     </div>
     <div class="table-wrap compact-table"><table>
       <thead><tr><th>Xe</th><th>Ngày thay nhớt gần nhất</th><th>Số ngày</th><th>Km thay gần nhất</th><th>Cảnh báo</th><th>Trạng thái xử lý</th><th>Thao tác</th></tr></thead>
-      <tbody>${alertRows.map(({ bike, days, alert }) => `<tr class="${alert ? "alert-row" : ""}">
+      <tbody>${paged.rows.map(({ bike, days, alert }) => `<tr class="${alert ? "alert-row" : ""}">
         <td><strong>${bike.code}  · ${bike.name}</strong><br><span class="hint">${bike.plate}</span></td>
         <td>${formatDate(bike.lastOilChangeDate)}</td>
-        <td><strong>${days} ng ngày</strong><br><span class="hint">NgNgưỡng cảnh báo: 60 ngày</span></td>
+        <td><strong>${days} ngày</strong><br><span class="hint">Ngưỡng cảnh báo: 60 ngày</span></td>
         <td>${Number(bike.lastOilChangeKm || 0).toLocaleString("vi-VN")} km</td>
         <td>${bike.oilAlertEnabled === false ? pill("Tắt") : pill(alert ? "Quá hạn" : "Đang bật")}</td>
         <td>${bike.oilAlertHandled ? pill("Đã xử lý") : pill(alert ? "Cần thay nhớt" : "Đang theo dõi")}</td>
@@ -2523,34 +2607,130 @@ function oilChangeAlertTable(rows) {
         </div></td>
       </tr>`).join("") || `<tr><td colspan="7" class="empty">Chưa có xe cần cảnh báo theo ngày thay nhớt.</td></tr>`}</tbody>
       </table></div>
+      ${panelPagination("oilAlerts", paged)}
     </div>`;
 }
 
 function ticketNotificationPanel(db = getDb(), assetType = "Xe máy") {
-  const rows = db.tickets
+  const allRows = db.tickets
     .filter((ticket) => ticket.assetType === assetType && !["Hoàn thành", "Đã hủy"].includes(ticket.status))
-    .sort((a, b) => new Date(b.createdAt || b.foundDate || todayISO()) - new Date(a.createdAt || a.foundDate || todayISO()))
-    .slice(0, 5);
+    .sort((a, b) => new Date(b.createdAt || b.foundDate || todayISO()) - new Date(a.createdAt || a.foundDate || todayISO()));
+  const pageKey = assetType === "Xe máy" ? "bikeTickets" : "equipmentTickets";
+  const paged = paginatePanel(allRows, pageKey, 5);
   const title = assetType === "Xe máy" ? "Thông báo phiếu sửa xe mới" : "Thông báo phiếu sửa thiết bị mới";
   return `<div class="card oil-alert-card ticket-notice-card">
     <div class="panel-title">
-      <div><h3>${title}</h3><span class="hint">Các phiếu mới/chưa hoàn thành sẽ hiện ở đây và đồng thời báo ở Tổng quan.</span></div>
-      <span class="pill warning">${rows.length} phiếu</span>
+      <div><h3>${title}</h3><span class="hint">Hiển thị tất cả phiếu mới/chưa hoàn thành, có giờ và ngày tạo để quản trị theo dõi nhanh.</span></div>
+      <span class="pill warning">${allRows.length} phiếu</span>
     </div>
     <div class="table-wrap compact-table"><table>
-      <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Ưu tiên</th><th>Ngày tạo</th><th>Hạn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-      <tbody>${rows.map((ticket) => `<tr>
+      <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Ưu tiên</th><th>Giờ tạo</th><th>Ngày tạo</th><th>Hạn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${paged.rows.map((ticket) => `<tr>
         <td><strong>${ticket.code}</strong></td>
         <td>${ticketAssetLabel(db, ticket)}</td>
         <td><strong>${ticket.issue || "-"}</strong></td>
         <td>${pill(ticket.priority)}</td>
+        <td><strong>${formatTime(ticket.createdAt || ticket.foundDate)}</strong></td>
         <td>${formatDate(ticket.createdAt || ticket.foundDate)}</td>
         <td>${formatDate(ticket.dueDate)}</td>
         <td>${pill(ticket.status)}</td>
         <td><button class="secondary" data-modal="ticketEdit:${ticket.id}">Cập nhật</button></td>
-      </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có phiếu sửa mới.</td></tr>`}</tbody>
+      </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có phiếu sửa mới.</td></tr>`}</tbody>
     </table></div>
+    ${panelPagination(pageKey, paged)}
   </div>`;
+}
+
+function ticketHistoryPanel(db = getDb(), assetType = "Xe máy") {
+  const allRows = db.tickets
+    .filter((ticket) => ticket.assetType === assetType)
+    .sort((a, b) => new Date(b.createdAt || b.foundDate || todayISO()) - new Date(a.createdAt || a.foundDate || todayISO()));
+  const pageKey = assetType === "Xe máy" ? "bikeTicketHistory" : "equipmentTicketHistory";
+  const paged = paginatePanel(allRows, pageKey, 5);
+  const title = assetType === "Xe máy" ? "Lịch sử tạo phiếu sửa xe" : "Lịch sử tạo phiếu sửa thiết bị";
+  return `<div class="card oil-alert-card ticket-history-card">
+    <div class="panel-title">
+      <div><h3>${title}</h3><span class="hint">Theo dõi toàn bộ phiếu đã tạo, gồm giờ tạo, ngày tạo, trạng thái và chi phí.</span></div>
+      <span class="pill">${allRows.length} phiếu</span>
+    </div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Giờ tạo</th><th>Ngày tạo</th><th>Chi phí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${paged.rows.map((ticket) => `<tr>
+        <td><strong>${ticket.code}</strong><br><span class="hint">${ticket.priority || "-"}</span></td>
+        <td>${ticketAssetLabel(db, ticket)}</td>
+        <td><strong>${ticket.issue || "-"}</strong></td>
+        <td><strong>${formatTime(ticket.createdAt || ticket.foundDate)}</strong></td>
+        <td>${formatDate(ticket.createdAt || ticket.foundDate)}</td>
+        <td>${can("costs") ? money(ticketCost(ticket)) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
+        <td>${pill(ticket.status)}</td>
+        <td><button class="secondary" data-modal="ticketEdit:${ticket.id}">Chi tiết</button></td>
+      </tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có lịch sử tạo phiếu.</td></tr>`}</tbody>
+    </table></div>
+    ${panelPagination(pageKey, paged)}
+  </div>`;
+}
+
+function bookingHistoryPanel(data = bookingSeedData()) {
+  const allRows = [...(data.bookings || [])]
+    .sort((a, b) => new Date(b.createdAt || b.start || todayISO()) - new Date(a.createdAt || a.start || todayISO()));
+  const paged = paginatePanel(allRows, "bookingHistory", 6);
+  return `<div class="card oil-alert-card booking-history-card">
+    <div class="panel-title">
+      <div><h3>Lịch sử đặt phòng</h3><span class="hint">Danh sách phiếu đặt phòng đã tạo, có thời gian tạo, phòng, khách và tình trạng thanh toán.</span></div>
+      <span class="pill">${allRows.length} phiếu</span>
+    </div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>Mã</th><th>Nhóm/khách</th><th>Khách sạn / phòng</th><th>Giờ tạo</th><th>Ngày tạo</th><th>Thời gian ở</th><th>Thanh toán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${paged.rows.map((booking) => `<tr>
+        <td><strong>${booking.id}</strong></td>
+        <td><strong>${booking.group}</strong><br><span class="hint">${booking.customer || "-"} · ${booking.phone || "-"}</span></td>
+        <td><strong>${booking.hotelName || "-"}</strong><br><span class="hint">Phòng ${booking.room}</span></td>
+        <td><strong>${formatTime(booking.createdAt || booking.start)}</strong></td>
+        <td>${formatDate(booking.createdAt || booking.start)}</td>
+        <td>${formatDate(booking.start)} → ${formatDate(booking.end)}<br><span class="hint">${booking.guests || 0} khách</span></td>
+        <td><strong>${money(booking.total || 0)}</strong><br><span class="hint">Đã thu ${money(booking.paid || 0)}</span></td>
+        <td>${pill(booking.status)}</td>
+        <td>${can("booking_edit") ? `<button class="secondary" data-modal="booking:${booking.id}">Chi tiết</button>` : "<span class='hint'>Chỉ xem</span>"}</td>
+      </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có lịch sử đặt phòng.</td></tr>`}</tbody>
+    </table></div>
+    ${panelPagination("bookingHistory", paged)}
+  </div>`;
+}
+
+function paginatePanel(rows = [], key, perPage = 5) {
+  state.panelPages = state.panelPages || {};
+  const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+  const current = Math.min(Math.max(1, Number(state.panelPages[key] || 1)), totalPages);
+  state.panelPages[key] = current;
+  const start = (current - 1) * perPage;
+  return {
+    rows: rows.slice(start, start + perPage),
+    page: current,
+    totalPages,
+    total: rows.length,
+    start: rows.length ? start + 1 : 0,
+    end: Math.min(rows.length, start + perPage)
+  };
+}
+
+function panelPagination(key, pageInfo) {
+  if (!pageInfo || pageInfo.totalPages <= 1) {
+    return pageInfo?.total ? `<div class="panel-pager"><span>Hiển thị ${pageInfo.start} - ${pageInfo.end} trong ${pageInfo.total}</span></div>` : "";
+  }
+  const pages = Array.from({ length: pageInfo.totalPages }, (_, index) => index + 1);
+  return `<div class="panel-pager">
+    <span>Hiển thị ${pageInfo.start} - ${pageInfo.end} trong ${pageInfo.total}</span>
+    <div>
+      <button class="ghost" ${pageInfo.page <= 1 ? "disabled" : ""} data-action="panel-page:${key}:${pageInfo.page - 1}">‹</button>
+      ${pages.map((page) => `<button class="ghost ${page === pageInfo.page ? "active" : ""}" data-action="panel-page:${key}:${page}">${page}</button>`).join("")}
+      <button class="ghost" ${pageInfo.page >= pageInfo.totalPages ? "disabled" : ""} data-action="panel-page:${key}:${pageInfo.page + 1}">›</button>
+    </div>
+  </div>`;
+}
+
+function formatTime(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" });
 }
 
 function ticketAssetLabel(db, ticket) {
@@ -2582,6 +2762,10 @@ function equipmentMaintenanceOverview(db = getDb()) {
       ${metric("Lần sửa thiết bị", repairTotal)}
     </div>
     ${equipmentAlertTable(rows)}
+    <div class="maintenance-history-grid">
+      ${ticketNotificationPanel(db, "Thiết bị")}
+      ${ticketHistoryPanel(db, "Thiết bị")}
+    </div>
     ${equipmentRepairHistoryTable(rows)}
   `;
 }
@@ -3905,6 +4089,12 @@ function handleAction(event) {
       const input = document.querySelector("input[name='bikeImages']");
       if (input) input.value = "";
     }
+  }
+  if (action?.startsWith("panel-page:")) {
+    const [, key, page] = action.split(":");
+    state.panelPages = state.panelPages || {};
+    state.panelPages[key] = Math.max(1, Number(page || 1));
+    render();
   }
   if (action?.startsWith("set-bike-status:")) {
     const parts = action.split(":");

@@ -4485,6 +4485,76 @@ table td,
   background: linear-gradient(135deg, #078f9a, #12b7ad) !important;
 }
 
+.panel-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px 0;
+  color: #dff7ff;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.panel-pager > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.panel-pager button {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(127, 196, 220, 0.46) !important;
+  border-radius: 8px;
+  color: #eaffff !important;
+  background: rgba(7, 41, 64, 0.92) !important;
+  font-weight: 950;
+}
+
+.panel-pager button.active {
+  color: #052033 !important;
+  border-color: #22d3c5 !important;
+  background: #8ff4ea !important;
+}
+
+.panel-pager button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.maintenance-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ticket-history-card,
+.ticket-notice-card,
+.booking-history-card {
+  min-width: 0;
+}
+
+.ticket-history-card .table-wrap,
+.ticket-notice-card .table-wrap,
+.booking-history-card .table-wrap {
+  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+  .maintenance-history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-pager {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* Uploaded bike images: keep previews visible on the dark theme */
 .modal .image-grid {
   border-color: rgba(127, 196, 220, 0.42) !important;
