@@ -397,7 +397,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -405,10 +405,10 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 10px 9px;
+  padding: 14px 12px;
   background:
     radial-gradient(circle at 70% 12%, rgba(25, 182, 163, 0.22), transparent 30%),
     linear-gradient(165deg, #003947, #064f61 48%, #00313c);
@@ -419,16 +419,16 @@ button {
 .brand {
   display: grid;
   justify-items: center;
-  gap: 4px;
-  padding: 8px 8px 12px;
-  margin-bottom: 8px;
+  gap: 5px;
+  padding: 8px 8px 14px;
+  margin-bottom: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   text-align: center;
 }
 
 .brand-logo {
-  width: 86px;
-  height: 76px;
+  width: 82px;
+  height: 72px;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid rgba(255, 217, 156, 0.65);
@@ -449,30 +449,49 @@ button {
 
 .nav {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   flex: 1;
   align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 224, 209, 0.78) rgba(255, 255, 255, 0.08);
+}
+
+.nav::-webkit-scrollbar {
+  width: 7px;
+}
+
+.nav::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, #26e0d1, #0d8297);
 }
 
 .nav-group {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .nav button {
   position: relative;
   width: 100%;
   display: flex;
-  gap: 12px;
+  gap: 11px;
   align-items: center;
   border: 0;
   border-radius: 14px;
-  padding: 8px 10px;
-  min-height: 52px;
+  padding: 9px 11px;
+  min-height: 50px;
   color: #e8fbfa;
   background: transparent;
   text-align: left;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
   line-height: 1.25;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
@@ -482,6 +501,7 @@ button {
 .nav button span:nth-child(2) {
   min-width: 0;
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .nav-caret {
@@ -494,21 +514,23 @@ button {
 .nav-sub {
   display: grid;
   gap: 4px;
-  margin: 0 0 3px 0;
-  padding-left: 0;
-  border-left: 0;
+  margin: 1px 0 5px 19px;
+  padding-left: 11px;
+  border-left: 1px solid rgba(127, 196, 220, 0.22);
 }
 
 .nav-sub button {
-  padding: 7px 10px 7px 22px;
+  min-height: 43px;
+  padding: 7px 9px;
   color: #d7f6f3;
   font-size: 13px;
+  font-weight: 760;
 }
 
 .nav-symbol {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   display: grid;
   place-items: center;
   border-radius: 11px;
@@ -535,9 +557,9 @@ button {
 }
 
 .nav-sub .nav-symbol {
-  width: 34px;
-  height: 34px;
-  flex-basis: 34px;
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
   border-radius: 10px;
   font-size: 16px;
 }
