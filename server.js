@@ -183,7 +183,15 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = await readBody(req);
       const db = await readDb();
-      const user = (db.users || []).find((item) => item.email === body.email && item.password === body.password && item.active);
+      const email = String(body.email || "").trim();
+      const password = String(body.password || "").trim();
+      const envAdminEmail = String(process.env.ADMIN_EMAIL || "admin@cocobay.vn").trim();
+      const envAdminPassword = String(process.env.ADMIN_PASSWORD || "").trim();
+      let user = (db.users || []).find((item) => item.email === email && item.password === password && item.active);
+      if (!user && envAdminPassword && email === envAdminEmail && password === envAdminPassword) {
+        user = (db.users || []).find((item) => item.email === envAdminEmail && item.active);
+        if (user) user.password = envAdminPassword;
+      }
       if (!user) {
         sendJson(res, 401, { ok: false, message: "Email hoặc mật khẩu không đúng." });
         return true;

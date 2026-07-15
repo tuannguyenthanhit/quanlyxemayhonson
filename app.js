@@ -961,6 +961,8 @@ function bindLogin() {
   document.getElementById("login-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
+    data.email = String(data.email || "").trim();
+    data.password = String(data.password || "").trim();
     if (apiState.enabled) {
       try {
         const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
@@ -977,7 +979,7 @@ function bindLogin() {
     const db = getDb();
     const user = db.users.find((u) => u.email === data.email && u.password === data.password && u.active);
     if (!user) {
-      showToast("Email hoặc mật khẩu không đúng.");
+      showToast("Email hoặc mật khẩu không đúng. Bản local mặc định: admin@cocobay.vn / 123456.");
       return;
     }
     user.lastLoginAt = nowLocal();
