@@ -1,4 +1,4 @@
-const DB_KEY = "cocoBayInternalDb.v1";
+﻿const DB_KEY = "cocoBayInternalDb.v1";
 const SESSION_KEY = "cocoBaySession.v1";
 const API_BASE = "/api";
 
@@ -934,20 +934,11 @@ function loginView() {
             </details>
             <details class="login-recovery">
               <summary>Quên mật khẩu hoặc tên đăng nhập?</summary>
-              <form id="recover-form" class="recover-panel">
-              <div class="field">
-                <label>Email hoặc tên nhân viên</label>
-                <input name="identity" type="text" placeholder="Ví dụ: admin@cocobay.vn hoặc Chủ Coco Bay" autocomplete="username">
+              <div class="recover-panel recovery-contact">
+                <strong>Liên hệ admin để cấp lại mật khẩu</strong>
+                <p>Vui lòng gọi hoặc nhắn Zalo: <a href="tel:0919254025">0919254025</a>.</p>
+                <small>Admin sẽ kiểm tra tài khoản và cấp lại mật khẩu mới cho nhân viên.</small>
               </div>
-              <button class="secondary" type="submit" style="width:100%">Gửi mã khôi phục</button>
-              <div class="hint" id="recover-result">Hệ thống sẽ gợi ý email đăng nhập nếu tìm thấy tài khoản và tạo mã xác minh.</div>
-            </form>
-            <form id="reset-form" class="recover-panel">
-              <div class="field"><label>Email đăng nhập</label><input name="email" type="email" placeholder="email@cocobay.vn" autocomplete="username"></div>
-              <div class="field"><label>Mã xác minh</label><input name="code" type="text" placeholder="Nhập mã vừa nhận"></div>
-              <div class="field"><label>Mật khẩu mới</label><input name="password" type="password" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"></div>
-              <button class="ghost" type="submit" style="width:100%">Đặt lại mật khẩu</button>
-            </form>
           </details>
           </div>
           <div class="login-card-foot">♢ Bảo mật cấp doanh nghiệp</div>
@@ -5409,4 +5400,5 @@ window.addEventListener("error", (event) => {
 });
 
 appInit();
+
 

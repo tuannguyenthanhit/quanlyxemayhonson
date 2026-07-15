@@ -294,6 +294,43 @@ button {
   margin-top: 10px;
 }
 
+.recovery-contact {
+  display: grid;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  text-align: center;
+}
+
+.recovery-contact strong {
+  color: #fffaf1;
+  font-size: 16px;
+}
+
+.recovery-contact p {
+  margin: 0;
+  color: #d9f5f4;
+  line-height: 1.45;
+}
+
+.recovery-contact a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  margin-left: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #063142;
+  background: #ffd99f;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.recovery-contact small {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.45;
+}
+
 .login-card .field input {
   border-color: rgba(255, 255, 255, 0.24);
   background: rgba(255, 255, 255, 0.94);
