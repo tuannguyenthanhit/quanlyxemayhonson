@@ -1734,6 +1734,13 @@ th {
   font-size: 13px;
 }
 
+tfoot th,
+tfoot td {
+  color: var(--sea-dark);
+  background: #dff6f4;
+  font-weight: 900;
+}
+
 tr:last-child td {
   border-bottom: 0;
 }

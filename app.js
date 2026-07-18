@@ -2543,9 +2543,10 @@ function bikeMaintenanceOverview(db = getDb()) {
     const tickets = db.tickets.filter((ticket) => ticket.assetType === "Xe máy" && ticket.assetId === bike.id);
     const completedTickets = tickets.filter((ticket) => ticket.status === "Hoàn thành");
     const repairCost = tickets.reduce((sum, ticket) => sum + Number(ticket.actualCost || ticket.estimatedCost || 0), 0);
+    const latestTicket = latestBikeTicket(tickets);
     const oilKm = nextOilChangeKm(bike);
     const maintenanceKm = nextMaintenanceKm(bike);
-    return { bike, tickets, completedTickets, repairCost, oilKm, maintenanceKm };
+    return { bike, tickets, completedTickets, repairCost, latestTicket, oilKm, maintenanceKm };
   });
   const oilDue = rows.filter((row) => isBikeOilDue(row.bike)).length;
   const maintenanceDue = rows.filter((row) => isBikeMaintenanceKmDue(row.bike)).length;
@@ -2566,8 +2567,8 @@ function bikeMaintenanceOverview(db = getDb()) {
     <div class="card">
       <div class="panel-title"><h3>Theo dõi thay nhớt và bảo trì theo km</h3><span class="pill">${rows.length} xe</span></div>
       <div class="table-wrap compact-table"><table>
-        <thead><tr><th>Xe</th><th>Km hiện tại</th><th>Thay nhớt</th><th>Bảo trì tổng quát</th><th>Sửa/bảo trì</th><th>Chi phí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-        <tbody>${rows.map(({ bike, tickets, completedTickets, repairCost, oilKm, maintenanceKm }) => `
+        <thead><tr><th>Xe</th><th>Km hiện tại</th><th>Thay nhớt</th><th>Bảo trì tổng quát</th><th>Sửa/bảo trì</th><th>Chi phí</th><th>Lần sửa gần nhất</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>${rows.map(({ bike, tickets, completedTickets, repairCost, latestTicket, oilKm, maintenanceKm }) => `
           <tr>
             <td><strong>${bike.code}  · ${bike.name}</strong><br><span class="hint">${bike.plate}  · ${bike.type}</span></td>
             <td>${Number(bike.odometer || 0).toLocaleString("vi-VN")} km</td>
@@ -2581,12 +2582,21 @@ function bikeMaintenanceOverview(db = getDb()) {
             </td>
             <td>${tickets.length} phi phiếu<br><span class="hint">HoHoàn thành ${completedTickets.length} l lần</span></td>
             <td>${can("costs") ? money(repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
+            <td>${latestTicket ? `<strong>${formatDate(latestTicket.foundDate || latestTicket.dueDate)}</strong><br><span class="hint">${latestTicket.issue} · ${money(ticketCost(latestTicket))}</span>` : "<span class='hint'>Chưa có</span>"}</td>
             <td>${bikeStatusControl(bike)}</td>
             <td><div class="actions"><button class="secondary" data-modal="bikeDetail:${bike.id}">Chi tiết</button><button class="ghost" data-action="set-bike-status:${bike.id}:Có sẵn">Có sẵn</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang sửa">Đang sửa</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang thuê">Đang thuê</button><button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật km</button><button class="ghost" data-modal="ticket:Xe máy:${bike.id}">Tạo phiếu</button></div></td>
           </tr>`).join("")}</tbody>
       </table></div>
     </div>
   `;
+}
+
+function ticketCost(ticket) {
+  return Number(ticket?.actualCost || ticket?.estimatedCost || 0);
+}
+
+function latestBikeTicket(tickets = []) {
+  return [...tickets].sort((a, b) => new Date(b.foundDate || b.createdAt || b.dueDate || 0) - new Date(a.foundDate || a.createdAt || a.dueDate || 0))[0] || null;
 }
 
 function oilChangeAlertTable(rows) {
@@ -4006,14 +4016,18 @@ function bikeKmModal(b) {
 function detailBikeModal(b) {
   const db = getDb();
   const rentals = db.rentals.filter((r) => r.bikeId === b.id);
-  const tickets = db.tickets.filter((t) => t.assetId === b.id);
+  const tickets = db.tickets.filter((t) => t.assetType === "Xe máy" && t.assetId === b.id)
+    .sort((a, b) => new Date(b.foundDate || b.createdAt || b.dueDate || 0) - new Date(a.foundDate || a.createdAt || a.dueDate || 0));
   const owner = db.owners.find((o) => o.id === b.ownerId);
   const revenue = rentals.reduce((s, r) => s + Number(r.paid || 0), 0);
-  const costs = tickets.reduce((s, t) => s + Number(t.actualCost || t.estimatedCost || 0), 0);
+  const costs = tickets.reduce((s, t) => s + ticketCost(t), 0);
+  const completedCost = tickets.filter((t) => t.status === "Hoàn thành").reduce((s, t) => s + ticketCost(t), 0);
+  const pendingCost = costs - completedCost;
   return `<div class="modal-backdrop"><div class="modal">
     <header><h3>${b.code} · ${b.name}</h3><button class="ghost" data-action="close-modal">Đóng</button></header>
     <div class="modal-body grid">
-      <div class="grid cols-3">${metric("Doanh thu", money(revenue))}${metric("Chi phí sửa", money(costs))}${metric("Số lần hư", tickets.length)}</div>
+      <div class="grid cols-3">${metric("Doanh thu", money(revenue))}${metric("Tổng chi phí sửa", money(costs))}${metric("Số phiếu sửa", tickets.length)}</div>
+      <div class="grid cols-3">${metric("Đã hoàn thành", money(completedCost))}${metric("Đang xử lý/dự kiến", money(pendingCost))}${metric("Lần sửa gần nhất", latestBikeTicket(tickets) ? formatDate(latestBikeTicket(tickets).foundDate || latestBikeTicket(tickets).dueDate) : "-")}</div>
       <div class="card"><h3>Thông tin xe</h3><p>${b.plate} · ${b.brand} ${b.model} · ${b.color}</p><p>Chủ xe: ${owner?.name || "-"} · ${b.ownership}</p><p>Km: ${Number(b.odometer).toLocaleString("vi-VN")} · Xăng: ${b.fuel} · ${pill(b.status)}</p></div>
       <div class="grid cols-2">
         <div class="card"><h3>Nhắc thay nhớt/bảo trì theo km</h3>
@@ -4024,9 +4038,31 @@ function detailBikeModal(b) {
           <div class="image-grid">${(b.images || []).map((src, index) => `<img src="${src}" alt="Hình xe ${index + 1}">`).join("") || `<span>Chưa có hình ảnh đính kèm.</span>`}</div>
         </div>
       </div>
-      <div class="grid cols-2"><div class="card"><h3>Lịch sử thuê</h3>${rentals.map(calendarItem).join("") || "<div class='empty'>Chưa có.</div>"}</div><div class="card"><h3>Lịch sử hư hỏng và bảo trì</h3>${tickets.map((t) => `<div class="timeline-item"><strong>${t.code}  · ${t.status}</strong><span>${t.issue}</span><span class="hint">${formatDate(t.foundDate)}  · ${money(t.actualCost || t.estimatedCost)}</span></div>`).join("") || "<div class='empty'>Chưa có.</div>"}</div></div>
+      <div class="grid cols-2"><div class="card"><h3>Lịch sử thuê</h3>${rentals.map(calendarItem).join("") || "<div class='empty'>Chưa có.</div>"}</div>${bikeRepairHistoryCard(tickets)}</div>
     </div>
   </div></div>`;
+}
+
+function bikeRepairHistoryCard(tickets) {
+  return `<div class="card bike-repair-history">
+    <div class="panel-title">
+      <div><h3>Lịch sử chi phí sửa xe</h3><span class="hint">Theo dõi từng phiếu, ngày tạo và số tiền đã/dự kiến sửa.</span></div>
+      <span class="pill">${tickets.length} phiếu</span>
+    </div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>Mã phiếu</th><th>Ngày</th><th>Lỗi</th><th>Chi phí dự kiến</th><th>Chi phí thực tế</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${tickets.map((t) => `<tr>
+        <td><strong>${t.code}</strong><br><span class="hint">${t.priority || ""}</span></td>
+        <td>${formatDate(t.foundDate || t.dueDate)}</td>
+        <td>${t.issue || "-"}</td>
+        <td>${money(t.estimatedCost || 0)}</td>
+        <td><strong>${money(t.actualCost || 0)}</strong></td>
+        <td>${pill(t.status)}</td>
+        <td><button class="ghost" data-modal="ticketEdit:${t.id}">Cập nhật</button></td>
+      </tr>`).join("") || `<tr><td colspan="7" class="empty">Xe này chưa có lịch sử sửa chữa.</td></tr>`}</tbody>
+      <tfoot><tr><th colspan="3">Tổng chi phí</th><th>${money(tickets.reduce((sum, t) => sum + Number(t.estimatedCost || 0), 0))}</th><th>${money(tickets.reduce((sum, t) => sum + Number(t.actualCost || 0), 0))}</th><th colspan="2">${money(tickets.reduce((sum, t) => sum + ticketCost(t), 0))}</th></tr></tfoot>
+    </table></div>
+  </div>`;
 }
 
 function field(name, label, value = "", required = false, type = "text") {
