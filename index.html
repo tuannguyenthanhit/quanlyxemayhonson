@@ -4,16 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>COCO BAY INTERNAL MANAGEMENT</title>
+    <style>
+      .app-loading { min-height: 100vh; display: grid; place-items: center; background: #061d31; color: #ecfeff; font: 700 18px Arial, sans-serif; }
+      .app-loading span { display: inline-block; width: 18px; height: 18px; margin-right: 10px; border: 3px solid rgba(45, 212, 191, .25); border-top-color: #2dd4bf; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -4px; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
     <link rel="stylesheet" href="styles.css?v=20260716-recovery-contact" />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="app-loading"><div><span></span>Đang tải COCO BAY...</div></div>
     <div id="toast" class="toast" aria-live="polite"></div>
-    <script src="app.js?v=20260718-finance-month-excel"></script>
+    <script src="app.js?v=20260718-fast-load-cache"></script>
   </body>
 </html>
-
-
 
 
 

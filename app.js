@@ -787,10 +787,14 @@ function statusClass(status) {
 }
 
 async function appInit() {
+  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  if (session && !state.user) {
+    state.user = getDb().users.find((u) => u.id === session.userId) || null;
+    if (state.user) render();
+  }
   await loadRemoteSession();
   syncStatuses();
   if (!apiState.enabled) {
-    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
     if (session) state.user = getDb().users.find((u) => u.id === session.userId) || null;
   }
   render();
@@ -798,6 +802,7 @@ async function appInit() {
 
 function render() {
   const root = document.getElementById("app");
+  root.className = "";
   if (!state.user) {
     root.innerHTML = loginView();
     bindLogin();

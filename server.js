@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const zlib = require("zlib");
 
 let mysql = null;
 try {
@@ -40,6 +41,14 @@ const types = {
   ".jpeg": "image/jpeg",
   ".webp": "image/webp"
 };
+
+const compressibleTypes = new Set([
+  "text/html; charset=utf-8",
+  "text/css; charset=utf-8",
+  "application/javascript; charset=utf-8",
+  "application/json; charset=utf-8",
+  "image/svg+xml"
+]);
 
 function defaultDb() {
   return {
@@ -211,6 +220,34 @@ function setSessionCookie(res, token) {
 
 function clearSessionCookie(res) {
   res.setHeader("Set-Cookie", "coco_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+}
+
+function staticCacheHeader(filePath) {
+  const ext = path.extname(filePath);
+  if (ext === ".html") return "no-cache";
+  return "public, max-age=31536000, immutable";
+}
+
+function sendStatic(req, res, filePath, data) {
+  const contentType = types[path.extname(filePath)] || "application/octet-stream";
+  const headers = {
+    "Content-Type": contentType,
+    "Cache-Control": staticCacheHeader(filePath)
+  };
+  if (compressibleTypes.has(contentType) && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+    zlib.gzip(data, (error, gzipped) => {
+      if (error) {
+        res.writeHead(200, headers);
+        res.end(data);
+        return;
+      }
+      res.writeHead(200, { ...headers, "Content-Encoding": "gzip", "Vary": "Accept-Encoding" });
+      res.end(gzipped);
+    });
+    return;
+  }
+  res.writeHead(200, headers);
+  res.end(data);
 }
 
 async function handleApi(req, res, urlPath) {
@@ -396,18 +433,11 @@ const server = http.createServer(async (req, res) => {
           res.end("Not found");
           return;
         }
-        res.writeHead(200, { "Content-Type": types[".html"] });
-        res.end(fallback);
+        sendStatic(req, res, path.join(root, "index.html"), fallback);
       });
       return;
     }
-    res.writeHead(200, {
-      "Content-Type": types[path.extname(filePath)] || "application/octet-stream",
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-      "Pragma": "no-cache",
-      "Expires": "0"
-    });
-    res.end(data);
+    sendStatic(req, res, filePath, data);
   });
 });
 
