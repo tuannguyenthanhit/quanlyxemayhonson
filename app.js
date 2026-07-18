@@ -4271,8 +4271,6 @@ function handleAction(event) {
   if (action === "mark-read") markRead();
   if (action === "backup-json") backupJson();
   if (action === "backup-website") backupWebsite();
-  if (action === "reset-sample") resetSample();
-  if (action === "clear-sample") clearSample();
   if (action === "reset-bike-filters") {
     state.query = "";
     state.filter = "all";
@@ -5099,16 +5097,6 @@ const crcTable = Array.from({ length: 256 }, (_, index) => {
   }
   return value >>> 0;
 });
-
-function resetSample() {
-  showToast("Chức năng khôi phục dữ liệu mẫu đã được tắt để tránh ghi đè dữ liệu thật.");
-}
-
-function clearSample() {
-  showToast("Chức năng xóa dữ liệu mẫu đã được tắt để tránh mất dữ liệu vận hành.");
-}
-
-
 
 function exportRentalsExcel() {
   const db = getDb();
