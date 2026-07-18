@@ -2983,39 +2983,68 @@ function deleteOwner(id) {
 
 function financeView() {
   const db = getDb();
-  const s = dashboardStats();
-  const rentals = db.rentals;
-  const ownerRows = ownerRevenueRows(db);
+  const month = state.reportMonth || todayISO().slice(0, 7);
+  const s = financeMonthStats(db, month);
+  const rentals = s.rentals;
+  const ownerRows = ownerRevenueRows(db, month);
   return `
-    ${pageHeader("Doanh thu và chi phí", "Chỉ Admin và Manager được xem số liệu tài chính.", `<button class="secondary" data-action="export-report">XuXuất CSV</button>`)}
+    ${pageHeader("Doanh thu và chi phí", "Chỉ Admin và Manager được xem số liệu tài chính.", `<button class="secondary" data-action="export-report">Xuất Excel</button>`)}
+    <div class="card toolbar-card">
+      <div class="panel-title">
+        <div>
+          <h3>Lọc doanh thu và chi phí</h3>
+          <span class="hint">Chọn tháng để xem doanh thu, công nợ, chi phí sửa xe và lợi nhuận từng chủ xe.</span>
+        </div>
+        <label class="month-filter">Tháng <input type="month" value="${month}" data-report-month></label>
+      </div>
+    </div>
     <div class="grid cols-3">
-      ${metric("Doanh thu hôm nay", money(s.todayRevenue))}
-      ${metric("Doanh thu tháng này", money(s.monthRevenue))}
+      ${metric("Doanh thu trong tháng", money(s.monthRevenue))}
       ${metric("Tiền chưa thanh toán", money(s.unpaid))}
       ${metric("Chi phí sửa xe", money(s.bikeRepair))}
       ${metric("Chi phí sửa thiết bị", money(s.equipmentRepair))}
       ${metric("Lợi nhuận ước tính", money(s.profit))}
+      ${metric("Số phiếu thuê", s.rentalCount)}
     </div>
     <div class="card">
-      <div class="panel-title"><h3>Tỷ lệ thanh toán</h3></div>
-      ${rentals.map((r) => `<div style="margin:12px 0"><strong>${r.code}  · ${r.customer}</strong><div class="progress"><span style="width:${Math.min(100, (Number(r.paid) / Number(r.total || 1)) * 100)}%"></span></div><span class="hint">${money(r.paid)} / ${money(r.total)}</span></div>`).join("")}
+      <div class="panel-title"><h3>Tỷ lệ thanh toán trong tháng ${month}</h3><span class="pill">${rentals.length} phiếu</span></div>
+      ${rentals.map((r) => `<div style="margin:12px 0"><strong>${r.code}  · ${r.customer}</strong><div class="progress"><span style="width:${Math.min(100, (Number(r.paid) / Number(r.total || 1)) * 100)}%"></span></div><span class="hint">${money(r.paid)} / ${money(r.total)} · ${formatDate(r.start)}</span></div>`).join("") || `<div class="empty">Tháng này chưa có phiếu thuê.</div>`}
     </div>
     <div class="card">
-      <div class="panel-title"><h3>Doanh thu và lợi nhuận theo chủ xe</h3><button class="secondary" data-view="reports">Xem báo cáo</button></div>
+      <div class="panel-title"><h3>Doanh thu và lợi nhuận theo chủ xe trong tháng</h3><button class="secondary" data-view="reports">Xem báo cáo</button></div>
       ${ownerFinanceTable(ownerRows)}
     </div>
   `;
+}
+
+function financeMonthStats(db, month) {
+  const rentals = db.rentals.filter((rental) => rental.status !== "Đã hủy" && rentalDayKeysInMonth(rental, month).length > 0);
+  const bikeTickets = db.tickets.filter((ticket) => ticket.assetType === "Xe máy" && dateInMonth(ticket.foundDate || ticket.createdAt || ticket.dueDate, month));
+  const equipmentTickets = db.tickets.filter((ticket) => ticket.assetType === "Thiết bị" && dateInMonth(ticket.foundDate || ticket.createdAt || ticket.dueDate, month));
+  const bikeRepair = bikeTickets.reduce((sum, ticket) => sum + Number(ticket.actualCost || ticket.estimatedCost || 0), 0);
+  const equipmentRepair = equipmentTickets.reduce((sum, ticket) => sum + Number(ticket.actualCost || ticket.estimatedCost || 0), 0);
+  const monthRevenue = rentals.reduce((sum, rental) => sum + Number(rental.paid || 0), 0);
+  return {
+    rentals,
+    rentalCount: rentals.length,
+    monthRevenue,
+    unpaid: rentals.reduce((sum, rental) => sum + Math.max(0, Number(rental.total || 0) - Number(rental.paid || 0)), 0),
+    bikeRepair,
+    equipmentRepair,
+    profit: monthRevenue - bikeRepair - equipmentRepair
+  };
 }
 
 function reportsView() {
   const db = getDb();
   const damaged = db.motorbikes.map((b) => ({ b, count: db.tickets.filter((t) => t.assetId === b.id).length })).sort((a, b) => b.count - a.count);
   const ownerRows = ownerRevenueRows(db);
+  const monthlyOwnerRows = ownerRevenueRows(db, state.reportMonth);
   const bikeRevenueRows = bikeRevenueReportRows(db);
   const monthlyRental = monthlyBikeRentalReport(db, state.reportMonth);
   const totals = reportTotals(db, ownerRows);
   return `
-    ${pageHeader("Báo cáo", "Dashboard tổng hợp doanh thu, lợi nhuận, tình trạng xe và thiết bị.", `<button class="secondary" data-action="print-report">In / LIn / Lưu PDF</button><button class="primary" data-action="export-report">XuXuất CSV</button>`)}
+    ${pageHeader("Báo cáo", "Dashboard tổng hợp doanh thu, lợi nhuận, tình trạng xe và thiết bị.", `<button class="secondary" data-action="print-report">In / Lưu PDF</button><button class="primary" data-action="export-report">Xuất Excel</button>`)}
     <div id="report-print-area" class="report-dashboard">
       <div class="report-hero">
         <div>
@@ -3037,6 +3066,7 @@ function reportsView() {
       </div>
 
       ${monthlyBikeRentalSection(monthlyRental)}
+      ${monthlyOwnerFinanceSection(monthlyOwnerRows, state.reportMonth)}
 
       <div class="grid cols-2">
         ${ownerRevenueChart(ownerRows)}
@@ -3085,13 +3115,17 @@ function monthlyBikeRentalReport(db, month = todayISO().slice(0, 7)) {
   db.rentals
     .filter((rental) => rental.status !== "Đã hủy")
     .forEach((rental) => {
-      const row = rowMap.get(rental.bikeId);
-      if (!row) return;
+      const bikeIds = rentalBikeIds(rental);
+      const revenueShare = bikeIds.length ? Number(rental.paid || 0) / bikeIds.length : 0;
       const days = rentalDayKeysInMonth(rental, month);
       if (!days.length) return;
-      days.forEach((day) => row.dateSet.add(day));
-      row.rentalCount += 1;
-      row.revenue += Number(rental.paid || 0);
+      bikeIds.forEach((bikeId) => {
+        const row = rowMap.get(bikeId);
+        if (!row) return;
+        days.forEach((day) => row.dateSet.add(day));
+        row.rentalCount += 1;
+        row.revenue += revenueShare;
+      });
     });
   const rows = [...rowMap.values()]
     .map((row) => ({ ...row, bikeDays: row.dateSet.size, days: [...row.dateSet].sort() }))
@@ -3164,6 +3198,31 @@ function monthlyBikeRentalSection(report) {
         <td><span class="hint">${row.days.map(formatDate).join(", ")}</span></td>
       </tr>`).join("") || `<tr><td colspan="6" class="empty">Tháng này chưa có xe được thuê.</td></tr>`}</tbody>
     </table></div>
+  </div>`;
+}
+
+function monthlyOwnerFinanceSection(rows, month) {
+  const totals = {
+    revenue: rows.reduce((sum, row) => sum + row.revenue, 0),
+    receivable: rows.reduce((sum, row) => sum + row.receivable, 0),
+    repairCost: rows.reduce((sum, row) => sum + row.repairCost, 0),
+    profit: rows.reduce((sum, row) => sum + row.profit, 0)
+  };
+  return `<div class="card monthly-owner-card">
+    <div class="panel-title">
+      <div>
+        <h3>Doanh thu và chi phí sửa xe theo chủ xe trong tháng</h3>
+        <span class="hint">Tháng ${month}: tổng hợp tiền thuê xe đã thu, tiền còn phải thu, chi phí sửa/bảo trì xe và lợi nhuận từng chủ xe.</span>
+      </div>
+      <span class="pill">${rows.length} chủ xe</span>
+    </div>
+    <div class="grid cols-4">
+      ${reportKpi("Doanh thu đã thu", money(totals.revenue), "Theo phiếu thuê trong tháng")}
+      ${reportKpi("Còn phải thu", money(totals.receivable), "Tiền thuê chưa thanh toán đủ")}
+      ${reportKpi("Chi phí sửa xe", money(totals.repairCost), "Theo phiếu sửa xe trong tháng")}
+      ${reportKpi("Lợi nhuận tạm tính", money(totals.profit), "Doanh thu trừ chi phí sửa xe")}
+    </div>
+    ${ownerFinanceTable(rows)}
   </div>`;
 }
 
@@ -3555,14 +3614,42 @@ function assetName(t) {
   return asset ? `${asset.code} · ${asset.name}` : "-";
 }
 
-function ownerRevenueRows(db = getDb()) {
+function rentalBikeIds(rental) {
+  if (Array.isArray(rental.bikeIds) && rental.bikeIds.length) return rental.bikeIds.filter(Boolean);
+  return rental.bikeId ? [rental.bikeId] : [];
+}
+
+function dateInMonth(value, month) {
+  if (!value || !month) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return localDateKey(date).slice(0, 7) === month;
+}
+
+function ownerRevenueRows(db = getDb(), month = "") {
   return db.owners.map((owner) => {
     const bikes = db.motorbikes.filter((bike) => bike.ownerId === owner.id);
     const bikeIds = new Set(bikes.map((bike) => bike.id));
-    const rentals = db.rentals.filter((rental) => bikeIds.has(rental.bikeId));
-    const tickets = db.tickets.filter((ticket) => ticket.assetType === "Xe máy" && bikeIds.has(ticket.assetId));
-    const revenue = rentals.reduce((sum, rental) => sum + Number(rental.paid || 0), 0);
-    const receivable = rentals.reduce((sum, rental) => sum + Math.max(0, Number(rental.total || 0) - Number(rental.paid || 0)), 0);
+    const rentals = db.rentals.filter((rental) => {
+      const hasOwnerBike = rentalBikeIds(rental).some((bikeId) => bikeIds.has(bikeId));
+      if (!hasOwnerBike || rental.status === "Đã hủy") return false;
+      return month ? rentalDayKeysInMonth(rental, month).length > 0 : true;
+    });
+    const tickets = db.tickets.filter((ticket) => {
+      if (ticket.assetType !== "Xe máy" || !bikeIds.has(ticket.assetId)) return false;
+      return month ? dateInMonth(ticket.foundDate || ticket.createdAt || ticket.dueDate, month) : true;
+    });
+    const revenue = rentals.reduce((sum, rental) => {
+      const matchedCount = rentalBikeIds(rental).filter((bikeId) => bikeIds.has(bikeId)).length || 1;
+      const totalBikeCount = rentalBikeIds(rental).length || 1;
+      return sum + (Number(rental.paid || 0) / totalBikeCount) * matchedCount;
+    }, 0);
+    const receivable = rentals.reduce((sum, rental) => {
+      const matchedCount = rentalBikeIds(rental).filter((bikeId) => bikeIds.has(bikeId)).length || 1;
+      const totalBikeCount = rentalBikeIds(rental).length || 1;
+      const unpaid = Math.max(0, Number(rental.total || 0) - Number(rental.paid || 0));
+      return sum + (unpaid / totalBikeCount) * matchedCount;
+    }, 0);
     const repairCost = tickets.reduce((sum, ticket) => sum + Number(ticket.actualCost || ticket.estimatedCost || 0), 0);
     return {
       owner,
@@ -5004,41 +5091,81 @@ function exportBikesExcel() {
 
 function exportCsv() {
   const db = getDb();
-  const monthlyRental = monthlyBikeRentalReport(db, state.reportMonth);
-  const rows = [
-    ["BÁO CÁO DOANH THU THEO CHỦ XE"],
-    ["Chủ xe", "Hình thức", "Số xe", "Số phiếu thuê", "Doanh thu", "Còn phải thu", "Chi phí sửa xe", "Lợi nhuận"],
-    ...ownerRevenueRows(db).map((row) => [row.owner.name, row.owner.type, row.bikeCount, row.rentalCount, row.revenue, row.receivable, row.repairCost, row.profit]),
-    [],
-    ["CHI TIẾT PHIẾU THUÊ"],
-    ["Mã phiếu", "Khách", "Phòng", "Xe", "Chủ xe", "Tổng tiền", "Đã thanh toán", "Trạng thái"],
-    ...db.rentals.map((r) => {
-      const bike = db.motorbikes.find((b) => b.id === r.bikeId);
-      const owner = db.owners.find((o) => o.id === bike?.ownerId);
-      return [r.code, r.customer, r.room, bike?.code || "", owner?.name || "", r.total, r.paid, r.status];
-    })
-  ];
-  rows.unshift(
-    [`BAO CAO SO LUONG XE CHO THUE THANG ${monthlyRental.month}`],
-    ["Xe", "Bien so", "Chu xe", "So xe-ngay", "So phieu thue", "Doanh thu da thu", "Ngay phat sinh"],
-    ...monthlyRental.rows.map((row) => [row.bike.code + " - " + row.bike.name, row.bike.plate, row.owner?.name || "", row.bikeDays, row.rentalCount, row.revenue, row.days.join("; ")]),
-    ["Tong xe-ngay", monthlyRental.totalBikeDays, "So xe co phat sinh", monthlyRental.rentedBikeCount, "So phieu", monthlyRental.rentalCount, "Binh quan/ngay", monthlyRental.daysInMonth ? (monthlyRental.totalBikeDays / monthlyRental.daysInMonth).toFixed(1) : "0.0"],
-    []
-  );
-  const csv = "\ufeff" + rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `bao-cao-coco-bay-${todayISO()}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-  showToast("Đã xuất CSV UTF-8.");
+  const month = state.reportMonth || todayISO().slice(0, 7);
+  const monthlyRental = monthlyBikeRentalReport(db, month);
+  const monthlyOwnerRows = ownerRevenueRows(db, month);
+  const finance = financeMonthStats(db, month);
+  const rentalRows = finance.rentals.map((r) => {
+    const bikeNames = rentalBikeIds(r).map((bikeId) => {
+      const bike = db.motorbikes.find((item) => item.id === bikeId);
+      return bike ? `${bike.code} - ${bike.name}` : "";
+    }).filter(Boolean).join(", ");
+    const ownerNames = [...new Set(rentalBikeIds(r).map((bikeId) => {
+      const bike = db.motorbikes.find((item) => item.id === bikeId);
+      return db.owners.find((owner) => owner.id === bike?.ownerId)?.name || "";
+    }).filter(Boolean))].join(", ");
+    return [r.code, r.customer, r.room, bikeNames, ownerNames, r.total, r.paid, Math.max(0, Number(r.total || 0) - Number(r.paid || 0)), r.status, formatDate(r.start)];
+  });
+  const html = `
+    <html><head><meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; color: #17313b; }
+        h1 { color: #07566a; }
+        h2 { margin-top: 26px; color: #07566a; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+        th { background: #0f5c6c; color: #fff; font-weight: 700; }
+        td, th { border: 1px solid #b9d8dd; padding: 8px; vertical-align: top; }
+        .kpi th { background: #e9f8f7; color: #07566a; }
+        .money { mso-number-format:"#,##0"; font-weight: 700; }
+      </style>
+    </head><body>
+      <h1>Báo cáo COCO BAY - tháng ${month}</h1>
+      <p>Ngày xuất: ${formatDateTime(new Date())}</p>
+
+      <h2>Tổng quan tài chính trong tháng</h2>
+      ${excelTable(
+        ["Doanh thu đã thu", "Còn phải thu", "Chi phí sửa xe", "Chi phí thiết bị", "Lợi nhuận tạm tính", "Số phiếu thuê"],
+        [[finance.monthRevenue, finance.unpaid, finance.bikeRepair, finance.equipmentRepair, finance.profit, finance.rentalCount]],
+        "kpi"
+      )}
+
+      <h2>Doanh thu và chi phí sửa xe theo chủ xe</h2>
+      ${excelTable(
+        ["Chủ xe", "Hình thức", "Số xe", "Số phiếu thuê", "Doanh thu đã thu", "Còn phải thu", "Chi phí sửa xe", "Lợi nhuận"],
+        monthlyOwnerRows.map((row) => [row.owner.name, row.owner.type, row.bikeCount, row.rentalCount, row.revenue, row.receivable, row.repairCost, row.profit])
+      )}
+
+      <h2>Số lượng xe cho thuê trong tháng</h2>
+      ${excelTable(
+        ["Xe", "Biển số", "Chủ xe", "Số xe-ngày", "Số phiếu thuê", "Doanh thu đã thu", "Ngày phát sinh"],
+        monthlyRental.rows.map((row) => [`${row.bike.code} - ${row.bike.name}`, row.bike.plate, row.owner?.name || "", row.bikeDays, row.rentalCount, row.revenue, row.days.map(formatDate).join(", ")])
+      )}
+
+      <h2>Chi tiết phiếu thuê trong tháng</h2>
+      ${excelTable(
+        ["Mã phiếu", "Khách", "Phòng", "Xe", "Chủ xe", "Tổng tiền", "Đã thanh toán", "Còn phải thu", "Trạng thái", "Ngày nhận"],
+        rentalRows
+      )}
+    </body></html>`;
+  const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  downloadBlob(blob, `bao-cao-coco-bay-${month}.xls`);
+  showToast("Đã xuất Excel báo cáo tháng.");
+}
+
+function excelTable(headers, rows, className = "") {
+  return `<table class="${className}"><thead><tr>${headers.map((header) => `<th>${excelEscape(header)}</th>`).join("")}</tr></thead><tbody>
+    ${(rows.length ? rows : [headers.map(() => "")]).map((row) => `<tr>${row.map((cell) => `<td>${excelEscape(cell)}</td>`).join("")}</tr>`).join("")}
+  </tbody></table>`;
+}
+
+function excelEscape(value) {
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function printReportPdf() {
   const db = getDb();
   const ownerRows = ownerRevenueRows(db);
+  const monthlyOwnerRows = ownerRevenueRows(db, state.reportMonth);
   const bikeRows = bikeRevenueReportRows(db);
   const monthlyRental = monthlyBikeRentalReport(db, state.reportMonth);
   const totals = reportTotals(db, ownerRows);
@@ -5115,6 +5242,10 @@ function printReportPdf() {
               <div class="kpi"><span>Binh quan/ngay</span><strong>${monthlyRental.daysInMonth ? (monthlyRental.totalBikeDays / monthlyRental.daysInMonth).toFixed(1) : "0.0"}</strong></div>
             </div>
             ${printMonthlyBikeRentalTable(monthlyRental)}
+          </section>
+          <section>
+            <h2>Doanh thu va chi phi sua xe theo chu xe thang ${state.reportMonth}</h2>
+            ${printOwnerTable(monthlyOwnerRows)}
           </section>
         </main>
         <script>
