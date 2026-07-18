@@ -3808,15 +3808,16 @@ function rentalForm(id) {
 
 function multiBikeRentalPicker(bikes) {
   const firstAvailableIndex = bikes.findIndex((bike) => bike.status === "Có sẵn");
+  const defaultIndex = firstAvailableIndex >= 0 ? firstAvailableIndex : 0;
   return `
     <div class="field full">
-      <label>Xe thuê <span class="hint">Chọn 1 hoặc nhiều xe. Xe không sẵn sàng sẽ hiển thị để theo dõi nhưng không chọn được.</span></label>
+      <label>Xe thuê <span class="hint">Chọn 1 hoặc nhiều xe. Có thể cuộn danh sách trên điện thoại để chọn xe khác.</span></label>
       <div class="multi-bike-picker">
         ${bikes.map((bike, index) => {
           const available = bike.status === "Có sẵn";
           return `
-          <label class="multi-bike-option ${available ? "" : "disabled"} ${index === firstAvailableIndex ? "selected" : ""}">
-            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === firstAvailableIndex ? "checked" : ""} ${available ? "" : "disabled"}>
+          <label class="multi-bike-option ${available ? "" : "unavailable"} ${index === defaultIndex ? "selected" : ""}">
+            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === defaultIndex ? "checked" : ""}>
             <span class="multi-bike-check" aria-hidden="true"></span>
             <span class="multi-bike-info"><strong>${bike.code} · ${bike.name}</strong><small>${bike.plate || "-"} · ${bike.type || ""}</small></span>
             <span class="multi-bike-status">${pill(bike.status)}</span>
@@ -3824,7 +3825,7 @@ function multiBikeRentalPicker(bikes) {
         `;
         }).join("") || `<p class="hint">Chưa có xe trong danh sách.</p>`}
       </div>
-      ${firstAvailableIndex < 0 ? `<span class="hint warning-text">Hiện chưa có xe trạng thái “Có sẵn”, vui lòng cập nhật trạng thái xe trước khi tạo phiếu thuê.</span>` : ""}
+      ${firstAvailableIndex < 0 ? `<span class="hint warning-text">Không có xe “Có sẵn”. Admin vẫn có thể chọn xe để xử lý ngoại lệ, nhưng hệ thống sẽ chặn nếu trùng lịch thuê.</span>` : ""}
     </div>
   `;
 }
