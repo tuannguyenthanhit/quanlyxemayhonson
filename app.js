@@ -3785,7 +3785,9 @@ function bikeTypeForm(id) {
 function rentalForm(id) {
   const db = getDb();
   const r = db.rentals.find((x) => x.id === id) || {};
-  const bikes = db.motorbikes.filter((b) => b.status === "Có sẵn" || b.id === r.bikeId);
+  const bikes = id
+    ? db.motorbikes.filter((b) => b.status === "Có sẵn" || b.id === r.bikeId)
+    : db.motorbikes.filter((b) => b.status !== "Ngừng sử dụng");
   const bikePicker = id
     ? selectField("bikeId", "Xe thuê", bikes.map((b) => [b.id, `${b.code}  · ${b.name}`]), r.bikeId, true)
     : multiBikeRentalPicker(bikes);
@@ -3802,17 +3804,24 @@ function rentalForm(id) {
 }
 
 function multiBikeRentalPicker(bikes) {
+  const firstAvailableIndex = bikes.findIndex((bike) => bike.status === "Có sẵn");
   return `
     <div class="field full">
-      <label>Xe thuê <span class="hint">Chọn 1 hoặc nhiều xe</span></label>
+      <label>Xe thuê <span class="hint">Chọn 1 hoặc nhiều xe. Xe không sẵn sàng sẽ hiển thị để theo dõi nhưng không chọn được.</span></label>
       <div class="multi-bike-picker">
-        ${bikes.map((bike, index) => `
-          <label class="multi-bike-option">
-            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === 0 ? "checked" : ""}>
-            <span><strong>${bike.code} · ${bike.name}</strong><small>${bike.plate || "-"} · ${bike.type || ""}</small></span>
+        ${bikes.map((bike, index) => {
+          const available = bike.status === "Có sẵn";
+          return `
+          <label class="multi-bike-option ${available ? "" : "disabled"} ${index === firstAvailableIndex ? "selected" : ""}">
+            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === firstAvailableIndex ? "checked" : ""} ${available ? "" : "disabled"}>
+            <span class="multi-bike-check" aria-hidden="true"></span>
+            <span class="multi-bike-info"><strong>${bike.code} · ${bike.name}</strong><small>${bike.plate || "-"} · ${bike.type || ""}</small></span>
+            <span class="multi-bike-status">${pill(bike.status)}</span>
           </label>
-        `).join("") || `<p class="hint">Không có xe sẵn sàng cho thuê.</p>`}
+        `;
+        }).join("") || `<p class="hint">Chưa có xe trong danh sách.</p>`}
       </div>
+      ${firstAvailableIndex < 0 ? `<span class="hint warning-text">Hiện chưa có xe trạng thái “Có sẵn”, vui lòng cập nhật trạng thái xe trước khi tạo phiếu thuê.</span>` : ""}
     </div>
   `;
 }
@@ -4122,6 +4131,9 @@ function bindApp() {
     if (button.dataset.action?.startsWith("remove-bike-image:")) return;
     button.addEventListener("click", handleAction);
   });
+  document.querySelectorAll(".multi-bike-option input[name='bikeIds']").forEach((input) => input.addEventListener("change", (event) => {
+    event.currentTarget.closest(".multi-bike-option")?.classList.toggle("selected", event.currentTarget.checked);
+  }));
   document.querySelectorAll("[data-bike-status]").forEach((select) => select.addEventListener("change", (event) => {
     setBikeStatus(event.target.dataset.bikeStatus, event.target.value);
   }));
