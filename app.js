@@ -2411,13 +2411,16 @@ function rentalStatusText(status) {
   if (status === "Đã đặt") return "Chờ giao xe";
   if (status === "Đã trả") return "Hoàn thành";
   if (status === "Chưa thanh toán đủ") return "Cần thu thêm";
+  if (status === "Đã hủy") return "Phiếu đã hủy";
   return status;
 }
 
 function rentalActions(r) {
+  const canCancel = can("manage") && !["Đã trả", "Đã hủy"].includes(r.status);
   return `<div class="rental-actions">
     ${["Đang thuê", "Quá hạn"].includes(r.status) && canAny(["rentals", "manage"]) ? `<button class="primary" data-modal="return:${r.id}">♢ Trả xe</button>` : ""}
     ${r.status === "Đã đặt" && canAny(["rentals", "manage"]) ? `<button class="primary" data-action="handover:${r.id}">♢ Giao xe</button>` : ""}
+    ${canCancel ? `<button class="danger" data-action="cancel-rental:${r.id}">Hủy thuê</button>` : ""}
     <button class="ghost" data-modal="return:${r.id}">▣ Ảnh xe</button>
     <button class="ghost" data-modal="rental:${r.id}">✎ Sửa</button>
     <button class="ghost icon-only" data-modal="rental:${r.id}">⋮</button>
@@ -4259,6 +4262,7 @@ function handleAction(event) {
   if (action?.startsWith("toggle-equipment-alert:")) toggleEquipmentAlert(action.split(":")[1]);
   if (action?.startsWith("mark-equipment-maintained:")) markEquipmentMaintained(action.split(":")[1]);
   if (action?.startsWith("handover:")) handoverRental(action.split(":")[1]);
+  if (action?.startsWith("cancel-rental:")) cancelRental(action.split(":")[1]);
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
@@ -4712,6 +4716,17 @@ function rentalConflictBikes(data, ignoreId = "") {
     .filter(Boolean);
 }
 
+function hasOpenRentalForBike(db, bikeId, ignoreId = "") {
+  return db.rentals.some((rental) => rental.id !== ignoreId && rental.bikeId === bikeId && !["Đã trả", "Đã hủy"].includes(rental.status));
+}
+
+function releaseBikeIfNoOpenRental(db, rental) {
+  const bike = db.motorbikes.find((item) => item.id === rental.bikeId);
+  if (!bike || hasOpenRentalForBike(db, rental.bikeId, rental.id)) return;
+  if (["Hư hỏng", "Đang sửa", "Chờ kiểm tra", "Chờ phụ tùng", "Ngừng sử dụng"].includes(bike.status)) return;
+  bike.status = "Có sẵn";
+}
+
 function handoverRental(id) {
   mutateDb((db) => {
     const r = db.rentals.find((x) => x.id === id);
@@ -4723,6 +4738,43 @@ function handoverRental(id) {
     return { record: r.code };
   }, "Giao xe");
   showToast("Đã giao xe và chuyển trạng thái đang thuê.");
+}
+
+function cancelRental(id) {
+  if (!can("manage")) {
+    showToast("Chỉ admin hoặc quản lý có quyền hủy phiếu thuê.");
+    return;
+  }
+  const rental = getDb().rentals.find((item) => item.id === id);
+  if (!rental) {
+    showToast("Không tìm thấy phiếu thuê cần hủy.");
+    return;
+  }
+  if (["Đã trả", "Đã hủy"].includes(rental.status)) {
+    showToast("Phiếu thuê này đã kết thúc, không cần hủy lại.");
+    return;
+  }
+  const reason = prompt(`Lý do hủy phiếu ${rental.code}:`, rental.cancelReason || "Khách hủy giữa chừng");
+  if (reason === null) return;
+  if (!confirm(`Xác nhận hủy phiếu ${rental.code}?\nXe sẽ về "Có sẵn" nếu không còn phiếu thuê khác đang giữ xe.`)) return;
+  mutateDb((db) => {
+    const r = db.rentals.find((item) => item.id === id);
+    if (!r) return { record: id, after: "Không tìm thấy" };
+    const previousStatus = r.status;
+    r.status = "Đã hủy";
+    r.cancelReason = reason.trim() || "Khách hủy giữa chừng";
+    r.cancelledAt = nowLocal();
+    r.cancelledBy = state.user?.name || "Admin";
+    r.notes = [r.notes || "", `Hủy: ${r.cancelReason}`].filter(Boolean).join("\n");
+    releaseBikeIfNoOpenRental(db, r);
+    state.modal = null;
+    return {
+      record: r.code,
+      before: previousStatus,
+      after: `Đã hủy - ${r.cancelReason}`
+    };
+  }, "Hủy phiếu thuê");
+  showToast("Đã hủy phiếu thuê và cập nhật trạng thái xe.");
 }
 
 async function saveReturn(event) {

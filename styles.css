@@ -3213,8 +3213,8 @@ tr:last-child td {
 .rental-status-cell > span:last-child { color: #52697a; }
 .rental-actions { display: grid; grid-template-columns: minmax(118px, auto) 44px; gap: 10px; align-items: center; }
 .rental-actions button { min-height: 46px; justify-content: center; }
-.rental-actions .primary, .rental-actions .ghost:not(.icon-only) { grid-column: 1; }
-.rental-actions .icon-only { grid-column: 2; grid-row: 1 / span 3; }
+.rental-actions .primary, .rental-actions .danger, .rental-actions .ghost:not(.icon-only) { grid-column: 1; }
+.rental-actions .icon-only { grid-column: 2; grid-row: 1 / span 4; }
 .rental-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; color: #52697a; }
 .rental-pager { display: flex; align-items: center; gap: 12px; }
 .rental-pager button, .rental-pager select { min-height: 42px; border: 1px solid #d7e4e8; border-radius: 8px; background: #fff; color: #102437; font-weight: 800; }
@@ -5150,6 +5150,7 @@ table td,
 
   .motorbike-actions .secondary,
   .rental-actions .primary,
+  .rental-actions .danger,
   .rental-actions .ghost:not(.icon-only) {
     width: 100%;
   }
