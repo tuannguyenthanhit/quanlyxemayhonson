@@ -3568,7 +3568,7 @@ function filteredAuditRows(logs = []) {
 function settingsView() {
   const s = getDb().settings;
   return `
-    ${pageHeader("Cài đặt", "Thiết lập hệ thống, dữ liệu mẫu và quy tắc hiển thị.", "")}
+    ${pageHeader("Cài đặt", "Thiết lập hệ thống, sao lưu dữ liệu và quy tắc hiển thị.", "")}
     <div class="grid cols-2">
       <div class="card">
         <h3>Hệ thống</h3>
@@ -3584,8 +3584,6 @@ function settingsView() {
           <label class="secondary import-json-button" for="import-json-file">Nhập JSON lên MySQL</label>
           <input id="import-json-file" class="visually-hidden" type="file" accept=".json,application/json" data-import-json>
           <button class="secondary" type="button" data-action="backup-website">Backup website ZIP</button>
-          <button class="secondary" data-action="reset-sample">Khôi phục dữ liệu mẫu</button>
-          <button class="danger" data-action="clear-sample">Xóa dữ liệu mẫu</button>
         </div>
       </div>
     </div>
@@ -5103,29 +5101,11 @@ const crcTable = Array.from({ length: 256 }, (_, index) => {
 });
 
 function resetSample() {
-  if (!confirm("Khôi phục dữ liệu mẫu? Dữ liệu hiện tại sẽ được thay thế.")) return;
-  localStorage.setItem(DB_KEY, JSON.stringify(seedDb()));
-  showToast("Đã khôi phục dữ liệu mẫu.");
-  render();
+  showToast("Chức năng khôi phục dữ liệu mẫu đã được tắt để tránh ghi đè dữ liệu thật.");
 }
 
 function clearSample() {
-  if (!confirm("Xóa toàn bộ dữ liệu mẫu?")) return;
-  const empty = seedDb();
-  empty.owners = [];
-  empty.motorbikes = [];
-  empty.rentals = [];
-  empty.equipment = [];
-  empty.tickets = [];
-  empty.notifications = [];
-  empty.hrEmployees = [];
-  empty.jobApplicants = [];
-  empty.attendanceShifts = [];
-  empty.attendanceRecords = [];
-  empty.auditLogs = [];
-  localStorage.setItem(DB_KEY, JSON.stringify(empty));
-  showToast("Đã xóa dữ liệu mẫu.");
-  render();
+  showToast("Chức năng xóa dữ liệu mẫu đã được tắt để tránh mất dữ liệu vận hành.");
 }
 
 
