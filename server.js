@@ -15,6 +15,7 @@ const root = __dirname;
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 const maxBodyBytes = Number(process.env.MAX_BODY_MB || 120) * 1024 * 1024;
+const sessionDays = Math.max(1, Number(process.env.SESSION_DAYS || 30));
 const sessions = new Map();
 
 const dbConfig = {
@@ -97,6 +98,17 @@ async function ensureSchema() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      token_hash CHAR(64) PRIMARY KEY,
+      user_id VARCHAR(80) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME NOT NULL,
+      INDEX idx_app_sessions_user (user_id),
+      INDEX idx_app_sessions_expires (expires_at)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+  await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
   const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
   if (!rows.length) {
     await pool.query("INSERT INTO app_data (id, json_data) VALUES (1, ?)", [JSON.stringify(defaultDb())]);
@@ -209,13 +221,64 @@ function parseCookies(req) {
   }));
 }
 
-function currentSession(req) {
+function sessionTokenHash(token) {
+  return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+}
+
+function sessionExpiresAt() {
+  return new Date(Date.now() + sessionDays * 24 * 60 * 60 * 1000);
+}
+
+async function createSession(userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const session = { userId, createdAt: Date.now(), expiresAt: sessionExpiresAt().toISOString() };
+  sessions.set(token, session);
+  if (pool) {
+    await ensureSchema();
+    await pool.query(
+      "INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+      [sessionTokenHash(token), userId, session.expiresAt.slice(0, 19).replace("T", " ")]
+    );
+  }
+  return token;
+}
+
+async function currentSession(req) {
   const token = parseCookies(req).coco_session;
-  return token ? sessions.get(token) : null;
+  if (!token) return null;
+  const cached = sessions.get(token);
+  if (cached && new Date(cached.expiresAt || 0) > new Date()) return cached;
+  if (!pool) return cached || null;
+  await ensureSchema();
+  const [rows] = await pool.query(
+    "SELECT user_id, created_at, expires_at FROM app_sessions WHERE token_hash = ? AND expires_at > NOW() LIMIT 1",
+    [sessionTokenHash(token)]
+  );
+  if (!rows.length) {
+    sessions.delete(token);
+    return null;
+  }
+  const session = {
+    userId: rows[0].user_id,
+    createdAt: new Date(rows[0].created_at).getTime(),
+    expiresAt: new Date(rows[0].expires_at).toISOString()
+  };
+  sessions.set(token, session);
+  return session;
 }
 
 function setSessionCookie(res, token) {
-  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionDays * 24 * 60 * 60}`);
+}
+
+async function destroySession(req) {
+  const token = parseCookies(req).coco_session;
+  if (!token) return;
+  sessions.delete(token);
+  if (pool) {
+    await ensureSchema();
+    await pool.query("DELETE FROM app_sessions WHERE token_hash = ?", [sessionTokenHash(token)]);
+  }
 }
 
 function clearSessionCookie(res) {
@@ -318,8 +381,7 @@ async function handleApi(req, res, urlPath) {
         createdAt: user.lastLoginAt
       });
       await writeDb(db);
-      const token = crypto.randomBytes(32).toString("hex");
-      sessions.set(token, { userId: user.id, createdAt: Date.now() });
+      const token = await createSession(user.id);
       setSessionCookie(res, token);
       sendJson(res, 200, { ok: true, user, db });
     } catch (error) {
@@ -329,14 +391,13 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (urlPath === "/api/logout" && req.method === "POST") {
-    const token = parseCookies(req).coco_session;
-    if (token) sessions.delete(token);
+    await destroySession(req);
     clearSessionCookie(res);
     sendJson(res, 200, { ok: true });
     return true;
   }
 
-  const session = currentSession(req);
+  const session = await currentSession(req);
   if (!session) {
     sendJson(res, 401, { ok: false, message: "Chưa đăng nhập." });
     return true;
