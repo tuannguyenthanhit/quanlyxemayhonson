@@ -37,7 +37,8 @@ const types = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg"
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp"
 };
 
 function defaultDb() {
@@ -143,6 +144,55 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function ensureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function saveUploadedImage(dataUrl, folder = "general") {
+  const match = String(dataUrl || "").match(/^data:image\/(png|jpe?g|webp);base64,([a-z0-9+/=]+)$/i);
+  if (!match) {
+    const error = new Error("File ảnh không hợp lệ.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const ext = match[1].toLowerCase().replace("jpeg", "jpg");
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > 3 * 1024 * 1024) {
+    const error = new Error("Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn.");
+    error.statusCode = 413;
+    throw error;
+  }
+  const safeFolder = String(folder || "general").replace(/[^a-z0-9_-]/gi, "").slice(0, 32) || "general";
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const uploadDir = path.join(root, "uploads", safeFolder, month);
+  ensureDir(uploadDir);
+  const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+  const filePath = path.join(uploadDir, filename);
+  fs.writeFileSync(filePath, buffer);
+  return `/uploads/${safeFolder}/${month}/${filename}`;
+}
+
+function deleteUploadedImage(url) {
+  const cleanUrl = String(url || "").split("?")[0];
+  if (!cleanUrl.startsWith("/uploads/")) {
+    return { deleted: false, skipped: true };
+  }
+  const relativePath = cleanUrl.replace(/^\/+/, "").replace(/\//g, path.sep);
+  const uploadsRoot = path.join(root, "uploads");
+  const filePath = path.normalize(path.join(root, relativePath));
+  if (!filePath.startsWith(uploadsRoot + path.sep)) {
+    const error = new Error("Đường dẫn ảnh không hợp lệ.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(filePath)) {
+    return { deleted: false, missing: true };
+  }
+  fs.unlinkSync(filePath);
+  return { deleted: true };
+}
+
 function parseCookies(req) {
   return Object.fromEntries(String(req.headers.cookie || "").split(";").map((item) => item.trim()).filter(Boolean).map((item) => {
     const index = item.indexOf("=");
@@ -164,6 +214,28 @@ function clearSessionCookie(res) {
 }
 
 async function handleApi(req, res, urlPath) {
+  if (urlPath === "/api/uploads" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const url = saveUploadedImage(body.image, body.folder || "general");
+      sendJson(res, 200, { ok: true, url });
+    } catch (error) {
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (urlPath === "/api/uploads" && req.method === "DELETE") {
+    try {
+      const body = await readBody(req);
+      const result = deleteUploadedImage(body.url);
+      sendJson(res, 200, { ok: true, ...result });
+    } catch (error) {
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
   if (!pool) {
     sendJson(res, 503, { ok: false, mode: "localStorage", message: "MySQL is not configured on this server." });
     return true;

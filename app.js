@@ -177,6 +177,9 @@ const bikeStatuses = ["Có sẵn", "Đã đặt", "Đang thuê", "Quá hạn", "
 const rentalStatuses = ["Đã đặt", "Đang thuê", "Quá hạn", "Đã trả", "Chưa thanh toán đủ", "Đã hủy"];
 const ticketStatuses = ["Mới tạo", "Đang kiểm tra", "Chờ duyệt chi phí", "Đang sửa", "Chờ phụ tùng", "Chờ nghiệm thu", "Hoàn thành", "Đã hủy"];
 const BIKE_IMAGE_LIMIT = 10;
+const BIKE_IMAGE_MAX_SIZE = 520;
+const BIKE_IMAGE_QUALITY = 0.38;
+const BIKE_IMAGE_MAX_BYTES = 45000;
 
 function todayISO(offset = 0) {
   const d = new Date();
@@ -685,11 +688,13 @@ function migrateDb(db) {
 function setDb(db, options = {}) {
   const payload = JSON.stringify(db);
   try {
+    cleanupTemporaryStorage();
     localStorage.setItem(DB_KEY, payload);
     if (!options.skipRemote) queueRemoteSave(db);
   } catch (error) {
     const compactDb = compactDbForLocalStorage(db);
     try {
+      cleanupTemporaryStorage();
       localStorage.setItem(DB_KEY, JSON.stringify(compactDb));
       if (!options.skipRemote) queueRemoteSave(db);
       showToast("Đã lưu dữ liệu sau khi dọn bớt nhật ký cũ để còn chỗ cho hình ảnh.");
@@ -705,6 +710,12 @@ function setDb(db, options = {}) {
     showToast("Không lưu được dữ liệu. Ảnh đã được nén, nhưng bộ nhớ trình duyệt vẫn đầy. Hãy xóa bớt ảnh cũ hoặc dùng MySQL backend.");
     throw error;
   }
+}
+
+function cleanupTemporaryStorage() {
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith(`${DB_KEY}.before-import-`) || key.startsWith("coco-bay-temp-"))
+    .forEach((key) => localStorage.removeItem(key));
 }
 
 function compactDbForLocalStorage(db) {
@@ -3607,7 +3618,7 @@ function bikeForm(id) {
   const db = getDb();
   const b = db.motorbikes.find((x) => x.id === id) || {};
   if (!state.bikeImageDraft || state.bikeImageDraft.formId !== (id || "new")) {
-    state.bikeImageDraft = { formId: id || "new", images: [...(b.images || [])] };
+    state.bikeImageDraft = { formId: id || "new", images: [...(b.images || [])], deletedImages: [] };
   }
   const draftImages = state.bikeImageDraft.images || [];
   const ownerOptions = db.owners
@@ -4082,7 +4093,10 @@ function handleAction(event) {
   if (action?.startsWith("remove-bike-image:")) {
     const index = Number(action.split(":")[1]);
     if (state.bikeImageDraft?.images) {
-      state.bikeImageDraft.images.splice(index, 1);
+      const [removed] = state.bikeImageDraft.images.splice(index, 1);
+      if (removed && String(removed).startsWith("/uploads/")) {
+        state.bikeImageDraft.deletedImages = [...(state.bikeImageDraft.deletedImages || []), removed];
+      }
       const preview = document.getElementById("bike-image-preview");
       if (preview) preview.innerHTML = renderEditableBikeImages(state.bikeImageDraft.images);
       const input = document.querySelector("input[name='bikeImages']");
@@ -4175,6 +4189,7 @@ function deleteBike(id) {
   }
   const linkedRentals = db.rentals.filter((rental) => rental.bikeId === id).length;
   const linkedTickets = db.tickets.filter((ticket) => ticket.assetType === "Xe m\u00e1y" && ticket.assetId === id).length;
+  const bikeImagesToDelete = Array.isArray(bike.images) ? bike.images.filter((src) => String(src || "").startsWith("/uploads/")) : [];
   const detail = `${bike.code} - ${bike.name} (${bike.plate || "kh\u00f4ng c\u00f3 bi\u1ec3n s\u1ed1"})`;
   const message = `X\u00f3a xe ${detail}?\n\nH\u1ec7 th\u1ed1ng s\u1ebd x\u00f3a k\u00e8m ${linkedRentals} phi\u1ebfu thu\u00ea v\u00e0 ${linkedTickets} phi\u1ebfu s\u1eeda/b\u1ea3o tr\u00ec li\u00ean quan.`;
   if (!confirm(message)) return;
@@ -4190,6 +4205,7 @@ function deleteBike(id) {
       after: "\u0110\u00e3 x\u00f3a"
     };
   }, "X\u00f3a xe m\u00e1y");
+  if (bikeImagesToDelete.length) deleteUploadedImages(bikeImagesToDelete);
   showToast("\u0110\u00e3 x\u00f3a xe v\u00e0 d\u1eef li\u1ec7u li\u00ean quan.");
 }
 
@@ -4247,6 +4263,7 @@ async function saveModal(event) {
     showToast(`Không thể đặt trùng lịch: ${conflicts.map((bike) => bike.code).join(", ")}.`);
     return;
   }
+  const deletedBikeImages = type === "bike" ? [...(state.bikeImageDraft?.deletedImages || [])] : [];
   mutateDb((db) => {
     let savedTicket = null;
     if (type === "hotel") upsertHotel(db, data, id);
@@ -4271,6 +4288,9 @@ async function saveModal(event) {
   if (type === "ticket") showToast("Đã tạo phiếu sửa/bảo trì và gửi thông báo.");
   else if (type === "ticketEdit") showToast("Đã cập nhật phiếu sửa/bảo trì.");
   else showToast("Đã lưu dữ liệu.");
+  if (deletedBikeImages.length) {
+    deleteUploadedImages(deletedBikeImages);
+  }
 }
 
 function upsertBike(db, data, id) {
@@ -5245,19 +5265,53 @@ async function readBikeImages(form, id) {
   if (files.length > BIKE_IMAGE_LIMIT) {
     showToast(`Chỉ lưu tối đa ${BIKE_IMAGE_LIMIT} hình cho mỗi xe.`);
   }
-  return Promise.all(files.slice(0, BIKE_IMAGE_LIMIT).map(compressImageFile));
+  return Promise.all(files.slice(0, BIKE_IMAGE_LIMIT).map(compressBikeImageFile));
 }
 
 async function normalizeBikeImages(images = []) {
   const uniqueImages = images.filter(Boolean).slice(0, BIKE_IMAGE_LIMIT);
   return Promise.all(uniqueImages.map(async (src) => {
     if (isLikelyBrokenImage(src)) return src;
-    if (String(src).startsWith("data:image/") && src.length > 95000) {
-      const compressed = await compressImageSource(src, 760, 0.5, 90000);
-      return await isBrokenCompressedImage(compressed) ? src : compressed;
+    if (String(src).startsWith("data:image/") && src.length > BIKE_IMAGE_MAX_BYTES) {
+      const compressed = await compressImageSource(src, BIKE_IMAGE_MAX_SIZE, BIKE_IMAGE_QUALITY, BIKE_IMAGE_MAX_BYTES);
+      return uploadImageDataUrl(await isBrokenCompressedImage(compressed) ? src : compressed, "bikes");
+    }
+    if (String(src).startsWith("data:image/")) {
+      return uploadImageDataUrl(src, "bikes");
     }
     return src;
   }));
+}
+
+async function compressBikeImageFile(file) {
+  const src = await compressImageFile(file, BIKE_IMAGE_MAX_SIZE, BIKE_IMAGE_QUALITY, BIKE_IMAGE_MAX_BYTES);
+  return uploadImageDataUrl(src, "bikes");
+}
+
+async function uploadImageDataUrl(src, folder = "general") {
+  if (!String(src || "").startsWith("data:image/")) return src;
+  try {
+    const payload = await apiRequest("/uploads", { method: "POST", body: JSON.stringify({ image: src, folder }) });
+    return payload.url || src;
+  } catch (error) {
+    console.warn("Không upload được ảnh thành file riêng, giữ ảnh trong dữ liệu local.", error);
+    return src;
+  }
+}
+
+async function deleteUploadedImages(urls = []) {
+  const uploadUrls = [...new Set(urls.filter((url) => String(url || "").startsWith("/uploads/")))];
+  if (!uploadUrls.length) return;
+  const results = await Promise.allSettled(uploadUrls.map((url) => apiRequest("/uploads", {
+    method: "DELETE",
+    body: JSON.stringify({ url })
+  })));
+  const failed = results.filter((result) => result.status === "rejected").length;
+  if (failed) {
+    showToast(`Đã lưu xe, nhưng ${failed} ảnh cũ chưa xóa được trên hosting.`);
+  } else {
+    showToast(`Đã xóa ${uploadUrls.length} ảnh cũ trên hosting.`);
+  }
 }
 
 async function readEmployeePhoto(form, id) {
@@ -5330,7 +5384,9 @@ function compressImageSource(src, maxSize = 760, quality = 0.5, maxBytes = 90000
         [maxSize, quality],
         [640, 0.46],
         [520, 0.42],
-        [420, 0.38]
+        [420, 0.38],
+        [360, 0.34],
+        [300, 0.32]
       ];
       let best = "";
       for (const [size, q] of attempts) {
@@ -5369,8 +5425,8 @@ async function previewBikeImages(event) {
     return;
   }
   if (files.length > slots) showToast(`Chỉ thêm được ${slots} hình nữa. Hệ thống sẽ lấy hình đầu tiên.`);
-  preview.innerHTML = `<span>Đang nén ảnh để lưu được nhiều hình hơn...</span>`;
-  const urls = await Promise.all(files.slice(0, slots).map(compressImageFile));
+  preview.innerHTML = `<span>Đang nén và upload ảnh thành file riêng...</span>`;
+  const urls = await Promise.all(files.slice(0, slots).map(compressBikeImageFile));
   state.bikeImageDraft = state.bikeImageDraft || { formId: "new", images: [] };
   state.bikeImageDraft.images = [...current, ...urls].slice(0, BIKE_IMAGE_LIMIT);
   preview.innerHTML = renderEditableBikeImages(state.bikeImageDraft.images);
@@ -5400,5 +5456,3 @@ window.addEventListener("error", (event) => {
 });
 
 appInit();
-
-
