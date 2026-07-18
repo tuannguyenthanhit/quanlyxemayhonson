@@ -4962,17 +4962,18 @@ async function importJsonToMysql(event) {
       return;
     }
     migrateDb(importedDb);
-    localStorage.setItem(DB_KEY, JSON.stringify(importedDb));
     if (apiState.enabled && state.user) {
       await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: importedDb }) });
-      showToast("Đã nhập JSON và đồng bộ lên MySQL.");
+      safeLocalSet(DB_KEY, JSON.stringify(importedDb), { silent: true }) || safeLocalSet(DB_KEY, JSON.stringify(compactDbForLocalStorage(importedDb)), { silent: true });
+      showToast("Đã nhập JSON và đồng bộ lên MySQL. Nếu máy này đầy bộ nhớ, dữ liệu vẫn đã nằm trên database.");
     } else {
-      showToast("Đã nhập JSON vào máy này. Chưa đồng bộ MySQL vì chưa chạy chế độ online.");
+      const savedLocal = safeLocalSet(DB_KEY, JSON.stringify(importedDb));
+      showToast(savedLocal ? "Đã nhập JSON vào máy này. Chưa đồng bộ MySQL vì chưa chạy chế độ online." : "Chưa nhập được vào máy này vì bộ nhớ trình duyệt đầy. Hãy bật MySQL rồi nhập lại.");
     }
     render();
   } catch (error) {
     console.error(error);
-    showToast("Không đọc được file JSON. Hãy chọn đúng file sao lưu.");
+    showToast(isStorageQuotaError(error) ? "Bộ nhớ trình duyệt đầy. Hãy đăng nhập chế độ MySQL rồi nhập lại file JSON." : "Không đọc được file JSON. Hãy chọn đúng file sao lưu.");
   } finally {
     input.value = "";
   }
