@@ -8,6 +8,10 @@ const apiState = {
   lastError: ""
 };
 
+function isProductionHost() {
+  return !["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+}
+
 const roles = {
   admin: "Admin",
   manager: "Manager",
@@ -403,8 +407,13 @@ async function loadRemoteSession() {
   try {
     const health = await apiRequest("/health");
     apiState.enabled = health.mode === "mysql";
+    if (!apiState.enabled) {
+      apiState.lastError = "Website chưa kết nối được MySQL.";
+      return false;
+    }
   } catch {
     apiState.enabled = false;
+    apiState.lastError = "Không kết nối được API/MySQL.";
     return false;
   }
   try {
@@ -787,6 +796,18 @@ function statusClass(status) {
 }
 
 async function appInit() {
+  if (isProductionHost()) {
+    await loadRemoteSession();
+    if (!apiState.enabled) {
+      state.user = null;
+      localStorage.removeItem(SESSION_KEY);
+      render();
+      return;
+    }
+    syncStatuses();
+    render();
+    return;
+  }
   const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
   if (session && !state.user) {
     state.user = getDb().users.find((u) => u.id === session.userId) || null;
@@ -981,6 +1002,10 @@ function bindLogin() {
       } catch (error) {
         showToast(error.message || "Email hoặc mật khẩu không đúng.");
       }
+      return;
+    }
+    if (isProductionHost()) {
+      showToast("Website chưa kết nối MySQL nên không thể đăng nhập. Vui lòng kiểm tra Hostinger /api/health.");
       return;
     }
     const db = getDb();
