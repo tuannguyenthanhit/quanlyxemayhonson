@@ -30,6 +30,7 @@ const dbConfig = {
 
 const hasMysqlConfig = Boolean(dbConfig.host && dbConfig.user && dbConfig.database && mysql);
 const pool = hasMysqlConfig ? mysql.createPool(dbConfig) : null;
+let schemaReadyPromise = null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -89,67 +90,101 @@ function defaultDb() {
   };
 }
 
-function isLegacySampleDb(data) {
-  if (!data || typeof data !== "object") return false;
-  const sampleBikeCodes = new Set(["CB-001", "CB-002", "CB-003", "CB-004"]);
-  const bikes = Array.isArray(data.motorbikes) ? data.motorbikes : [];
-  const rentals = Array.isArray(data.rentals) ? data.rentals : [];
-  const equipment = Array.isArray(data.equipment) ? data.equipment : [];
-  const tickets = Array.isArray(data.tickets) ? data.tickets : [];
-  const hasOnlySampleBikes = bikes.length > 0 && bikes.length <= 4 && bikes.every((bike) => sampleBikeCodes.has(bike.code));
-  const hasSampleFlags = data.settings?.seeded === true || data.users?.some?.((user) => user.id === "u-manager" || user.email === "manager@cocobay.vn");
-  return Boolean(hasOnlySampleBikes && hasSampleFlags && rentals.length <= 2 && equipment.length <= 3 && tickets.length <= 2);
-}
-
 async function ensureSchema() {
   if (!pool) return;
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS app_data (
-      id INT PRIMARY KEY,
-      json_data LONGTEXT NOT NULL,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS app_sessions (
-      token_hash CHAR(64) PRIMARY KEY,
-      user_id VARCHAR(80) NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      expires_at DATETIME NOT NULL,
-      INDEX idx_app_sessions_user (user_id),
-      INDEX idx_app_sessions_expires (expires_at)
-    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-  `);
-  await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
-  const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_data (
+          id INT PRIMARY KEY,
+          json_data LONGTEXT NOT NULL,
+          data_version BIGINT NOT NULL DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+      `);
+      const [versionColumns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'app_data' AND COLUMN_NAME = 'data_version'
+        LIMIT 1
+      `, [dbConfig.database]);
+      if (!versionColumns.length) {
+        await pool.query("ALTER TABLE app_data ADD COLUMN data_version BIGINT NOT NULL DEFAULT 1 AFTER json_data");
+      }
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_sessions (
+          token_hash CHAR(64) PRIMARY KEY,
+          user_id VARCHAR(80) NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME NOT NULL,
+          INDEX idx_app_sessions_user (user_id),
+          INDEX idx_app_sessions_expires (expires_at)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+      `);
+      await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
+      const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
+      if (!rows.length) {
+        await pool.query("INSERT INTO app_data (id, json_data, data_version) VALUES (1, ?, 1)", [JSON.stringify(defaultDb())]);
+      }
+    })().catch((error) => {
+      schemaReadyPromise = null;
+      throw error;
+    });
+  }
+  await schemaReadyPromise;
+}
+
+async function readDbRecord() {
+  await ensureSchema();
+  const [rows] = await pool.query("SELECT json_data, data_version, updated_at FROM app_data WHERE id = 1 LIMIT 1");
   if (!rows.length) {
-    await pool.query("INSERT INTO app_data (id, json_data) VALUES (1, ?)", [JSON.stringify(defaultDb())]);
+    const error = new Error("Không tìm thấy dữ liệu hệ thống trên MySQL.");
+    error.statusCode = 500;
+    throw error;
+  }
+  try {
+    return {
+      db: JSON.parse(rows[0].json_data),
+      version: Number(rows[0].data_version || 1),
+      updatedAt: rows[0].updated_at
+    };
+  } catch (error) {
+    error.message = "Dữ liệu JSON trên MySQL bị lỗi. Hệ thống đã dừng để tránh ghi đè dữ liệu.";
+    error.statusCode = 500;
+    throw error;
   }
 }
 
 async function readDb() {
-  await ensureSchema();
-  const [rows] = await pool.query("SELECT json_data FROM app_data WHERE id = 1 LIMIT 1");
-  if (!rows.length) return defaultDb();
-  try {
-    const data = JSON.parse(rows[0].json_data);
-    if (isLegacySampleDb(data)) {
-      const fresh = defaultDb();
-      await writeDb(fresh);
-      return fresh;
-    }
-    return data;
-  } catch {
-    return defaultDb();
-  }
+  return (await readDbRecord()).db;
 }
 
-async function writeDb(data) {
+async function writeDb(data, expectedVersion = null) {
   await ensureSchema();
-  await pool.query(
-    "INSERT INTO app_data (id, json_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE json_data = VALUES(json_data)",
-    [JSON.stringify(data)]
-  );
+  if (Number.isInteger(expectedVersion)) {
+    const [result] = await pool.query(
+      "UPDATE app_data SET json_data = ?, data_version = data_version + 1 WHERE id = 1 AND data_version = ?",
+      [JSON.stringify(data), expectedVersion]
+    );
+    if (!result.affectedRows) {
+      const error = new Error("Dữ liệu trên máy chủ đã được thiết bị khác cập nhật. Vui lòng tải lại dữ liệu mới.");
+      error.statusCode = 409;
+      error.code = "DATA_CONFLICT";
+      throw error;
+    }
+  } else {
+    await pool.query(
+      `INSERT INTO app_data (id, json_data, data_version)
+       VALUES (1, ?, 1)
+       ON DUPLICATE KEY UPDATE json_data = VALUES(json_data), data_version = data_version + 1`,
+      [JSON.stringify(data)]
+    );
+  }
+  const [rows] = await pool.query("SELECT data_version, updated_at FROM app_data WHERE id = 1 LIMIT 1");
+  return {
+    version: Number(rows[0]?.data_version || 1),
+    updatedAt: rows[0]?.updated_at || null
+  };
 }
 
 function readBody(req) {
@@ -372,7 +407,8 @@ async function handleApi(req, res, urlPath) {
   if (urlPath === "/api/login" && req.method === "POST") {
     try {
       const body = await readBody(req);
-      const db = await readDb();
+      const record = await readDbRecord();
+      const db = record.db;
       const email = String(body.email || "").trim();
       const password = String(body.password || "").trim();
       const envAdminEmail = String(process.env.ADMIN_EMAIL || "admin@cocobay.vn").trim();
@@ -398,10 +434,10 @@ async function handleApi(req, res, urlPath) {
         after: `Lần đăng nhập gần nhất: ${user.lastLoginAt}`,
         createdAt: user.lastLoginAt
       });
-      await writeDb(db);
+      const saved = await writeDb(db, record.version);
       const token = await createSession(user.id);
       setSessionCookie(res, token);
-      sendJson(res, 200, { ok: true, user, db });
+      sendJson(res, 200, { ok: true, user, db, version: saved.version, updatedAt: saved.updatedAt });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }
@@ -422,19 +458,27 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (urlPath === "/api/me" && req.method === "GET") {
-    const db = await readDb();
+    const record = await readDbRecord();
+    const db = record.db;
     const user = (db.users || []).find((item) => item.id === session.userId && item.active);
     if (!user) {
       sendJson(res, 401, { ok: false, message: "Phiên đăng nhập không hợp lệ." });
       return true;
     }
-    sendJson(res, 200, { ok: true, user, db });
+    sendJson(res, 200, { ok: true, user, db, version: record.version, updatedAt: record.updatedAt });
+    return true;
+  }
+
+  if (urlPath === "/api/data" && req.method === "GET") {
+    const record = await readDbRecord();
+    sendJson(res, 200, { ok: true, db: record.db, version: record.version, updatedAt: record.updatedAt });
     return true;
   }
 
   if (urlPath.startsWith("/api/bookings/") && req.method === "DELETE") {
     try {
-      const db = await readDb();
+      const record = await readDbRecord();
+      const db = record.db;
       const user = (db.users || []).find((item) => item.id === session.userId && item.active);
       const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
       if (!user || (user.role !== "admin" && !userPermissions.includes("booking_edit"))) {
@@ -460,8 +504,8 @@ async function handleApi(req, res, urlPath) {
         after: "Đã xóa",
         createdAt: new Date().toISOString()
       });
-      await writeDb(db);
-      sendJson(res, 200, { ok: true, deletedId: id });
+      const saved = await writeDb(db, record.version);
+      sendJson(res, 200, { ok: true, deletedId: id, version: saved.version, updatedAt: saved.updatedAt });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }
@@ -475,8 +519,14 @@ async function handleApi(req, res, urlPath) {
         sendJson(res, 400, { ok: false, message: "Dữ liệu không hợp lệ." });
         return true;
       }
-      await writeDb(body.db);
-      sendJson(res, 200, { ok: true, savedAt: new Date().toISOString() });
+      const baseVersion = Number(body.baseVersion);
+      const saved = await writeDb(body.db, Number.isInteger(baseVersion) ? baseVersion : null);
+      sendJson(res, 200, {
+        ok: true,
+        savedAt: new Date().toISOString(),
+        version: saved.version,
+        updatedAt: saved.updatedAt
+      });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
     }

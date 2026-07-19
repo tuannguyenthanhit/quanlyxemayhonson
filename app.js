@@ -5,7 +5,11 @@ const API_BASE = "/api";
 const apiState = {
   enabled: false,
   saveTimer: null,
-  lastError: ""
+  lastError: "",
+  version: null,
+  pendingDb: null,
+  saving: false,
+  refreshBound: false
 };
 
 function isProductionHost() {
@@ -446,6 +450,7 @@ async function loadRemoteSession() {
   try {
     const payload = await apiRequest("/me");
     if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+    if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
     if (payload.user) {
       state.user = { ...payload.user };
       safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
@@ -462,22 +467,78 @@ async function loadRemoteSession() {
 function queueRemoteSave(db) {
   if (!apiState.enabled || !state.user) return;
   window.clearTimeout(apiState.saveTimer);
-  const payload = JSON.stringify(compactDbForRemoteSave(db));
-  apiState.saveTimer = window.setTimeout(async () => {
-    try {
-      await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: JSON.parse(payload) }) });
-      apiState.lastError = "";
-    } catch (error) {
-      apiState.lastError = error.message;
-      showToast(`Chưa đồng bộ được dữ liệu lên MySQL.${error.status === 413 ? " Dữ liệu hình ảnh đang quá lớn." : ""} Hệ thống sẽ giữ bản local.`);
+  apiState.pendingDb = compactDbForRemoteSave(db);
+  apiState.saveTimer = window.setTimeout(flushRemoteSave, 350);
+}
+
+async function flushRemoteSave() {
+  if (apiState.saving || !apiState.pendingDb || !apiState.enabled || !state.user) return;
+  apiState.saving = true;
+  const db = apiState.pendingDb;
+  apiState.pendingDb = null;
+  try {
+    const payload = await apiRequest("/data", {
+      method: "PUT",
+      body: JSON.stringify({ db, baseVersion: apiState.version })
+    });
+    if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
+    apiState.lastError = "";
+  } catch (error) {
+    apiState.lastError = error.message;
+    if (error.status === 409) {
+      apiState.pendingDb = null;
+      await refreshRemoteDb({ force: true });
+      showToast("Dữ liệu đã được cập nhật từ thiết bị khác. Hệ thống vừa tải lại bản mới từ MySQL.");
+    } else {
+      apiState.pendingDb = db;
+      showToast(`Chưa đồng bộ được dữ liệu lên MySQL.${error.status === 413 ? " Dữ liệu hình ảnh đang quá lớn." : ""} Hệ thống sẽ thử lại.`);
     }
-  }, 350);
+  } finally {
+    apiState.saving = false;
+    if (apiState.pendingDb) {
+      window.clearTimeout(apiState.saveTimer);
+      apiState.saveTimer = window.setTimeout(flushRemoteSave, 800);
+    }
+  }
+}
+
+async function refreshRemoteDb(options = {}) {
+  if (!apiState.enabled || !state.user || apiState.saving || apiState.pendingDb) return false;
+  if (!options.force && document.querySelector(".modal-backdrop")) return false;
+  try {
+    const payload = await apiRequest("/data");
+    const remoteVersion = Number(payload.version);
+    if (!payload.db || (!options.force && Number.isInteger(remoteVersion) && remoteVersion <= Number(apiState.version || 0))) {
+      return false;
+    }
+    safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+    if (Number.isInteger(remoteVersion)) apiState.version = remoteVersion;
+    const currentUser = (payload.db.users || []).find((user) => user.id === state.user?.id && user.active);
+    if (currentUser) state.user = { ...currentUser };
+    apiState.lastError = "";
+    render();
+    return true;
+  } catch (error) {
+    if (error.status !== 401) apiState.lastError = error.message;
+    return false;
+  }
+}
+
+function bindRemoteRefresh() {
+  if (apiState.refreshBound) return;
+  apiState.refreshBound = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshRemoteDb();
+  });
+  window.addEventListener("focus", () => refreshRemoteDb());
+  window.setInterval(() => refreshRemoteDb(), 30000);
 }
 
 async function syncDeletedBooking(id) {
   if (!apiState.enabled || !state.user) return;
   try {
-    await apiRequest(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const payload = await apiRequest(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
     apiState.lastError = "";
     showToast("Đã xóa đặt phòng và đồng bộ MySQL.");
   } catch (error) {
@@ -823,6 +884,7 @@ function statusClass(status) {
 }
 
 async function appInit() {
+  bindRemoteRefresh();
   if (isProductionHost()) {
     await loadRemoteSession();
     if (!apiState.enabled) {
@@ -1022,6 +1084,7 @@ function bindLogin() {
       try {
         const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
         if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+        if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
         state.user = { ...payload.user };
         safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
         showToast(`Xin chào ${payload.user.name}`);
@@ -4994,7 +5057,8 @@ async function importJsonToMysql(event) {
     }
     migrateDb(importedDb);
     if (apiState.enabled && state.user) {
-      await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: importedDb }) });
+      const saved = await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: importedDb }) });
+      if (Number.isInteger(Number(saved.version))) apiState.version = Number(saved.version);
       safeLocalSet(DB_KEY, JSON.stringify(importedDb), { silent: true }) || safeLocalSet(DB_KEY, JSON.stringify(compactDbForLocalStorage(importedDb)), { silent: true });
       showToast("Đã nhập JSON và đồng bộ lên MySQL. Nếu máy này đầy bộ nhớ, dữ liệu vẫn đã nằm trên database.");
     } else {

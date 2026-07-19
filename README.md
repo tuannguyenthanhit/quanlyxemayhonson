@@ -61,3 +61,11 @@ Cài đặt -> Sao lưu database JSON
 ```
 
 Khi đã cấu hình MySQL, đăng nhập và dữ liệu sẽ dùng chung qua backend Node.js.
+
+## Dùng chung dữ liệu giữa điện thoại và máy tính
+
+- Trên tất cả thiết bị, mở cùng địa chỉ `https://saobienhonson.com`.
+- `http://localhost:4173` là môi trường thử nghiệm trên máy tính và không tự dùng chung database Hostinger nếu máy local chưa được cấu hình các biến MySQL.
+- Nếu dữ liệu đầy đủ đang nằm ở localhost, hãy sao lưu JSON tại localhost, sau đó đăng nhập `saobienhonson.com` trên máy tính và dùng **Cài đặt hệ thống → Nhập JSON lên MySQL** một lần.
+- Website online lấy MySQL làm nguồn dữ liệu chính, tự kiểm tra dữ liệu mới khi quay lại tab và định kỳ mỗi 30 giây.
+- Backend dùng phiên bản dữ liệu để ngăn một thiết bị đang giữ cache cũ ghi đè dữ liệu mới của thiết bị khác.
