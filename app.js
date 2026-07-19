@@ -2972,7 +2972,7 @@ function equipmentAlertTable(rows) {
         <td>${item.type}</td>
         <td>${item.room || item.area || "-"}<br><span class="hint">${item.floor || ""}</span></td>
         <td>${formatDate(item.nextMaintenance)}</td>
-        <td><strong>${daysLeft < 0 ? `Quá ${Math.abs(daysLeft)} ngày` : `${daysLeft} ngày`}</strong><br><span class="hint">NgNgưỡng cảnh báo: 30 ngày</span></td>
+        <td><strong>${daysLeft < 0 ? `Quá ${Math.abs(daysLeft)} ngày` : `${daysLeft} ngày`}</strong><br><span class="hint">Ngưỡng cảnh báo: 30 ngày</span></td>
         <td>${item.maintenanceAlertEnabled === false ? pill("Tắt") : pill(alert ? "Sắp đến hạn" : "Đang bật")}</td>
         <td>${item.maintenanceAlertHandled ? pill("Đã xử lý") : pill(alert ? "Cần bảo trì" : "Đang theo dõi")}</td>
         <td><div class="actions">
@@ -2995,16 +2995,67 @@ function equipmentRepairHistoryTable(rows) {
         const latest = [...tickets].sort((a, b) => new Date(b.foundDate || b.dueDate) - new Date(a.foundDate || a.dueDate))[0];
         return `<tr>
           <td><strong>${item.code}  · ${item.name}</strong><br><span class="hint">${item.type}  · ${item.room || item.area || "-"}</span></td>
-          <td>${tickets.length} phi phiếu</td>
-          <td>${completedTickets.length} l lần</td>
+          <td>${tickets.length} phiếu</td>
+          <td>${completedTickets.length} lần</td>
           <td>${can("costs") ? money(repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
           <td>${latest ? formatDate(latest.foundDate || latest.dueDate) : "-"}</td>
           <td>${latest ? `${latest.issue}<br><span class="hint">${latest.status}</span>` : "<span class='hint'>Chưa có lịch sử sửa chữa.</span>"}</td>
-          <td><div class="actions">${canReportAssetDamage("Thiết bị") ? `<button class="secondary" data-modal="ticket:Thiết bị:${item.id}">Tạo phiếu</button>` : ""}${can("equipment_manage") ? `<button class="ghost" data-modal="equipment:${item.id}">Cập nhật thiết bị</button>` : ""}</div></td>
+          <td><div class="actions"><button class="secondary" data-modal="equipmentHistory:${item.id}">Xem lịch sử</button>${canReportAssetDamage("Thiết bị") ? `<button class="ghost" data-modal="ticket:Thiết bị:${item.id}">Tạo phiếu</button>` : ""}${can("equipment_manage") ? `<button class="ghost" data-modal="equipment:${item.id}">Cập nhật thiết bị</button>` : ""}</div></td>
         </tr>`;
       }).join("")}</tbody>
     </table></div>
   </div>`;
+}
+
+function equipmentHistoryModal(item) {
+  const db = getDb();
+  const close = `<button class="ghost" data-action="close-modal">Đóng</button>`;
+  if (!item) {
+    return `<div class="modal-backdrop"><div class="modal equipment-history-modal"><header><h3>Không tìm thấy thiết bị</h3>${close}</header></div></div>`;
+  }
+  const tickets = db.tickets
+    .filter((ticket) => ticket.assetType === "Thiết bị" && ticket.assetId === item.id)
+    .sort((a, b) => new Date(b.createdAt || b.foundDate || b.dueDate || 0) - new Date(a.createdAt || a.foundDate || a.dueDate || 0));
+  const completed = tickets.filter((ticket) => ticket.status === "Hoàn thành").length;
+  const totalCost = tickets.reduce((sum, ticket) => sum + Number(ticket.actualCost || ticket.estimatedCost || 0), 0);
+  const userName = (id) => db.users.find((user) => user.id === id)?.name || "-";
+  return `<div class="modal-backdrop"><div class="modal equipment-history-modal">
+    <header>
+      <div><h3>Lịch sử sửa chữa: ${item.code} · ${item.name}</h3><span class="hint">${item.type || "Thiết bị"} · ${item.room ? `Phòng ${item.room}` : item.area || "Chưa có vị trí"}</span></div>
+      ${close}
+    </header>
+    <div class="modal-body">
+      <div class="equipment-history-summary">
+        <div><span>Tổng phiếu</span><strong>${tickets.length}</strong></div>
+        <div><span>Đã hoàn thành</span><strong>${completed}</strong></div>
+        <div><span>Tổng chi phí</span><strong>${can("costs") ? money(totalCost) : "Ẩn theo quyền"}</strong></div>
+        <div><span>Lần sửa gần nhất</span><strong>${tickets[0] ? formatDate(tickets[0].foundDate || tickets[0].createdAt || tickets[0].dueDate) : "-"}</strong></div>
+      </div>
+      <div class="equipment-history-list">
+        ${tickets.map((ticket, index) => `<article class="equipment-history-item">
+          <div class="equipment-history-index">${index + 1}</div>
+          <div class="equipment-history-content">
+            <div class="equipment-history-heading">
+              <div><strong>${ticket.code}</strong><span>${formatDate(ticket.foundDate || ticket.createdAt)}${ticket.createdAt ? ` · ${formatTime(ticket.createdAt)}` : ""}</span></div>
+              <div>${pill(ticket.status || "Mới tạo")}${pill(ticket.priority || "Trung bình")}</div>
+            </div>
+            <div class="equipment-history-details">
+              <div><span>Lỗi / yêu cầu</span><strong>${ticket.issue || "-"}</strong></div>
+              <div><span>Nguyên nhân</span><strong>${ticket.cause || "Chưa cập nhật"}</strong></div>
+              <div><span>Phương án xử lý</span><strong>${ticket.solution || "Chưa cập nhật"}</strong></div>
+              <div><span>Phụ tùng</span><strong>${ticket.parts || "Không có"}</strong></div>
+              <div><span>Người phụ trách</span><strong>${userName(ticket.assigneeId)}</strong></div>
+              <div><span>Hạn hoàn thành</span><strong>${formatDate(ticket.dueDate)}</strong></div>
+              <div><span>Chi phí dự kiến</span><strong>${can("costs") ? money(Number(ticket.estimatedCost || 0)) : "Ẩn theo quyền"}</strong></div>
+              <div><span>Chi phí thực tế</span><strong>${can("costs") ? money(Number(ticket.actualCost || 0)) : "Ẩn theo quyền"}</strong></div>
+            </div>
+            ${ticket.notes ? `<div class="equipment-history-note"><span>Ghi chú</span><p>${ticket.notes}</p></div>` : ""}
+            ${canMaintainAsset("Thiết bị") ? `<div class="equipment-history-actions"><button class="secondary" data-modal="ticketEdit:${ticket.id}">Sửa phiếu</button></div>` : ""}
+          </div>
+        </article>`).join("") || `<div class="empty">Thiết bị này chưa có phiếu sửa chữa hoặc bảo trì.</div>`}
+      </div>
+    </div>
+  </div></div>`;
 }
 
 function ticketRow(t, index = 0) {
@@ -3846,6 +3897,7 @@ function modalView() {
   }
   if (type === "bikeDetail") return detailBikeModal(db.motorbikes.find((b) => b.id === id));
   if (type === "bikeKm") return bikeKmModal(db.motorbikes.find((b) => b.id === id));
+  if (type === "equipmentHistory") return equipmentHistoryModal(db.equipment.find((item) => item.id === id));
   if (type === "return" && !can("rental_return")) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền trả xe. Admin có thể bật quyền tại Nhân viên → Sửa quyền → Xe máy → Trả xe.</p></div></div></div>`;
   }
@@ -3868,6 +3920,7 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (["hotel", "room"].includes(type)) return "booking_edit";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
+  if (type === "equipmentHistory") return "equipment_view";
   if (["hrEmployee", "applicant", "attendanceRecord", "attendanceShift"].includes(type)) return "hr";
   if (type === "user") return "users";
   if (type === "ticket") return "";
