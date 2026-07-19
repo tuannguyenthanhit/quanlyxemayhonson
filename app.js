@@ -7,6 +7,7 @@ const apiState = {
   saveTimer: null,
   lastError: "",
   version: null,
+  remoteDb: null,
   pendingDb: null,
   saving: false,
   refreshBound: false
@@ -379,6 +380,9 @@ function emptyDb() {
 }
 
 function getDb() {
+  if (isProductionHost()) {
+    return apiState.remoteDb || emptyDb();
+  }
   const raw = localStorage.getItem(DB_KEY);
   if (!raw) {
     const db = emptyDb();
@@ -419,6 +423,7 @@ function safeLocalSet(key, value, options = {}) {
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {})
@@ -449,7 +454,7 @@ async function loadRemoteSession() {
   }
   try {
     const payload = await apiRequest("/me");
-    if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+    if (payload.db) apiState.remoteDb = payload.db;
     if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
     if (payload.user) {
       state.user = { ...payload.user };
@@ -511,7 +516,7 @@ async function refreshRemoteDb(options = {}) {
     if (!payload.db || (!options.force && Number.isInteger(remoteVersion) && remoteVersion <= Number(apiState.version || 0))) {
       return false;
     }
-    safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+    apiState.remoteDb = payload.db;
     if (Number.isInteger(remoteVersion)) apiState.version = remoteVersion;
     const currentUser = (payload.db.users || []).find((user) => user.id === state.user?.id && user.active);
     if (currentUser) state.user = { ...currentUser };
@@ -783,6 +788,11 @@ function migrateDb(db) {
 }
 
 function setDb(db, options = {}) {
+  if (isProductionHost()) {
+    apiState.remoteDb = db;
+    if (!options.skipRemote) queueRemoteSave(db);
+    return;
+  }
   const payload = JSON.stringify(db);
   try {
     cleanupTemporaryStorage();
@@ -886,6 +896,9 @@ function statusClass(status) {
 async function appInit() {
   bindRemoteRefresh();
   if (isProductionHost()) {
+    // Production always reads MySQL. Remove old per-device database copies so
+    // Safari/Chrome cannot display stale data from a previous app version.
+    localStorage.removeItem(DB_KEY);
     await loadRemoteSession();
     if (!apiState.enabled) {
       state.user = null;
@@ -1083,7 +1096,7 @@ function bindLogin() {
     if (apiState.enabled) {
       try {
         const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
-        if (payload.db) safeLocalSet(DB_KEY, JSON.stringify(payload.db), { silent: true });
+        if (payload.db) apiState.remoteDb = payload.db;
         if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
         state.user = { ...payload.user };
         safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
@@ -5059,8 +5072,8 @@ async function importJsonToMysql(event) {
     if (apiState.enabled && state.user) {
       const saved = await apiRequest("/data", { method: "PUT", body: JSON.stringify({ db: importedDb }) });
       if (Number.isInteger(Number(saved.version))) apiState.version = Number(saved.version);
-      safeLocalSet(DB_KEY, JSON.stringify(importedDb), { silent: true }) || safeLocalSet(DB_KEY, JSON.stringify(compactDbForLocalStorage(importedDb)), { silent: true });
-      showToast("Đã nhập JSON và đồng bộ lên MySQL. Nếu máy này đầy bộ nhớ, dữ liệu vẫn đã nằm trên database.");
+      apiState.remoteDb = importedDb;
+      showToast("Đã nhập JSON và đồng bộ lên MySQL.");
     } else {
       const savedLocal = safeLocalSet(DB_KEY, JSON.stringify(importedDb));
       showToast(savedLocal ? "Đã nhập JSON vào máy này. Chưa đồng bộ MySQL vì chưa chạy chế độ online." : "Chưa nhập được vào máy này vì bộ nhớ trình duyệt đầy. Hãy bật MySQL rồi nhập lại.");

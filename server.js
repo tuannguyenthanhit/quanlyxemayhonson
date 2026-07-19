@@ -321,7 +321,8 @@ async function currentSession(req) {
 }
 
 function setSessionCookie(res, token) {
-  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionDays * 24 * 60 * 60}`);
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${sessionDays * 24 * 60 * 60}`);
 }
 
 async function destroySession(req) {
@@ -340,7 +341,7 @@ function clearSessionCookie(res) {
 
 function staticCacheHeader(filePath) {
   const ext = path.extname(filePath);
-  if (ext === ".html") return "no-cache";
+  if (ext === ".html") return "no-store, max-age=0";
   return "public, max-age=31536000, immutable";
 }
 
