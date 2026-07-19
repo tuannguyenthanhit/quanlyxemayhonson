@@ -25,45 +25,58 @@ const roles = {
 };
 
 const permissions = {
-  admin: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit"],
-  manager: ["finance", "reports", "costs", "manage", "rentals", "maintenance", "damage", "hr", "booking_view", "booking_write", "booking_edit"],
-  receptionist: ["rentals", "photos", "damage", "booking_view", "booking_write"],
-  technician: ["maintenance", "costs"]
+  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
+  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "hr", "finance", "costs", "reports"],
+  receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write"],
+  technician: ["bike_view", "bike_maintenance", "damage", "photos", "equipment_view", "equipment_maintenance", "costs"]
 };
 
+const permissionGroups = [
+  ["motorbikes", "Xe máy", "Quản lý đội xe, thuê/trả xe và sửa chữa xe"],
+  ["booking", "Lịch đặt phòng", "Timeline, khách sạn, phòng và phiếu đặt phòng"],
+  ["equipment", "Thiết bị khách sạn", "Danh mục thiết bị và sửa chữa/bảo trì thiết bị"],
+  ["hr", "Quản lý nhân sự", "Hồ sơ nhân viên, ứng viên và chấm công"],
+  ["system", "Tài chính và hệ thống", "Báo cáo, tài khoản, nhật ký và cài đặt"]
+];
+
 const permissionCatalog = [
-  ["booking_view", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng - xem", "Xem timeline, b\u1ed9 l\u1ecdc kh\u00e1ch s\u1ea1n v\u00e0 chi ti\u1ebft nh\u00f3m kh\u00e1ch"],
-  ["booking_write", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng - ghi", "T\u1ea1o phi\u1ebfu \u0111\u1eb7t ph\u00f2ng v\u00e0 ghi d\u1eef li\u1ec7u m\u1edbi"],
-  ["booking_edit", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng - s\u1eeda", "S\u1eeda, c\u1eadp nh\u1eadt ho\u1eb7c x\u00f3a phi\u1ebfu \u0111\u1eb7t ph\u00f2ng"],
-  ["manage", "Quản lý danh mục", "Xe, loại xe, thiết bị, chủ xe"],
-  ["rentals", "Thuê & trả xe", "Tạo phiếu, giao xe, trả xe"],
-  ["maintenance", "Sửa chữa/bảo trì", "Tạo và cập nhật phiếu sửa chữa"],
-  ["damage", "Báo hư", "Báo xe hoặc thiết bị hư"],
-  ["photos", "Hình ảnh", "Chụp/tải ảnh xe và thiết bị"],
-  ["finance", "Tài chính", "Doanh thu, chi phí, lợi nhuận"],
-  ["costs", "Chi phí sửa chữa", "Xem và nhập chi phí"],
-  ["reports", "Báo cáo", "Xem/in/xuất báo cáo"],
-  ["hr", "Quản lý nhân sự", "Nhân viên đang làm và người xin việc"],
-  ["users", "Nhân viên & phân quyền", "Tạo tài khoản và cấu hình quyền"],
-  ["audit", "Nhật ký hoạt động", "Xem lịch sử thao tác"],
-  ["settings", "Cài đặt hệ thống", "Cấu hình và dữ liệu mẫu"]
+  ["bike_view", "Xem xe máy", "Xem danh sách xe, loại xe, chủ xe và lịch thuê", "motorbikes"],
+  ["bike_manage", "Quản lý xe máy", "Thêm, sửa, xóa xe, loại xe và chủ xe", "motorbikes"],
+  ["rentals", "Tạo và giao xe", "Tạo/sửa phiếu thuê và xác nhận giao xe", "motorbikes"],
+  ["rental_return", "Trả xe", "Mở phiếu trả xe, cập nhật km, ảnh và hoàn tất trả xe", "motorbikes"],
+  ["bike_maintenance", "Sửa chữa xe", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì xe", "motorbikes"],
+  ["damage", "Báo hư", "Báo xe hoặc thiết bị hư", "motorbikes"],
+  ["photos", "Hình ảnh xe", "Chụp hoặc tải ảnh xe", "motorbikes"],
+  ["booking_view", "Xem lịch đặt phòng", "Xem timeline, bộ lọc khách sạn và chi tiết nhóm khách", "booking"],
+  ["booking_write", "Tạo đặt phòng", "Tạo phiếu đặt phòng và ghi dữ liệu mới", "booking"],
+  ["booking_edit", "Sửa đặt phòng", "Sửa, cập nhật hoặc xóa phiếu đặt phòng; quản lý khách sạn/phòng", "booking"],
+  ["equipment_view", "Xem thiết bị", "Xem danh sách, tình trạng và lịch bảo trì thiết bị", "equipment"],
+  ["equipment_manage", "Quản lý thiết bị", "Thêm, sửa thiết bị và loại thiết bị", "equipment"],
+  ["equipment_maintenance", "Sửa chữa thiết bị", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì thiết bị", "equipment"],
+  ["hr", "Quản lý nhân sự", "Hồ sơ nhân viên, người xin việc, ca làm và chấm công", "hr"],
+  ["finance", "Tài chính", "Doanh thu, chi phí, lợi nhuận", "system"],
+  ["costs", "Chi phí sửa chữa", "Xem và nhập chi phí", "system"],
+  ["reports", "Báo cáo", "Xem, in và xuất báo cáo", "system"],
+  ["users", "Nhân viên & phân quyền", "Tạo tài khoản và cấu hình quyền", "system"],
+  ["audit", "Nhật ký hoạt động", "Xem lịch sử thao tác", "system"],
+  ["settings", "Cài đặt hệ thống", "Cấu hình, sao lưu và nhập dữ liệu", "system"]
 ];
 
 const menu = [
   ["dashboard", "T\u1ed5ng quan", "all"],
   ["bookingTimeline", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng", "booking_view"],
-  ["hotels", "Kh\u00e1ch s\u1ea1n", "manage"],
-  ["rooms", "Ph\u00f2ng", "manage"],
-  ["motorbikes", "Xe m\u00e1y", "all"],
-  ["bikeTypes", "Lo\u1ea1i xe", "manage"],
+  ["hotels", "Kh\u00e1ch s\u1ea1n", "booking_view"],
+  ["rooms", "Ph\u00f2ng", "booking_view"],
+  ["motorbikes", "Xe m\u00e1y", "bike_view"],
+  ["bikeTypes", "Lo\u1ea1i xe", "bike_view"],
   ["rentals", "Thu\u00ea & tr\u1ea3 xe", "rentals"],
-  ["calendar", "L\u1ecbch thu\u00ea xe", "all"],
-  ["bikeMaintenance", "S\u1eeda ch\u1eefa xe", "maintenance"],
-  ["equipment", "Thi\u1ebft b\u1ecb kh\u00e1ch s\u1ea1n", "all"],
-  ["equipmentTypes", "Lo\u1ea1i thi\u1ebft b\u1ecb", "manage"],
-  ["equipmentMaintenance", "S\u1eeda ch\u1eefa thi\u1ebft b\u1ecb", "maintenance"],
-  ["maintenanceCalendar", "L\u1ecbch b\u1ea3o tr\u00ec", "all"],
-  ["owners", "Ch\u1ee7 s\u1edf h\u1eefu xe", "manage"],
+  ["calendar", "L\u1ecbch thu\u00ea xe", "bike_view"],
+  ["bikeMaintenance", "S\u1eeda ch\u1eefa xe", "bike_maintenance"],
+  ["equipment", "Thi\u1ebft b\u1ecb kh\u00e1ch s\u1ea1n", "equipment_view"],
+  ["equipmentTypes", "Lo\u1ea1i thi\u1ebft b\u1ecb", "equipment_view"],
+  ["equipmentMaintenance", "S\u1eeda ch\u1eefa thi\u1ebft b\u1ecb", "equipment_maintenance"],
+  ["maintenanceCalendar", "L\u1ecbch b\u1ea3o tr\u00ec", "equipment_view"],
+  ["owners", "Ch\u1ee7 s\u1edf h\u1eefu xe", "bike_view"],
   ["finance", "Doanh thu v\u00e0 chi ph\u00ed", "finance"],
   ["reports", "B\u00e1o c\u00e1o", "reports"],
   ["notifications", "Th\u00f4ng b\u00e1o", "all"],
@@ -717,6 +730,23 @@ function migrateDb(db) {
       });
     });
     db.settings = { ...(db.settings || {}), bookingPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.domainPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      const current = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      const additions = [];
+      if (current.has("manage")) additions.push("bike_view", "bike_manage", "equipment_view", "equipment_manage");
+      if (current.has("rentals")) additions.push("bike_view", "rental_return");
+      if (current.has("maintenance")) additions.push("bike_view", "bike_maintenance", "equipment_view", "equipment_maintenance");
+      if (current.has("booking_view")) additions.push("booking_view");
+      if (current.has("hr")) additions.push("hr");
+      additions.forEach((permission) => current.add(permission));
+      user.permissions = [...current];
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...current] };
+      if (additions.length) changed = true;
+    });
+    db.settings = { ...(db.settings || {}), domainPermissionsMigrated: true };
     changed = true;
   }
   db.settings = db.settings || {};
@@ -2060,7 +2090,7 @@ function upsertBooking(db, data, id) {
 function hotelsView() {
   const hotels = getDb().hotels || defaultHotelCatalog();
   return `<section class="booking-page hotel-management-page">
-    ${pageHeader("Kh\u00e1ch s\u1ea1n", "Qu\u1ea3n l\u00fd danh s\u00e1ch kh\u00e1ch s\u1ea1n, th\u00f4ng tin li\u00ean h\u1ec7, s\u1ed1 ph\u00f2ng v\u00e0 b\u1ea3ng gi\u00e1 c\u00f3 th\u1ec3 ch\u1ec9nh s\u1eeda.", can("manage") ? `<button class="primary" data-modal="hotel">+ Th\u00eam kh\u00e1ch s\u1ea1n</button>` : "")}
+    ${pageHeader("Kh\u00e1ch s\u1ea1n", "Qu\u1ea3n l\u00fd danh s\u00e1ch kh\u00e1ch s\u1ea1n, th\u00f4ng tin li\u00ean h\u1ec7, s\u1ed1 ph\u00f2ng v\u00e0 b\u1ea3ng gi\u00e1 c\u00f3 th\u1ec3 ch\u1ec9nh s\u1eeda.", can("booking_edit") ? `<button class="primary" data-modal="hotel">+ Th\u00eam kh\u00e1ch s\u1ea1n</button>` : "")}
     <div class="booking-simple-grid hotel-card-grid">
       ${hotels.map((hotel) => `<div class="booking-simple-card hotel-card"><span>${navIcon("hotels")}</span><div><strong>${hotel.name}</strong><small>M\u00e3: ${hotel.code || "-"} \u00b7 ${Number(hotel.rooms || 0)} ph\u00f2ng</small><small>\u0110\u1ecba ch\u1ec9: ${hotel.address || "-"}</small><small>Gi\u00e1 t\u1eeb: ${money(hotel.weekdayPrice)}</small><small>Tr\u1ea1ng th\u00e1i: ${hotel.status || "\u0110ang ho\u1ea1t \u0111\u1ed9ng"}</small><button class="secondary" data-modal="hotel:${hotel.id}">S\u1eeda th\u00f4ng tin / gi\u00e1</button></div></div>`).join("")}
     </div>
@@ -2111,7 +2141,7 @@ function roomsView() {
   const rooms = db.rooms || defaultRoomCatalog();
   const visibleRooms = rooms.filter((room) => !room.hidden).length;
   return `<section class="booking-page room-management-page">
-    ${pageHeader("Ph\u00f2ng", "Th\u00eam, s\u1eeda, \u1ea9n/hi\u1ec7n ho\u1eb7c x\u00f3a ph\u00f2ng theo t\u1eebng kh\u00e1ch s\u1ea1n.", can("manage") ? `<button class="primary" data-modal="room">+ Th\u00eam ph\u00f2ng</button>` : "")}
+    ${pageHeader("Ph\u00f2ng", "Th\u00eam, s\u1eeda, \u1ea9n/hi\u1ec7n ho\u1eb7c x\u00f3a ph\u00f2ng theo t\u1eebng kh\u00e1ch s\u1ea1n.", can("booking_edit") ? `<button class="primary" data-modal="room">+ Th\u00eam ph\u00f2ng</button>` : "")}
     <div class="booking-simple-grid hotel-card-grid">
       ${rooms.map((room) => {
         const hotel = hotels.find((item) => item.id === room.hotelId);
@@ -2201,7 +2231,7 @@ function motorbikesView() {
           <span class="motorbike-title-icon">♞</span>
           <div><h2>Quản lý xe máy</h2><p>Tìm kiếm, lọc, xem chi tiết và cập nhật đội xe dễ dàng</p></div>
         </div>
-        ${canAny(["manage"]) ? `<button class="primary motorbike-add" data-modal="bike">+ Thêm xe</button>` : ""}
+        ${can("bike_manage") ? `<button class="primary motorbike-add" data-modal="bike">+ Thêm xe</button>` : ""}
       </div>
 
       <div class="motorbike-stats">
@@ -2358,7 +2388,7 @@ function bikeTypesView() {
           <span class="bike-type-title-icon">♞</span>
           <div><h2>Loại xe</h2><p>Quản lý các loại xe và thông tin kiểm tra, bảo trì định kỳ.</p></div>
         </div>
-        ${can("manage") ? `<button class="primary bike-type-add" data-modal="bikeType">+ Th\u00eam lo\u1ea1i xe</button>` : ""}
+        ${can("bike_manage") ? `<button class="primary bike-type-add" data-modal="bikeType">+ Th\u00eam lo\u1ea1i xe</button>` : ""}
       </div>
       <div class="bike-type-panel">
         <div class="bike-type-toolbar">
@@ -2395,7 +2425,7 @@ function bikeTypeModernRow(type, db, index) {
     <td>${bikeTypeKmCell(type.maintenanceIntervalKm, "Định kỳ", tone, 78, "▣")}</td>
     <td><div class="type-checklist">${checklist.slice(0, 3).map((item) => `<span><i>✓</i>${item}</span>`).join("")}${checklist.length > 3 ? `<b>+${checklist.length - 3} mục khác</b>` : ""}</div></td>
     <td>${bikeTypeNote(type, applied)}</td>
-    <td><div class="type-actions"><button class="secondary" data-modal="bikeType:${type.id}">◎ Chi tiết</button>${can("manage") ? `<button class="ghost" data-modal="bikeType:${type.id}">✎ Sửa</button>` : ""}</div></td>
+    <td><div class="type-actions"><button class="secondary" data-modal="bikeType:${type.id}">◎ Chi tiết</button>${can("bike_manage") ? `<button class="ghost" data-modal="bikeType:${type.id}">✎ Sửa</button>` : ""}</div></td>
   </tr>`;
 }
 
@@ -2427,7 +2457,7 @@ function rentalsView() {
           <span class="rental-title-icon">♢</span>
           <div><h2>Thuê & trả xe</h2><p>Tạo đặt xe, giao xe, trả xe, chụp ảnh và tự động tạo phiếu sửa nếu phát hiện hư hỏng.</p></div>
         </div>
-        ${canAny(["rentals", "manage"]) ? `<button class="primary rental-add" data-modal="rental">+ Tạo phiếu thuê</button>` : ""}
+        ${can("rentals") ? `<button class="primary rental-add" data-modal="rental">+ Tạo phiếu thuê</button>` : ""}
       </div>
 
       <div class="rental-stats">
@@ -2526,10 +2556,10 @@ function rentalStatusText(status) {
 }
 
 function rentalActions(r) {
-  const canCancel = can("manage") && !["Đã trả", "Đã hủy"].includes(r.status);
+  const canCancel = can("bike_manage") && !["Đã trả", "Đã hủy"].includes(r.status);
   return `<div class="rental-actions">
-    ${["Đang thuê", "Quá hạn"].includes(r.status) && canAny(["rentals", "manage"]) ? `<button class="primary" data-modal="return:${r.id}">♢ Trả xe</button>` : ""}
-    ${r.status === "Đã đặt" && canAny(["rentals", "manage"]) ? `<button class="primary" data-action="handover:${r.id}">♢ Giao xe</button>` : ""}
+    ${["Đang thuê", "Quá hạn"].includes(r.status) && can("rental_return") ? `<button class="primary" data-modal="return:${r.id}">♢ Trả xe</button>` : ""}
+    ${r.status === "Đã đặt" && can("rentals") ? `<button class="primary" data-action="handover:${r.id}">♢ Giao xe</button>` : ""}
     ${canCancel ? `<button class="danger" data-action="cancel-rental:${r.id}">Hủy thuê</button>` : ""}
     <button class="ghost" data-modal="return:${r.id}">▣ Ảnh xe</button>
     <button class="ghost" data-modal="rental:${r.id}">✎ Sửa</button>
@@ -2638,17 +2668,27 @@ function ticketsView(assetType) {
   const db = getDb();
   const rows = filterRows(db.tickets.filter((t) => t.assetType === assetType), ["code", "issue", "priority", "status"]);
   return `
-    ${pageHeader(`Sửa chữa và bảo trì ${assetType === "Xe máy" ? "xe" : "thiết bị"}`, "Theo dõi lỗi, chi phí, phụ tùng, ảnh trước/sau và nghiệm thu.", canAny(["maintenance", "manage", "damage"]) ? `<button class="primary" data-modal="ticket:${assetType}">Tạo phiếu</button>` : "")}
+    ${pageHeader(`Sửa chữa và bảo trì ${assetType === "Xe máy" ? "xe" : "thiết bị"}`, "Theo dõi lỗi, chi phí, phụ tùng, ảnh trước/sau và nghiệm thu.", canReportAssetDamage(assetType) ? `<button class="primary" data-modal="ticket:${assetType}">Tạo phiếu</button>` : "")}
     ${assetType === "Xe máy" ? bikeMaintenanceOverview(db) : ""}
     ${assetType === "Thiết bị" ? equipmentMaintenanceOverview(db) : ""}
     ${filters(ticketStatuses)}
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Ưu tiên</th><th>Chi phí</th><th>Hạn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-        <tbody>${rows.map(ticketRow).join("") || `<tr><td colspan="8" class="empty">KhKhông có phiếu phù hợp.</td></tr>`}</tbody>
+        <thead><tr><th class="row-number-head">STT</th><th>Mã phiếu</th><th>Tài sản</th><th>Lỗi</th><th>Ưu tiên</th><th>Chi phí</th><th>Hạn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>${rows.map((ticket, index) => ticketRow(ticket, index)).join("") || `<tr><td colspan="9" class="empty">Không có phiếu phù hợp.</td></tr>`}</tbody>
       </table>
     </div>
   `;
+}
+
+function canMaintainAsset(assetType) {
+  return assetType === "Xe máy"
+    ? can("bike_maintenance")
+    : can("equipment_maintenance");
+}
+
+function canReportAssetDamage(assetType) {
+  return canMaintainAsset(assetType) || can("damage");
 }
 
 function bikeMaintenanceOverview(db = getDb()) {
@@ -2803,7 +2843,7 @@ function ticketHistoryPanel(db = getDb(), assetType = "Xe máy") {
 }
 
 function ticketEditButton(ticket, variant = "") {
-  if (!canAny(["manage", "maintenance"])) return `<span class="hint">Chỉ xem</span>`;
+  if (!canMaintainAsset(ticket.assetType)) return `<span class="hint">Chỉ xem</span>`;
   const className = variant === "mini" ? "ticket-edit-mini" : "secondary";
   return `<button class="${className}" type="button" data-modal="ticketEdit:${ticket.id}">Sửa phiếu</button>`;
 }
@@ -2960,20 +3000,21 @@ function equipmentRepairHistoryTable(rows) {
           <td>${can("costs") ? money(repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
           <td>${latest ? formatDate(latest.foundDate || latest.dueDate) : "-"}</td>
           <td>${latest ? `${latest.issue}<br><span class="hint">${latest.status}</span>` : "<span class='hint'>Chưa có lịch sử sửa chữa.</span>"}</td>
-          <td><div class="actions"><button class="secondary" data-modal="ticket:Thiết bị:${item.id}">Tạo phiếu</button><button class="ghost" data-modal="equipment:${item.id}">Cập nhật thiết bị</button></div></td>
+          <td><div class="actions">${canReportAssetDamage("Thiết bị") ? `<button class="secondary" data-modal="ticket:Thiết bị:${item.id}">Tạo phiếu</button>` : ""}${can("equipment_manage") ? `<button class="ghost" data-modal="equipment:${item.id}">Cập nhật thiết bị</button>` : ""}</div></td>
         </tr>`;
       }).join("")}</tbody>
     </table></div>
   </div>`;
 }
 
-function ticketRow(t) {
+function ticketRow(t, index = 0) {
   const asset = assetName(t);
-  return `<tr>
+  return `<tr class="interactive-row" tabindex="0">
+    <td class="row-number"><span>${index + 1}</span></td>
     <td><strong>${t.code}</strong></td><td>${asset}</td><td>${t.issue}</td><td>${pill(t.priority)}</td>
     <td>${can("costs") ? money(Number(t.actualCost || t.estimatedCost || 0)) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
     <td>${formatDate(t.dueDate)}</td><td>${pill(t.status)}</td>
-    <td><div class="actions"><button class="secondary" data-modal="ticketEdit:${t.id}">Cập nhật</button>${t.status === "Chờ nghiệm thu" && canAny(["manage"]) ? `<button class="ghost" data-action="approve:${t.id}">Nghi\u1ec7m thu</button>` : ""}</div></td>
+    <td><div class="actions">${canMaintainAsset(t.assetType) ? `<button class="secondary" data-modal="ticketEdit:${t.id}">Cập nhật</button>` : `<span class="hint">Chỉ xem</span>`}${t.status === "Chờ nghiệm thu" && canMaintainAsset(t.assetType) ? `<button class="ghost" data-action="approve:${t.id}">Nghi\u1ec7m thu</button>` : ""}</div></td>
   </tr>`;
 }
 
@@ -2981,7 +3022,7 @@ function equipmentView() {
   const rows = filterRows(getDb().equipment, ["code", "name", "type", "room", "condition"]);
   const types = ["Máy lạnh", "Máy giặt", "Tivi", "Tủ lạnh", "Máy nước nóng", "Máy bơm", "Tủ đông", "Thiết bị cafe", "Thiết bị khác"];
   return `
-    ${pageHeader("Thiết bị khách sạn", "Quản lý máy lạnh, máy giặt và thiết bị theo phòng, bảo hành, bảo trì, chi phí.", canAny(["manage"]) ? `<button class="primary" data-modal="equipment">Th\u00eam thi\u1ebft b\u1ecb</button>` : "")}
+    ${pageHeader("Thiết bị khách sạn", "Quản lý máy lạnh, máy giặt và thiết bị theo phòng, bảo hành, bảo trì, chi phí.", can("equipment_manage") ? `<button class="primary" data-modal="equipment">Th\u00eam thi\u1ebft b\u1ecb</button>` : "")}
     ${filters(types)}
     <div class="table-wrap">
       <table>
@@ -2991,7 +3032,7 @@ function equipmentView() {
           <td>${e.room}<br><span class="hint">${e.floor}  · ${e.area}</span></td><td>${formatDate(e.warrantyEnd)}</td><td>${formatDate(e.nextMaintenance)}</td>
           <td><span class="hint">${e.maintenanceChecklist || getDb().equipmentTypes.find((type) => type.name === e.type)?.checklist || ""}</span></td>
           <td>${pill(e.condition)}</td><td>${can("costs") ? money(e.repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
-          <td><div class="actions">${can("manage") ? `<button class="ghost" data-modal="equipment:${e.id}">Sửa</button>` : ""}<button class="secondary" data-modal="ticket:Thiết bị:${e.id}">Báo hư</button></div></td>
+          <td><div class="actions">${can("equipment_manage") ? `<button class="ghost" data-modal="equipment:${e.id}">Sửa</button>` : ""}${canReportAssetDamage("Thiết bị") ? `<button class="secondary" data-modal="ticket:Thiết bị:${e.id}">Báo hư</button>` : ""}</div></td>
         </tr>`).join("") || `<tr><td colspan="9" class="empty">Không có thiết bị phù hợp.</td></tr>`}</tbody>
       </table>
     </div>
@@ -3001,7 +3042,7 @@ function equipmentView() {
 function equipmentTypesView() {
   const rows = filterRows(getDb().equipmentTypes || [], ["name", "checklist", "requiredFields", "note"]);
   return `
-    ${pageHeader("Loại thiết bị", "Cấu hình loại thiết bị, chu kỳ bảo trì, hạn cảnh báo bảo hành và checklist kiểm tra.", can("manage") ? `<button class="primary" data-modal="equipmentType">Thêm loại thiết bị</button>` : "")}
+    ${pageHeader("Loại thiết bị", "Cấu hình loại thiết bị, chu kỳ bảo trì, hạn cảnh báo bảo hành và checklist kiểm tra.", can("equipment_manage") ? `<button class="primary" data-modal="equipmentType">Thêm loại thiết bị</button>` : "")}
     ${filters([])}
     <div class="table-wrap"><table>
       <thead><tr><th>Loại thiết bị</th><th>Chu kỳ bảo trì</th><th>Cảnh báo bảo hành</th><th>Thông tin cần nhập</th><th>Checklist bảo trì</th><th>Thao tác</th></tr></thead>
@@ -3043,12 +3084,12 @@ function ownersView() {
   const rows = filterRows(db.owners, ["name", "phone", "type", "note"]);
   const financialRows = ownerRevenueRows(db);
   return `
-    ${pageHeader("Chủ sở hữu xe", "Quản lý xe thuộc khách sạn hoặc xe ký gửi. Có thể sửa, ẩn/hiện hoặc xóa chủ xe khi không còn xe liên kết.", can("manage") ? `<button class="primary" data-modal="owner">Th\u00eam ch\u1ee7 xe</button>` : "")}
+    ${pageHeader("Chủ sở hữu xe", "Quản lý xe thuộc khách sạn hoặc xe ký gửi. Có thể sửa, ẩn/hiện hoặc xóa chủ xe khi không còn xe liên kết.", can("bike_manage") ? `<button class="primary" data-modal="owner">Th\u00eam ch\u1ee7 xe</button>` : "")}
     ${filters([])}
     <div class="table-wrap"><table><thead><tr><th>Tên</th><th>Điện thoại</th><th>Hình thức</th><th>Số xe</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>
     ${rows.map((o) => {
       const summary = financialRows.find((row) => row.owner.id === o.id);
-      const actions = can("manage") ? `<div class="actions"><button class="ghost" data-modal="owner:${o.id}">Sửa</button><button class="secondary" type="button" data-action="toggle-owner:${o.id}">${o.hidden ? "Hiện" : "Ẩn"}</button><button class="danger" type="button" data-action="delete-owner:${o.id}">Xóa</button></div>` : "";
+      const actions = can("bike_manage") ? `<div class="actions"><button class="ghost" data-modal="owner:${o.id}">Sửa</button><button class="secondary" type="button" data-action="toggle-owner:${o.id}">${o.hidden ? "Hiện" : "Ẩn"}</button><button class="danger" type="button" data-action="delete-owner:${o.id}">Xóa</button></div>` : "";
       return `<tr class="${o.hidden ? "muted-row" : ""}"><td><strong>${o.name}</strong></td><td>${o.phone}</td><td>${o.type}</td><td>${summary?.bikeCount || 0}</td><td>${can("finance") ? money(summary?.revenue || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${can("finance") ? money(summary?.profit || 0) : "<span class='hint'>Ẩn theo quyền</span>"}</td><td>${pill(o.hidden ? "Đang ẩn" : "Đang hiển thị")}</td><td>${o.note || ""}</td><td>${actions}</td></tr>`;
     }).join("")}
     </tbody></table></div>
@@ -3629,8 +3670,15 @@ function usersView() {
 function permissionSummary(user) {
   if (user.role === "admin") return `<span class="pill success">Toàn quyền</span>`;
   const list = Array.isArray(user.permissions) ? user.permissions : permissions[user.role] || [];
-  const labels = list.map((key) => permissionCatalog.find(([id]) => id === key)?.[1] || key);
-  return `<span class="hint">${labels.slice(0, 3).join(", ")}${labels.length > 3 ? ` +${labels.length - 3}` : ""}</span>`;
+  const groups = permissionGroups
+    .map(([groupKey, groupLabel]) => {
+      const count = permissionCatalog.filter(([key, , , permissionGroup]) => permissionGroup === groupKey && list.includes(key)).length;
+      return count ? { label: groupLabel, count } : null;
+    })
+    .filter(Boolean);
+  return groups.length
+    ? `<div class="permission-summary">${groups.map((group) => `<span>${group.label}<em>${group.count}</em></span>`).join("")}</div>`
+    : `<span class="hint">Chưa cấp quyền</span>`;
 }
 
 function auditView() {
@@ -3793,8 +3841,14 @@ function modalView() {
   const [type, id, extra] = state.modal.split(":");
   const db = getDb();
   const close = `<button class="ghost" data-action="close-modal">Đóng</button>`;
+  if (!canUseModal(type, id, extra, db)) {
+    return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền thực hiện thao tác trong nhóm nghiệp vụ tương ứng.</p></div></div></div>`;
+  }
   if (type === "bikeDetail") return detailBikeModal(db.motorbikes.find((b) => b.id === id));
   if (type === "bikeKm") return bikeKmModal(db.motorbikes.find((b) => b.id === id));
+  if (type === "return" && !can("rental_return")) {
+    return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền trả xe. Admin có thể bật quyền tại Nhân viên → Sửa quyền → Xe máy → Trả xe.</p></div></div></div>`;
+  }
   if (type === "return") return returnModal(db.rentals.find((r) => r.id === id));
   if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
@@ -3806,6 +3860,28 @@ function modalView() {
     <div class="modal-body">${modalFields(type, id, extra)}</div>
     <footer>${type === "booking" && id && can("booking_edit") ? `<button class="danger" type="button" data-action="delete-booking:${id}">X\u00f3a \u0111\u1eb7t ph\u00f2ng</button>` : ""}<button class="ghost" type="button" data-action="close-modal">H\u1ee7y</button><button class="primary" type="submit">L\u01b0u</button></footer>
   </form></div>`;
+}
+
+function modalPermission(type, id, extra, db = getDb()) {
+  if (["bike", "bikeType", "owner"].includes(type)) return "bike_manage";
+  if (type === "rental") return "rentals";
+  if (["hotel", "room"].includes(type)) return "booking_edit";
+  if (type === "booking") return id ? "booking_edit" : "booking_write";
+  if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
+  if (["hrEmployee", "applicant", "attendanceRecord", "attendanceShift"].includes(type)) return "hr";
+  if (type === "user") return "users";
+  if (type === "ticket") return "";
+  if (type === "ticketEdit") {
+    const ticket = db.tickets.find((item) => item.id === id);
+    return ticket?.assetType === "Xe máy" ? "bike_maintenance" : "equipment_maintenance";
+  }
+  return "";
+}
+
+function canUseModal(type, id, extra, db = getDb()) {
+  if (type === "ticket") return canReportAssetDamage(id);
+  const requiredPermission = modalPermission(type, id, extra, db);
+  return !requiredPermission || can(requiredPermission);
 }
 
 function modalFields(type, id, extra) {
@@ -4092,9 +4168,17 @@ function userForm(id) {
     ${selectField("active", "Trạng thái", [["true", "Hoạt động"], ["false", "Ngừng"]], String(user.active !== false))}
     ${!isEdit ? `<div class="field full"><label>Tạo nhiều tài khoản cùng lúc</label><textarea name="bulkAccounts" placeholder="Mỗi dòng: Tên nhân viên, email, mật khẩu, vai trò\nVí dụ: Nguyễn A, a@cocobay.vn, 123456, receptionist"></textarea><span class="hint">Nếu nhập phần này, hệ thống sẽ tạo nhiều tài khoản. Vai trò hợp lệ: admin, manager, receptionist, technician.</span></div>` : ""}
     <div class="field full">
-      <label>Quyền chi tiết</label>
-      <div class="permission-grid">
-        ${permissionCatalog.map(([key, label, desc]) => `<label class="permission-item"><input type="checkbox" name="permission" value="${key}" ${selected.has(key) || role === "admin" ? "checked" : ""} ${role === "admin" ? "disabled" : ""}><span><strong>${label}</strong><small>${desc}</small></span></label>`).join("")}
+      <label>Quyền chi tiết theo nhóm nghiệp vụ</label>
+      <div class="permission-group-grid">
+        ${permissionGroups.map(([groupKey, groupLabel, groupDesc]) => {
+          const groupPermissions = permissionCatalog.filter(([, , , permissionGroup]) => permissionGroup === groupKey);
+          return `<section class="permission-group">
+            <header><div><strong>${groupLabel}</strong><small>${groupDesc}</small></div><span>${groupPermissions.length} quyền</span></header>
+            <div class="permission-grid">
+              ${groupPermissions.map(([key, label, desc]) => `<label class="permission-item"><input type="checkbox" name="permission" value="${key}" ${selected.has(key) || role === "admin" ? "checked" : ""} ${role === "admin" ? "disabled" : ""}><span><strong>${label}</strong><small>${desc}</small></span></label>`).join("")}
+            </div>
+          </section>`;
+        }).join("")}
       </div>
       <span class="hint">Admin luôn có toàn quyền. Các vai trò khác có thể bật/tắt quyền theo nhu cầu thực tế.</span>
     </div>
@@ -4468,6 +4552,10 @@ async function saveModal(event) {
   const extra = form.dataset.extra;
   const formData = new FormData(form);
   const data = Object.fromEntries(formData);
+  if (!canUseModal(type, id, extra)) {
+    showToast("Tài khoản này không có quyền lưu thay đổi trong nhóm nghiệp vụ này.");
+    return;
+  }
   if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
     showToast("T\u00e0i kho\u1ea3n n\u00e0y kh\u00f4ng c\u00f3 quy\u1ec1n ghi/s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.");
     return;
@@ -4835,6 +4923,10 @@ function releaseBikeIfNoOpenRental(db, rental) {
 }
 
 function handoverRental(id) {
+  if (!can("rentals")) {
+    showToast("Tài khoản này chưa được cấp quyền giao xe.");
+    return;
+  }
   mutateDb((db) => {
     const r = db.rentals.find((x) => x.id === id);
     const bike = db.motorbikes.find((b) => b.id === r.bikeId);
@@ -4848,7 +4940,7 @@ function handoverRental(id) {
 }
 
 function cancelRental(id) {
-  if (!can("manage")) {
+  if (!can("bike_manage")) {
     showToast("Chỉ admin hoặc quản lý có quyền hủy phiếu thuê.");
     return;
   }
@@ -4886,6 +4978,10 @@ function cancelRental(id) {
 
 async function saveReturn(event) {
   event.preventDefault();
+  if (!can("rental_return")) {
+    showToast("Tài khoản này chưa được cấp quyền trả xe.");
+    return;
+  }
   const id = event.currentTarget.dataset.id;
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));

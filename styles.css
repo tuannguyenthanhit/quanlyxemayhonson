@@ -1745,6 +1745,52 @@ tr:last-child td {
   border-bottom: 0;
 }
 
+.row-number-head,
+.row-number {
+  width: 58px;
+  min-width: 58px;
+  text-align: center;
+}
+
+.row-number span {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(38, 224, 209, 0.3);
+  border-radius: 7px;
+  color: #dffffb;
+  background: rgba(19, 181, 169, 0.14);
+  font-weight: 800;
+}
+
+tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+tbody tr:hover,
+tbody tr:focus,
+tbody tr:focus-within {
+  outline: none;
+  background: rgba(28, 200, 187, 0.11);
+  box-shadow: inset 4px 0 0 #25d7c8, inset 0 1px 0 rgba(130, 255, 244, 0.12), inset 0 -1px 0 rgba(130, 255, 244, 0.12);
+}
+
+tbody tr:hover > td,
+tbody tr:focus > td,
+tbody tr:focus-within > td {
+  background-color: rgba(28, 200, 187, 0.07);
+}
+
+tbody tr:hover .row-number span,
+tbody tr:focus .row-number span,
+tbody tr:focus-within .row-number span {
+  border-color: rgba(103, 255, 241, 0.72);
+  color: #ffffff;
+  background: rgba(20, 196, 181, 0.3);
+  box-shadow: 0 0 18px rgba(32, 225, 209, 0.2);
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -2314,6 +2360,90 @@ tr:last-child td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 4px;
+}
+
+.permission-group-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.permission-group {
+  overflow: hidden;
+  border: 1px solid #2a5870;
+  border-radius: 8px;
+  background: rgba(7, 38, 58, 0.7);
+}
+
+.permission-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a5870;
+  background: #0d4057;
+}
+
+.permission-group > header div {
+  display: grid;
+  gap: 3px;
+}
+
+.permission-group > header strong {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.permission-group > header small {
+  color: #c5dce8;
+}
+
+.permission-group > header > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #003a43;
+  background: #c7fbf4;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.permission-group .permission-grid {
+  padding: 12px;
+  margin: 0;
+}
+
+.permission-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.permission-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #2a6074;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #dffcff;
+  background: #0b354b;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.permission-summary em {
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  place-items: center;
+  border-radius: 50%;
+  color: #003c43;
+  background: #bdf7ef;
+  font-size: 10px;
+  font-style: normal;
 }
 
 .permission-item {
