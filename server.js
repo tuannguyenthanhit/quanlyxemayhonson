@@ -89,6 +89,18 @@ function defaultDb() {
   };
 }
 
+function isLegacySampleDb(data) {
+  if (!data || typeof data !== "object") return false;
+  const sampleBikeCodes = new Set(["CB-001", "CB-002", "CB-003", "CB-004"]);
+  const bikes = Array.isArray(data.motorbikes) ? data.motorbikes : [];
+  const rentals = Array.isArray(data.rentals) ? data.rentals : [];
+  const equipment = Array.isArray(data.equipment) ? data.equipment : [];
+  const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+  const hasOnlySampleBikes = bikes.length > 0 && bikes.length <= 4 && bikes.every((bike) => sampleBikeCodes.has(bike.code));
+  const hasSampleFlags = data.settings?.seeded === true || data.users?.some?.((user) => user.id === "u-manager" || user.email === "manager@cocobay.vn");
+  return Boolean(hasOnlySampleBikes && hasSampleFlags && rentals.length <= 2 && equipment.length <= 3 && tickets.length <= 2);
+}
+
 async function ensureSchema() {
   if (!pool) return;
   await pool.query(`
@@ -120,7 +132,13 @@ async function readDb() {
   const [rows] = await pool.query("SELECT json_data FROM app_data WHERE id = 1 LIMIT 1");
   if (!rows.length) return defaultDb();
   try {
-    return JSON.parse(rows[0].json_data);
+    const data = JSON.parse(rows[0].json_data);
+    if (isLegacySampleDb(data)) {
+      const fresh = defaultDb();
+      await writeDb(fresh);
+      return fresh;
+    }
+    return data;
   } catch {
     return defaultDb();
   }

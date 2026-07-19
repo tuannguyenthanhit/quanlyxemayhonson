@@ -273,6 +273,7 @@ function defaultRoomCatalog() {
 }
 
 function seedDb() {
+  return emptyDb();
   return {
     hotels: defaultHotelCatalog(),
     rooms: defaultRoomCatalog(),
@@ -347,10 +348,36 @@ function seedDb() {
   };
 }
 
+function emptyDb() {
+  return {
+    hotels: [],
+    rooms: [],
+    users: [
+      { id: "u-admin", name: "Chủ Coco Bay", email: "admin@cocobay.vn", password: "123456", role: "admin", permissions: permissions.admin, active: true, lastLoginAt: "" }
+    ],
+    hrEmployees: [],
+    jobApplicants: [],
+    attendanceShifts: [],
+    attendanceRecords: [],
+    owners: [],
+    bikeTypes: [],
+    equipmentTypes: [],
+    motorbikes: [],
+    rentals: [],
+    equipment: [],
+    tickets: [],
+    notifications: [],
+    recoveryRequests: [],
+    auditLogs: [],
+    hotelBookings: [],
+    settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: false, deletedSeedBookings: [], bookingPermissionsMigrated: true }
+  };
+}
+
 function getDb() {
   const raw = localStorage.getItem(DB_KEY);
   if (!raw) {
-    const db = seedDb();
+    const db = emptyDb();
     safeLocalSet(DB_KEY, JSON.stringify(db));
     return db;
   }
@@ -521,11 +548,11 @@ function migrateDb(db) {
   let changed = false;
   if (repairDbTextEncoding(db)) changed = true;
   if (!Array.isArray(db.hotels)) {
-    db.hotels = defaultHotelCatalog();
+    db.hotels = [];
     changed = true;
   }
   db.hotels.forEach((hotel, index) => {
-    const base = defaultHotelCatalog().find((item) => item.id === hotel.id) || defaultHotelCatalog()[index] || {};
+    const base = {};
     const hasBrokenText = [hotel.name, hotel.address, hotel.status, hotel.manager, hotel.note].some((value) => String(value || "").includes("?"));
     if (hasBrokenText && base.id === hotel.id) {
       Object.assign(hotel, {
@@ -548,11 +575,11 @@ function migrateDb(db) {
     if (hotel.rooms === undefined) { hotel.rooms = base.rooms || 0; changed = true; }
   });
   if (!Array.isArray(db.rooms)) {
-    db.rooms = defaultRoomCatalog();
+    db.rooms = [];
     changed = true;
   }
   db.rooms.forEach((room, index) => {
-    const base = defaultRoomCatalog().find((item) => item.id === room.id || item.code === room.code) || defaultRoomCatalog()[index] || {};
+    const base = {};
     if (!room.id) { room.id = uid("ROOM"); changed = true; }
     if (!room.hotelId) { room.hotelId = base.hotelId || db.hotels[0]?.id || ""; changed = true; }
     if (!room.code) { room.code = base.code || nextCode("P", db.rooms); changed = true; }
@@ -583,19 +610,19 @@ function migrateDb(db) {
     }
   });
   if (!Array.isArray(db.hrEmployees)) {
-    db.hrEmployees = seedDb().hrEmployees;
+    db.hrEmployees = [];
     changed = true;
   }
   if (!Array.isArray(db.jobApplicants)) {
-    db.jobApplicants = seedDb().jobApplicants;
+    db.jobApplicants = [];
     changed = true;
   }
   if (!Array.isArray(db.attendanceShifts)) {
-    db.attendanceShifts = seedDb().attendanceShifts;
+    db.attendanceShifts = [];
     changed = true;
   }
   if (!Array.isArray(db.attendanceRecords)) {
-    db.attendanceRecords = seedDb().attendanceRecords;
+    db.attendanceRecords = [];
     changed = true;
   }
   db.users?.forEach((user) => {
@@ -632,11 +659,11 @@ function migrateDb(db) {
     changed = true;
   }
   if (!Array.isArray(db.bikeTypes)) {
-    db.bikeTypes = seedDb().bikeTypes;
+    db.bikeTypes = [];
     changed = true;
   }
   if (!Array.isArray(db.equipmentTypes)) {
-    db.equipmentTypes = seedDb().equipmentTypes;
+    db.equipmentTypes = [];
     changed = true;
   }
   db.motorbikes?.forEach((bike) => {
@@ -1747,24 +1774,10 @@ function personAvatar(person) {
 
 function bookingSeedData(yearMonth = todayISO().slice(0, 7)) {
   const db = getDb();
-  const hotels = db.hotels || defaultHotelCatalog();
-  const rooms = (db.rooms || defaultRoomCatalog()).filter((room) => !room.hidden);
+  const hotels = Array.isArray(db.hotels) ? db.hotels : [];
+  const rooms = (Array.isArray(db.rooms) ? db.rooms : []).filter((room) => !room.hidden);
   const deletedSeedBookings = new Set(db.settings?.deletedSeedBookings || []);
-  const sampleRows = [
-    ["BK250616-001", "101", "Nh\u00f3m Anh Nam", 4, 16, 19, "\u0110ang \u1edf", "green", "Anh Nam", "0901 234 567", 12500000, 6000000],
-    ["BK250616-002", "102", "Nh\u00f3m Anh Nam", 4, 16, 19, "\u0110\u00e3 x\u00e1c nh\u1eadn", "green", "Anh Nam", "0901 234 567", 8500000, 4000000],
-    ["BK250618-003", "103", "Nh\u00f3m Ch\u1ecb Lan", 3, 18, 20, "\u0110\u00e3 c\u1ecdc", "blue", "Ch\u1ecb Lan", "0902 333 456", 5200000, 2000000],
-    ["BK250620-004", "104", "Nh\u00f3m C\u00f4ng ty X", 6, 20, 23, "\u0110ang \u1edf", "orange", "C\u00f4ng ty X", "0905 888 222", 18000000, 12000000],
-    ["BK250624-005", "104", "Gia \u0111\u00ecnh Anh Qu\u00e2n", 4, 24, 27, "Tr\u1ea3 ph\u00f2ng", "purple", "Anh Qu\u00e2n", "0908 111 333", 9800000, 9800000],
-    ["BK250627-006", "105", "Nh\u00f3m H\u00e0n Qu\u1ed1c", 5, 27, 30, "\u0110\u00e3 h\u1ee7y", "red", "Kim Lee", "+82 901 222", 15000000, 0],
-    ["BK250617-007", "A01", "C\u00f4ng ty TNHH ABC", 5, 17, 19, "\u0110\u00e3 x\u00e1c nh\u1eadn", "green", "ABC", "0911 333 999", 6400000, 3000000],
-    ["BK250620-008", "A02", "Nh\u00f3m Du L\u1ecbch Xanh", 6, 20, 22, "\u0110ang \u1edf", "orange", "Du L\u1ecbch Xanh", "0919 123 444", 7200000, 5000000],
-    ["BK250625-009", "A03", "Gia \u0111\u00ecnh Anh Ki\u00ean", 4, 25, 27, "\u0110\u00e3 h\u1ee7y", "red", "Anh Ki\u00ean", "0933 333 222", 5200000, 1000000],
-    ["BK250616-010", "B01", "Nh\u00f3m C\u00f4ng ty Z", 6, 16, 19, "\u0110\u00e3 c\u1ecdc", "blue", "C\u00f4ng ty Z", "0977 444 555", 11800000, 5000000],
-    ["BK250621-012", "B03", "Gia \u0111\u00ecnh Ch\u1ecb H\u01b0\u01a1ng", 4, 21, 24, "\u0110ang \u1edf", "orange", "Ch\u1ecb H\u01b0\u01a1ng", "0939 222 888", 9200000, 4500000],
-    ["BK250616-013", "C01", "Nh\u00f3m Kh\u00e1ch \u0110o\u00e0n", 7, 16, 20, "\u0110\u00e3 c\u1ecdc", "blue", "Kh\u00e1ch \u0111o\u00e0n", "0909 555 777", 10500000, 4500000],
-    ["BK250622-014", "C02", "Nh\u00f3m C\u00f4ng ty M", 5, 22, 25, "\u0110ang \u1edf", "orange", "C\u00f4ng ty M", "0912 123 123", 7800000, 5000000]
-  ];
+  const sampleRows = [];
   const bookings = sampleRows.filter(([id]) => !deletedSeedBookings.has(id)).map(([id, room, group, guests, startDay, endDay, status, tone, customer, phone, total, paid]) => {
     const maxDay = daysInMonth(yearMonth);
     const safeStartDay = Math.min(startDay, Math.max(1, maxDay - 1));
@@ -1787,11 +1800,7 @@ function bookingSeedData(yearMonth = todayISO().slice(0, 7)) {
     };
   });
   const savedBookings = (db.hotelBookings || []).map((booking) => ({ ...booking, tone: booking.tone || bookingStatusTone(booking.status) }));
-  const services = [
-    { name: "Thu\u00ea xe m\u00e1y", date: "16/06 - 19/06", qty: "2 xe", tone: "green" },
-    { name: "Tour 3 \u0111\u1ea3o", date: "17/06/2025", qty: "4 kh\u00e1ch", tone: "blue" },
-    { name: "BBQ H\u1ea3i s\u1ea3n", date: "18/06/2025", qty: "4 kh\u00e1ch", tone: "red" }
-  ];
+  const services = [];
   return { hotels, rooms, bookings: [...bookings, ...savedBookings], services };
 }
 
