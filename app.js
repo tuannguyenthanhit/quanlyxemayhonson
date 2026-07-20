@@ -202,6 +202,14 @@ const BIKE_IMAGE_LIMIT = 10;
 const BIKE_IMAGE_MAX_SIZE = 520;
 const BIKE_IMAGE_QUALITY = 0.38;
 const BIKE_IMAGE_MAX_BYTES = 45000;
+const VI_MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+const MONEY_FIELD_NAMES = new Set([
+  "total", "paid", "weekdayPrice", "weekendPrice", "holidayPrice", "price",
+  "surcharge", "discount", "deposit", "estimatedCost", "actualCost", "salary",
+  "expectedSalary"
+]);
+let activeDatePicker = null;
+let datePickerDocumentBound = false;
 
 function todayISO(offset = 0) {
   const d = new Date();
@@ -216,13 +224,17 @@ function nowLocal() {
 function formatDate(value) {
   if (!value) return "-";
   const d = new Date(value);
-  return d.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 }
 
 function formatDateTime(value) {
   if (!value) return "-";
   const d = new Date(value);
-  return d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour12: false });
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh", hour12: false
+  });
 }
 
 function money(value) {
@@ -954,6 +966,7 @@ async function appInit() {
 }
 
 function render() {
+  closeDatePicker();
   const root = document.getElementById("app");
   root.className = "";
   if (!state.user) {
@@ -2958,12 +2971,12 @@ function isEquipmentMaintenanceAlert(item) {
 
 function equipmentAlertTable(rows) {
   const alertRows = rows
-    .filter((row) => row.alert || row.item.maintenanceAlertEnabled !== false)
+    .filter((row) => row.alert)
     .sort((a, b) => a.daysLeft - b.daysLeft);
   return `<div class="card oil-alert-card">
     <div class="panel-title">
       <div><h3>Thông báo cảnh báo bảo trì thiết bị trong 30 ngày</h3><span class="hint">Theo dõi máy lạnh và các thiết bị khác sắp đến hạn bảo trì/vệ sinh.</span></div>
-      <span class="pill warning">${alertRows.filter((row) => row.alert).length} cảnh báo</span>
+      <span class="pill warning">${alertRows.length} cảnh báo</span>
     </div>
     <div class="table-wrap compact-table"><table>
       <thead><tr><th>Thiết bị</th><th>Loại</th><th>Vị trí</th><th>Ngày bảo trì</th><th>Còn lại</th><th>Cảnh báo</th><th>Xử lý</th><th>Thao tác</th></tr></thead>
@@ -4324,7 +4337,178 @@ function bikeRepairHistoryCard(tickets) {
 }
 
 function field(name, label, value = "", required = false, type = "text") {
+  if (type === "date") {
+    return `<div class="field localized-date-field">
+      <label>${label}</label>
+      <div class="localized-date-control">
+        <input name="${name}" type="text" value="${formatDateInput(value)}" inputmode="numeric" placeholder="DD/MM/YYYY" autocomplete="off" data-date-input ${required ? "required" : ""}>
+        <button type="button" class="date-picker-trigger" data-date-for="${name}" aria-label="Chọn ${label}">▣</button>
+      </div>
+    </div>`;
+  }
+  if (type === "number" && MONEY_FIELD_NAMES.has(name)) {
+    return `<div class="field money-input-field"><label>${label}</label><input name="${name}" type="text" inputmode="numeric" value="${formatMoneyInput(value)}" autocomplete="off" data-money-input ${required ? "required" : ""}><span class="hint">Đơn vị VNĐ</span></div>`;
+  }
   return `<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${value ?? ""}" ${required ? "required" : ""}></div>`;
+}
+
+function parseDateInput(value) {
+  const text = String(value || "").trim();
+  let year;
+  let month;
+  let day;
+  let match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) [, year, month, day] = match;
+  else {
+    match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (!match) return null;
+    [, day, month, year] = match;
+  }
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return null;
+  return date;
+}
+
+function dateToInputISO(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateInput(value) {
+  const date = parseDateInput(value);
+  return date ? `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}` : "";
+}
+
+function formatMoneyInput(value) {
+  const digits = String(value ?? "").replace(/[^\d-]/g, "");
+  const amount = Number(digits || 0);
+  return Number.isFinite(amount) ? amount.toLocaleString("vi-VN") : "0";
+}
+
+function normalizeFormInputs(form) {
+  let valid = true;
+  form.querySelectorAll("[data-date-input]").forEach((input) => {
+    if (!input.value.trim() && !input.required) return;
+    const date = parseDateInput(input.value);
+    if (!date) {
+      valid = false;
+      input.focus();
+      showToast(`Ngày "${input.value}" không hợp lệ. Vui lòng chọn theo định dạng DD/MM/YYYY.`);
+      return;
+    }
+    input.value = dateToInputISO(date);
+  });
+  form.querySelectorAll("[data-money-input]").forEach((input) => {
+    input.value = String(input.value || "").replace(/[^\d-]/g, "") || "0";
+  });
+  return valid;
+}
+
+function closeDatePicker() {
+  document.querySelector(".vi-date-picker")?.remove();
+  activeDatePicker = null;
+}
+
+function openDatePicker(input) {
+  closeDatePicker();
+  const selected = parseDateInput(input.value) || new Date();
+  activeDatePicker = { input, year: selected.getFullYear(), month: selected.getMonth(), selected };
+  renderDatePicker();
+}
+
+function renderDatePicker() {
+  if (!activeDatePicker?.input?.isConnected) {
+    closeDatePicker();
+    return;
+  }
+  document.querySelector(".vi-date-picker")?.remove();
+  const { input, year, month, selected } = activeDatePicker;
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const dayNumber = index - startOffset + 1;
+    let cellDate;
+    let outside = false;
+    if (dayNumber < 1) {
+      cellDate = new Date(year, month - 1, previousMonthDays + dayNumber);
+      outside = true;
+    } else if (dayNumber > daysInMonth) {
+      cellDate = new Date(year, month + 1, dayNumber - daysInMonth);
+      outside = true;
+    } else {
+      cellDate = new Date(year, month, dayNumber);
+    }
+    const iso = dateToInputISO(cellDate);
+    const isSelected = selected && dateToInputISO(selected) === iso;
+    const isToday = iso === todayISO();
+    return `<button type="button" class="${outside ? "outside" : ""} ${isSelected ? "selected" : ""} ${isToday ? "today" : ""}" data-pick-date="${iso}">${cellDate.getDate()}</button>`;
+  }).join("");
+  const picker = document.createElement("div");
+  picker.className = "vi-date-picker";
+  picker.innerHTML = `
+    <div class="vi-date-picker-header">
+      <button type="button" data-date-nav="-1" aria-label="Tháng trước">‹</button>
+      <strong>${VI_MONTHS[month]} năm ${year}</strong>
+      <button type="button" data-date-nav="1" aria-label="Tháng sau">›</button>
+    </div>
+    <div class="vi-date-weekdays">${["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => `<span>${day}</span>`).join("")}</div>
+    <div class="vi-date-days">${cells}</div>
+    <div class="vi-date-picker-footer"><button type="button" data-date-today>Hôm nay</button><button type="button" data-date-clear>Xóa ngày</button></div>`;
+  document.body.appendChild(picker);
+  const rect = input.getBoundingClientRect();
+  const pickerWidth = Math.min(320, window.innerWidth - 20);
+  const estimatedHeight = 355;
+  const left = Math.max(10, Math.min(rect.left, window.innerWidth - pickerWidth - 10));
+  const top = rect.bottom + estimatedHeight <= window.innerHeight ? rect.bottom + 6 : Math.max(10, rect.top - estimatedHeight - 6);
+  Object.assign(picker.style, { left: `${left}px`, top: `${top}px`, width: `${pickerWidth}px` });
+  picker.querySelectorAll("[data-date-nav]").forEach((button) => button.addEventListener("click", () => {
+    const next = new Date(activeDatePicker.year, activeDatePicker.month + Number(button.dataset.dateNav), 1);
+    activeDatePicker.year = next.getFullYear();
+    activeDatePicker.month = next.getMonth();
+    renderDatePicker();
+  }));
+  picker.querySelectorAll("[data-pick-date]").forEach((button) => button.addEventListener("click", () => {
+    input.value = formatDateInput(button.dataset.pickDate);
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    closeDatePicker();
+  }));
+  picker.querySelector("[data-date-today]")?.addEventListener("click", () => {
+    input.value = formatDateInput(todayISO());
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    closeDatePicker();
+  });
+  picker.querySelector("[data-date-clear]")?.addEventListener("click", () => {
+    input.value = "";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    closeDatePicker();
+  });
+}
+
+function bindLocalizedInputs() {
+  document.querySelectorAll("[data-money-input]").forEach((input) => input.addEventListener("input", () => {
+    const caretAtEnd = input.selectionStart === input.value.length;
+    input.value = formatMoneyInput(input.value);
+    if (caretAtEnd) input.setSelectionRange(input.value.length, input.value.length);
+  }));
+  document.querySelectorAll("[data-date-input]").forEach((input) => {
+    input.addEventListener("focus", () => openDatePicker(input));
+    input.addEventListener("click", () => openDatePicker(input));
+  });
+  document.querySelectorAll("[data-date-for]").forEach((button) => button.addEventListener("click", () => {
+    const input = button.closest(".localized-date-control")?.querySelector("[data-date-input]");
+    if (input) openDatePicker(input);
+  }));
+  if (!datePickerDocumentBound) {
+    document.addEventListener("pointerdown", (event) => {
+      if (!activeDatePicker) return;
+      if (event.target.closest(".vi-date-picker, .localized-date-control")) return;
+      closeDatePicker();
+    });
+    window.addEventListener("resize", closeDatePicker);
+    datePickerDocumentBound = true;
+  }
 }
 
 function timeParts(value = "08:00") {
@@ -4452,6 +4636,7 @@ function bindApp() {
   document.querySelector("input[name='employeePhoto']")?.addEventListener("change", previewEmployeePhoto);
   document.querySelector("input[name='applicantPhoto']")?.addEventListener("change", previewApplicantPhoto);
   document.querySelector("[data-import-json]")?.addEventListener("change", importJsonToMysql);
+  bindLocalizedInputs();
 }
 
 function handleBikeImagePreviewClick(event) {
@@ -4603,6 +4788,7 @@ async function saveModal(event) {
   const type = form.dataset.form;
   const id = form.dataset.id;
   const extra = form.dataset.extra;
+  if (!normalizeFormInputs(form)) return;
   const formData = new FormData(form);
   const data = Object.fromEntries(formData);
   if (!canUseModal(type, id, extra)) {

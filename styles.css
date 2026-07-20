@@ -5643,3 +5643,200 @@ table td,
   font-size: 12px;
   font-weight: 800;
 }
+
+/* Vietnamese date and currency inputs */
+.localized-date-control {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.localized-date-control input {
+  padding-right: 46px;
+}
+
+.localized-date-control .date-picker-trigger {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 42px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid rgba(125, 202, 220, 0.24);
+  border-radius: 0 7px 7px 0;
+  color: #dffcff;
+  background: rgba(11, 54, 76, 0.96);
+  font-size: 16px;
+}
+
+.money-input-field .hint {
+  display: block;
+  margin-top: 5px;
+  color: #9fc8dc;
+  font-size: 11px;
+}
+
+.vi-date-picker {
+  position: fixed;
+  z-index: 5000;
+  padding: 12px;
+  border: 1px solid #17c9c4;
+  border-radius: 8px;
+  color: #eefcff;
+  background: #09283d;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+}
+
+.vi-date-picker-header,
+.vi-date-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vi-date-picker-header {
+  margin-bottom: 10px;
+}
+
+.vi-date-picker-header strong {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.vi-date-picker-header button,
+.vi-date-picker-footer button {
+  min-height: 34px;
+  padding: 5px 10px;
+  border-color: rgba(96, 205, 219, 0.3);
+  color: #dffcff;
+  background: #103c55;
+}
+
+.vi-date-weekdays,
+.vi-date-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.vi-date-weekdays {
+  margin-bottom: 4px;
+}
+
+.vi-date-weekdays span {
+  padding: 5px 0;
+  color: #9fc8dc;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.vi-date-days button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #eefcff;
+  background: transparent;
+  font-size: 12px;
+}
+
+.vi-date-days button:hover {
+  border-color: #20d5cb;
+  background: rgba(32, 213, 203, 0.16);
+}
+
+.vi-date-days button.outside {
+  color: #5f8194;
+}
+
+.vi-date-days button.today {
+  border-color: #ffca5f;
+}
+
+.vi-date-days button.selected {
+  color: #052638;
+  background: #23ded0;
+  font-weight: 950;
+}
+
+.vi-date-picker-footer {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(125, 202, 220, 0.18);
+}
+
+/* Keep maintenance alerts concise and scannable. */
+.oil-alert-card {
+  padding: 12px !important;
+}
+
+.oil-alert-card .panel-title {
+  margin-bottom: 8px;
+}
+
+.oil-alert-card .panel-title h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.oil-alert-card .panel-title .hint {
+  font-size: 11px;
+}
+
+.oil-alert-card .table-wrap {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.oil-alert-card table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.oil-alert-card table th,
+.oil-alert-card table td {
+  padding: 7px 8px !important;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.oil-alert-card table td .hint,
+.oil-alert-card table td small {
+  font-size: 10px;
+}
+
+.oil-alert-card table .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.oil-alert-card table .actions button {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .vi-date-picker {
+    right: 10px !important;
+    left: 10px !important;
+    width: auto !important;
+  }
+
+  .oil-alert-card {
+    padding: 9px !important;
+  }
+
+  .oil-alert-card .table-wrap {
+    max-height: 310px;
+  }
+}
