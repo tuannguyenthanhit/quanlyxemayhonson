@@ -6320,8 +6320,55 @@ table td,
     font-size: 12px !important;
   }
 
+  .rental-actions .rental-return-btn,
+  .rental-actions .rental-swap-btn {
+    flex-basis: calc(50% - 3px) !important;
+  }
+
   .rental-footer {
     padding: 8px 10px !important;
     font-size: 11px !important;
+  }
+}
+
+.rental-swap-modal {
+  width: min(680px, calc(100vw - 24px));
+}
+
+.rental-swap-modal header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.swap-current-bike {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-color: rgba(32, 210, 196, 0.45);
+  background: rgba(17, 155, 151, 0.1);
+}
+
+.swap-current-bike span,
+.swap-current-bike small {
+  color: var(--muted);
+}
+
+.swap-current-bike strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+@media (max-width: 760px) {
+  .rental-swap-modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .rental-swap-modal .modal-body {
+    padding: 12px;
+  }
+
+  .rental-swap-modal .field {
+    grid-column: 1 / -1;
   }
 }

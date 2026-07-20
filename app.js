@@ -2592,6 +2592,7 @@ function rentalActions(r) {
   const canCancel = can("bike_manage") && !["Đã trả", "Đã hủy"].includes(r.status);
   return `<div class="rental-actions">
     ${["Đang thuê", "Quá hạn"].includes(r.status) && can("rental_return") ? `<button class="primary rental-return-btn" data-modal="return:${r.id}">Trả xe</button>` : ""}
+    ${["Đang thuê", "Quá hạn"].includes(r.status) && (can("rentals") || can("rental_return")) ? `<button class="secondary rental-swap-btn" data-modal="swapRental:${r.id}">Đổi xe</button>` : ""}
     ${r.status === "Đã đặt" && can("rentals") ? `<button class="primary rental-return-btn" data-action="handover:${r.id}">Giao xe</button>` : ""}
     <button class="ghost rental-detail-btn" data-modal="rental:${r.id}">Chi tiết</button>
     ${canCancel ? `<button class="danger rental-cancel-btn" data-action="cancel-rental:${r.id}">Hủy</button>` : ""}
@@ -3933,6 +3934,7 @@ function modalView() {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền trả xe. Admin có thể bật quyền tại Nhân viên → Sửa quyền → Xe máy → Trả xe.</p></div></div></div>`;
   }
   if (type === "return") return returnModal(db.rentals.find((r) => r.id === id));
+  if (type === "swapRental") return swapRentalModal(db.rentals.find((r) => r.id === id));
   if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
   }
@@ -3948,6 +3950,7 @@ function modalView() {
 function modalPermission(type, id, extra, db = getDb()) {
   if (["bike", "bikeType", "owner"].includes(type)) return "bike_manage";
   if (type === "rental") return "rentals";
+  if (type === "swapRental") return can("rentals") ? "rentals" : "rental_return";
   if (["hotel", "room"].includes(type)) return "booking_edit";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
@@ -4281,6 +4284,34 @@ function returnModal(r) {
       <p class="hint full">Hệ thống tự ghi nhận đã thanh toán đủ ${money(r.total || 0)}, xe bình thường và chuyển xe về trạng thái có sẵn.</p>
     </div>
     <footer><button class="ghost" data-action="close-modal" type="button">Hủy</button><button class="primary" type="submit">Hoàn tất trả xe</button></footer>
+  </form></div>`;
+}
+
+function swapRentalModal(r) {
+  const db = getDb();
+  const currentBike = db.motorbikes.find((item) => item.id === r?.bikeId);
+  const availableBikes = db.motorbikes.filter((bike) => {
+    if (bike.id === r?.bikeId || bike.status !== "Có sẵn") return false;
+    return !hasRentalConflict(bike.id, nowLocal(), r?.end || nowLocal(), r?.id || "");
+  });
+  if (!r || !["Đang thuê", "Quá hạn"].includes(r.status)) {
+    return `<div class="modal-backdrop"><div class="modal"><header><h3>Không thể đổi xe</h3><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body"><p class="empty">Phiếu thuê không còn ở trạng thái đang thuê hoặc quá hạn.</p></div></div></div>`;
+  }
+  return `<div class="modal-backdrop"><form class="modal rental-swap-modal" id="swap-rental-form" data-id="${r.id}">
+    <header><div><h3>Đổi xe cho ${r.customer}</h3><p>${r.phone || "-"} · Phiếu ${r.code}</p></div><button class="ghost" data-action="close-modal" type="button">Đóng</button></header>
+    <div class="modal-body form-grid">
+      <div class="card full swap-current-bike">
+        <span>Xe đang thuê</span>
+        <strong>${currentBike ? `${currentBike.code} · ${currentBike.name}` : "Không tìm thấy xe"}</strong>
+        <small>${currentBike?.plate || "-"} · Km hiện tại ${Number(currentBike?.odometer || 0).toLocaleString("vi-VN")}</small>
+      </div>
+      ${selectField("replacementBikeId", "Chọn xe thay thế", availableBikes.map((bike) => [bike.id, `${bike.code} · ${bike.name} · ${bike.plate || "-"}`]), "", true)}
+      ${selectField("priority", "Mức độ phiếu sửa", ["Trung bình", "Cao", "Khẩn cấp"], "Cao")}
+      <div class="field full"><label>Lý do đổi xe / tình trạng hư</label><textarea name="reason" required placeholder="Ví dụ: xe chết máy, thủng lốp, không đề được..."></textarea></div>
+      <p class="hint full">Sau khi xác nhận, xe mới chuyển sang Đang thuê. Xe cũ chuyển sang Đang sửa và hệ thống tự tạo phiếu sửa chữa để quản trị theo dõi.</p>
+      ${availableBikes.length ? "" : `<p class="empty full">Hiện không có xe phù hợp để thay thế trong thời gian thuê còn lại.</p>`}
+    </div>
+    <footer><button class="ghost" data-action="close-modal" type="button">Hủy</button><button class="primary" type="submit" ${availableBikes.length ? "" : "disabled"}>Xác nhận đổi xe</button></footer>
   </form></div>`;
 }
 
@@ -4647,6 +4678,7 @@ function bindApp() {
   }));
   document.getElementById("modal-form")?.addEventListener("submit", saveModal);
   document.getElementById("return-form")?.addEventListener("submit", saveReturn);
+  document.getElementById("swap-rental-form")?.addEventListener("submit", saveRentalSwap);
   document.getElementById("bike-km-form")?.addEventListener("submit", saveBikeKm);
   document.getElementById("bike-image-preview")?.addEventListener("click", handleBikeImagePreviewClick);
   document.querySelector("input[name='afterPhoto']")?.addEventListener("change", previewPhoto);
@@ -5262,6 +5294,87 @@ async function saveReturn(event) {
     return { record: r.code };
   }, "Trả xe");
   showToast("Đã hoàn tất trả xe.");
+}
+
+function saveRentalSwap(event) {
+  event.preventDefault();
+  if (!can("rentals") && !can("rental_return")) {
+    showToast("Tài khoản này chưa được cấp quyền đổi xe.");
+    return;
+  }
+  const id = event.currentTarget.dataset.id;
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const reason = String(data.reason || "").trim();
+  if (!data.replacementBikeId || !reason) {
+    showToast("Hãy chọn xe thay thế và nhập lý do đổi xe.");
+    return;
+  }
+  mutateDb((db) => {
+    const rental = db.rentals.find((item) => item.id === id);
+    const oldBike = db.motorbikes.find((item) => item.id === rental?.bikeId);
+    const replacementBike = db.motorbikes.find((item) => item.id === data.replacementBikeId);
+    if (!rental || !oldBike || !replacementBike) throw new Error("Không tìm thấy dữ liệu đổi xe");
+    if (!["Đang thuê", "Quá hạn"].includes(rental.status)) throw new Error("Phiếu thuê không còn hiệu lực");
+    if (replacementBike.status !== "Có sẵn" || hasOpenRentalForBike(db, replacementBike.id, rental.id)) {
+      throw new Error("Xe thay thế không còn sẵn sàng");
+    }
+
+    const changedAt = nowLocal();
+    rental.bikeChanges = [
+      ...(Array.isArray(rental.bikeChanges) ? rental.bikeChanges : []),
+      {
+        changedAt,
+        fromBikeId: oldBike.id,
+        fromBikeCode: oldBike.code,
+        toBikeId: replacementBike.id,
+        toBikeCode: replacementBike.code,
+        reason,
+        changedBy: state.user?.name || ""
+      }
+    ];
+    rental.notes = [
+      rental.notes || "",
+      `Đổi xe ${oldBike.code} → ${replacementBike.code} lúc ${formatDateTime(changedAt)}. Lý do: ${reason}`
+    ].filter(Boolean).join("\n");
+    rental.bikeId = replacementBike.id;
+    rental.kmOut = replacementBike.odometer || "";
+    rental.fuelOut = replacementBike.fuel || "";
+    replacementBike.status = "Đang thuê";
+    oldBike.status = "Đang sửa";
+
+    const ticket = {
+      id: uid("T"),
+      code: uid("MT"),
+      assetType: "Xe máy",
+      assetId: oldBike.id,
+      issue: `Xe hư khi đang cho thuê: ${reason}`,
+      priority: data.priority || "Cao",
+      assigneeId: db.users.find((user) => user.role === "technician" && user.active !== false)?.id || "",
+      foundDate: todayISO(),
+      dueDate: todayISO(2),
+      estimatedCost: 0,
+      actualCost: 0,
+      status: "Mới tạo",
+      cause: "Phát sinh trong thời gian khách đang thuê",
+      solution: "Kiểm tra và sửa chữa xe sau khi đổi xe cho khách",
+      parts: "",
+      reporterId: state.user?.id || "",
+      beforePhoto: "",
+      afterPhoto: "",
+      approverId: "",
+      createdAt: changedAt,
+      rentalId: rental.id
+    };
+    db.tickets.unshift(ticket);
+    addTicketNotification(db, ticket);
+    state.modal = null;
+    return {
+      record: rental.code,
+      before: `${oldBike.code} · ${oldBike.name}`,
+      after: `${replacementBike.code} · ${replacementBike.name}; phiếu sửa ${ticket.code}`
+    };
+  }, "Đổi xe đang thuê");
+  showToast("Đã đổi xe và tự động tạo phiếu sửa cho xe hư.");
 }
 
 async function readReturnPhoto(form, id) {
