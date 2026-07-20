@@ -1685,6 +1685,299 @@ button {
   }
 }
 
+/* Compact rental return list: optimized for reception and mobile use. */
+.rental-table {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.rental-table th:nth-child(1) { width: 20%; }
+.rental-table th:nth-child(2) { width: 20%; }
+.rental-table th:nth-child(3) { width: 24%; }
+.rental-table th:nth-child(4) { width: 15%; }
+.rental-table th:nth-child(5) { width: 21%; }
+
+.rental-table th,
+.rental-table td {
+  padding: 14px 16px;
+}
+
+.rental-quick-customer,
+.rental-quick-bike,
+.rental-quick-time {
+  display: grid;
+  gap: 4px;
+}
+
+.rental-quick-customer strong,
+.rental-quick-bike strong {
+  color: #f4fbff;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.rental-quick-customer a {
+  width: max-content;
+  color: #6de7ed;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.rental-quick-bike span,
+.rental-quick-time span {
+  color: #d7eaf3;
+  line-height: 1.35;
+}
+
+.rental-quick-bike em {
+  width: max-content;
+  padding: 3px 8px;
+  border: 1px solid rgba(45, 212, 191, 0.42);
+  border-radius: 6px;
+  color: #78f2e7;
+  background: rgba(13, 148, 136, 0.14);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.rental-quick-time b {
+  color: #71dce8;
+}
+
+.rental-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rental-actions button {
+  min-height: 38px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.rental-return-btn {
+  order: 1;
+  min-width: 92px;
+}
+
+.rental-detail-btn {
+  order: 2;
+}
+
+.rental-cancel-btn {
+  order: 3;
+}
+
+@media (max-width: 760px) {
+  .rental-page {
+    gap: 10px;
+  }
+
+  .rental-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rental-title {
+    gap: 8px;
+  }
+
+  .rental-title-icon,
+  .rental-title p {
+    display: none;
+  }
+
+  .rental-title h2 {
+    font-size: 23px !important;
+  }
+
+  .rental-add {
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .rental-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .rental-stat {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    min-height: 70px !important;
+    gap: 8px !important;
+    padding: 9px !important;
+    border-radius: 8px !important;
+  }
+
+  .rental-stat > span {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    font-size: 20px !important;
+  }
+
+  .rental-stat strong {
+    margin: 3px 0 !important;
+    font-size: 19px !important;
+  }
+
+  .rental-stat small,
+  .rental-stat em {
+    overflow: hidden;
+    font-size: 10px !important;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rental-stat.money {
+    grid-column: 1 / -1;
+  }
+
+  .rental-filters {
+    grid-template-columns: minmax(0, 1fr) 145px !important;
+    gap: 7px !important;
+    padding: 8px !important;
+  }
+
+  .rental-search input,
+  .rental-filters select {
+    min-width: 0;
+    min-height: 42px !important;
+    font-size: 13px !important;
+  }
+
+  .rental-date-filter,
+  .rental-export {
+    display: none !important;
+  }
+
+  .rental-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-spacing: 0 7px !important;
+  }
+
+  .rental-table tr {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 10px;
+    width: 100% !important;
+    padding: 10px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 7px 16px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .rental-table td {
+    display: block !important;
+    width: auto !important;
+    min-width: 0;
+    padding: 3px 0 !important;
+  }
+
+  .rental-table td::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .rental-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .rental-table td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 112px;
+  }
+
+  .rental-table td:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .rental-table td:nth-child(4) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    padding-top: 7px !important;
+  }
+
+  .rental-table td:nth-child(5) {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    padding-top: 7px !important;
+  }
+
+  .rental-quick-customer,
+  .rental-quick-bike,
+  .rental-quick-time {
+    gap: 2px;
+  }
+
+  .rental-quick-customer strong,
+  .rental-quick-bike strong {
+    font-size: 14px;
+  }
+
+  .rental-quick-customer a,
+  .rental-quick-bike span,
+  .rental-quick-bike em,
+  .rental-quick-time span {
+    font-size: 12px;
+  }
+
+  .rental-quick-bike {
+    justify-items: end;
+    text-align: right;
+  }
+
+  .rental-quick-bike em {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rental-status-cell {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .rental-status-cell > span:last-child {
+    font-size: 11px;
+  }
+
+  .rental-actions {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 6px;
+  }
+
+  .rental-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .rental-footer {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .rental-pager,
+  .rental-note {
+    display: none;
+  }
+}
+
 .oil-alert-card {
   margin: 16px 0;
   border-left: 5px solid var(--warning);
@@ -5838,5 +6131,197 @@ table td,
 
   .oil-alert-card .table-wrap {
     max-height: 310px;
+  }
+}
+
+/* Final priority overrides for the fast rental return experience. */
+.rental-table {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.rental-table th,
+.rental-table td {
+  padding: 14px 16px;
+}
+
+.rental-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rental-actions button {
+  min-height: 38px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .rental-page {
+    gap: 10px !important;
+  }
+
+  .rental-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .rental-title-icon,
+  .rental-title p,
+  .rental-date-filter,
+  .rental-export,
+  .rental-pager,
+  .rental-note {
+    display: none !important;
+  }
+
+  .rental-title h2 {
+    font-size: 23px !important;
+  }
+
+  .rental-add {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .rental-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .rental-stat {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    min-height: 70px !important;
+    gap: 8px !important;
+    padding: 9px !important;
+    border-radius: 8px !important;
+  }
+
+  .rental-stat > span {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    font-size: 20px !important;
+  }
+
+  .rental-stat.money {
+    grid-column: 1 / -1 !important;
+  }
+
+  .rental-filters {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 145px !important;
+    gap: 7px !important;
+    padding: 8px !important;
+  }
+
+  .rental-search input,
+  .rental-filters select {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    font-size: 13px !important;
+  }
+
+  .rental-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-spacing: 0 7px !important;
+  }
+
+  .rental-table tr {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 0 10px !important;
+    width: 100% !important;
+    padding: 10px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 7px 16px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .rental-table td {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 3px 0 !important;
+  }
+
+  .rental-table td::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .rental-table td:nth-child(1) {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .rental-table td:nth-child(2) {
+    grid-column: 2 !important;
+    grid-row: 1 / span 2 !important;
+    min-width: 112px !important;
+  }
+
+  .rental-table td:nth-child(3) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+
+  .rental-table td:nth-child(4) {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    padding-top: 7px !important;
+  }
+
+  .rental-table td:nth-child(5) {
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
+    padding-top: 7px !important;
+  }
+
+  .rental-quick-bike {
+    justify-items: end !important;
+    text-align: right !important;
+  }
+
+  .rental-quick-customer strong,
+  .rental-quick-bike strong {
+    font-size: 14px !important;
+  }
+
+  .rental-quick-customer a,
+  .rental-quick-bike span,
+  .rental-quick-bike em,
+  .rental-quick-time span {
+    font-size: 12px !important;
+  }
+
+  .rental-status-cell {
+    display: flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+  }
+
+  .rental-actions {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 6px !important;
+  }
+
+  .rental-actions button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .rental-footer {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
   }
 }

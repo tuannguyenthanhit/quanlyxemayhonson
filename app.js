@@ -2483,14 +2483,14 @@ function rentalsView() {
 
       <div class="rental-panel">
         <div class="rental-filters">
-          <label class="search-box rental-search"><input type="search" placeholder="Tìm kiếm phiếu, khách, xe..." value="${state.query}" data-filter="query"><span>⌕</span></label>
+          <label class="search-box rental-search"><input type="search" placeholder="Tìm tên, SĐT, mã xe, biển số..." value="${state.query}" data-filter="query"><span>⌕</span></label>
           <select data-filter="status"><option value="all">Tất cả trạng thái</option>${rentalStatuses.map((status) => `<option value="${status}" ${state.filter === status ? "selected" : ""}>${status}</option>`).join("")}</select>
           <label class="rental-date-filter"><span>◔</span><input type="date" value="${state.rentalDate || ""}" data-rental-date><em>Chọn khoảng thời gian</em></label>
           <button class="secondary rental-export" data-action="export-rentals-excel">⇩ Xuất Excel</button>
         </div>
         <div class="table-wrap rental-table-wrap"><table class="rental-table">
-          <thead><tr><th>Phiếu thuê</th><th>Khách hàng</th><th>Ảnh xe</th><th>Xe</th><th>Thời gian thuê</th><th>Thanh toán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-          <tbody>${rows.map((r) => rentalModernRow(r, db)).join("") || `<tr><td colspan="8" class="empty">KhKhông có phiếu thuê phù hợp.</td></tr>`}</tbody>
+          <thead><tr><th>Khách hàng</th><th>Xe trả</th><th>Thời gian thuê</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody>${rows.map((r) => rentalModernRow(r, db)).join("") || `<tr><td colspan="5" class="empty">Không có phiếu thuê phù hợp.</td></tr>`}</tbody>
         </table></div>
         <div class="rental-footer"><span>Hiển thị ${rows.length ? `1 - ${rows.length}` : "0"} trong ${rows.length} phiếu thuê</span><div class="rental-pager"><button disabled>‹</button><button class="active">1</button><button disabled>›</button><select><option>10 / trang</option></select></div></div>
       </div>
@@ -2501,14 +2501,39 @@ function rentalsView() {
 }
 
 function filteredRentalRows(db = getDb()) {
-  const query = state.query.trim().toLowerCase();
+  const query = normalizeRentalSearch(state.query);
+  const statusPriority = { "Quá hạn": 0, "Đang thuê": 1, "Đã đặt": 2, "Chưa thanh toán đủ": 3, "Đã trả": 4, "Đã hủy": 5 };
   return db.rentals.filter((rental) => {
     const bike = db.motorbikes.find((bike) => bike.id === rental.bikeId);
-    const matchesQuery = !query || [rental.code, rental.customer, rental.phone, rental.room, rental.status, bike?.code, bike?.name, bike?.plate].some((value) => String(value || "").toLowerCase().includes(query));
+    const searchableValues = [
+      rental.code,
+      rental.customer,
+      rental.phone,
+      rental.room,
+      rental.status,
+      bike?.code,
+      bike?.name,
+      bike?.plate,
+      bike?.brand,
+      bike?.model,
+      bike?.type
+    ];
+    const matchesQuery = !query || searchableValues.some((value) => normalizeRentalSearch(value).includes(query));
     const matchesStatus = state.filter === "all" || rental.status === state.filter;
     const matchesDate = !state.rentalDate || rental.start.slice(0, 10) === state.rentalDate || rental.end.slice(0, 10) === state.rentalDate;
     return matchesQuery && matchesStatus && matchesDate;
-  }).sort((a, b) => new Date(b.start) - new Date(a.start));
+  }).sort((a, b) => {
+    const priorityDifference = (statusPriority[a.status] ?? 9) - (statusPriority[b.status] ?? 9);
+    return priorityDifference || new Date(b.start) - new Date(a.start);
+  });
+}
+
+function normalizeRentalSearch(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function rentalStats(rows) {
@@ -2528,15 +2553,10 @@ function rentalStatCard(icon, label, value, caption, tone) {
 
 function rentalModernRow(r, db = getDb()) {
   const bike = db.motorbikes.find((b) => b.id === r.bikeId);
-  const remain = Math.max(0, Number(r.total || 0) - Number(r.paid || 0));
-  const hours = rentalHours(r);
   return `<tr>
-    <td><div class="rental-code-cell"><span>▤</span><div><strong>${r.code}</strong>${remain > 0 ? `<em>⚠ Chưa thanh toán</em>` : `<em class="paid">Đã thanh toán</em>`}<small>Tạo lúc: ${formatDateTime(r.createdAt || r.start)}</small></div></div></td>
-    <td><div class="rental-customer"><span>●</span><div><strong>${r.customer}</strong><small>${r.phone}</small><small>Phòng ${r.room}</small></div></div></td>
-    <td>${r.beforePhoto ? `<img class="rental-photo" src="${r.beforePhoto}" alt="Ảnh xe">` : bike ? rentalBikeImage(bike) : "-"}</td>
-    <td><strong class="rental-bike-code">${bike?.code?.replace(/^[^0-9]*/, "") || bike?.code || "-"}</strong><span class="rental-bike-name">${bike?.name || ""}</span><span class="plate-badge">${bike?.plate || ""}</span></td>
-    <td><div class="rental-time"><strong>▣ ${formatDateTime(r.start)}</strong><strong>đến ${formatDateTime(r.end)}</strong><em>◷ ${hours} giờ</em></div></td>
-    <td><strong class="rental-paid">${money(r.paid)}</strong><span>Còn ${money(remain)}</span></td>
+    <td><div class="rental-quick-customer"><strong>${r.customer || "Chưa có tên"}</strong><a href="tel:${String(r.phone || "").replace(/\s/g, "")}">${r.phone || "Chưa có SĐT"}</a></div></td>
+    <td><div class="rental-quick-bike"><strong>${bike?.code || "-"}</strong><span>${bike?.name || "Chưa xác định xe"}</span><em>${bike?.plate || "Chưa có biển số"}</em></div></td>
+    <td><div class="rental-quick-time"><span><b>Từ ngày</b> ${formatDate(r.start.slice(0, 10))}</span><span><b>Đến ngày</b> ${formatDate(r.end.slice(0, 10))}</span></div></td>
     <td><div class="rental-status-cell">${pill(r.status)}<span>${r.status === "Quá hạn" ? overdueText(r) : rentalStatusText(r.status)}</span></div></td>
     <td>${rentalActions(r)}</td>
   </tr>`;
@@ -2571,12 +2591,10 @@ function rentalStatusText(status) {
 function rentalActions(r) {
   const canCancel = can("bike_manage") && !["Đã trả", "Đã hủy"].includes(r.status);
   return `<div class="rental-actions">
-    ${["Đang thuê", "Quá hạn"].includes(r.status) && can("rental_return") ? `<button class="primary" data-modal="return:${r.id}">♢ Trả xe</button>` : ""}
-    ${r.status === "Đã đặt" && can("rentals") ? `<button class="primary" data-action="handover:${r.id}">♢ Giao xe</button>` : ""}
-    ${canCancel ? `<button class="danger" data-action="cancel-rental:${r.id}">Hủy thuê</button>` : ""}
-    <button class="ghost" data-modal="return:${r.id}">▣ Ảnh xe</button>
-    <button class="ghost" data-modal="rental:${r.id}">✎ Sửa</button>
-    <button class="ghost icon-only" data-modal="rental:${r.id}">⋮</button>
+    ${["Đang thuê", "Quá hạn"].includes(r.status) && can("rental_return") ? `<button class="primary rental-return-btn" data-modal="return:${r.id}">Trả xe</button>` : ""}
+    ${r.status === "Đã đặt" && can("rentals") ? `<button class="primary rental-return-btn" data-action="handover:${r.id}">Giao xe</button>` : ""}
+    <button class="ghost rental-detail-btn" data-modal="rental:${r.id}">Chi tiết</button>
+    ${canCancel ? `<button class="danger rental-cancel-btn" data-action="cancel-rental:${r.id}">Hủy</button>` : ""}
   </div>`;
 }
 
