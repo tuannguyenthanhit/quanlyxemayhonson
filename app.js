@@ -2002,8 +2002,8 @@ function bookingTimelineView() {
       <div class="booking-head"><div><h2>L\u1ecaCH \u0110\u1eb6T PH\u00d2NG T\u1ed4NG H\u1ee2P</h2><p>Qu\u1ea3n l\u00fd \u0111\u1eb7t ph\u00f2ng nhi\u1ec1u kh\u00e1ch s\u1ea1n - nhi\u1ec1u nh\u00f3m kh\u00e1ch - nhi\u1ec1u ng\u00e0y</p></div>${can("booking_write") ? `<button class="primary" data-modal="booking">+ Th\u00eam \u0111\u1eb7t ph\u00f2ng</button>` : ""}</div>
       <div class="booking-toolbar">
         <select data-booking-hotel><option value="all">T\u1ea5t c\u1ea3 kh\u00e1ch s\u1ea1n</option>${data.hotels.map((hotel) => `<option value="${hotel.id}" ${filters.hotel === hotel.id ? "selected" : ""}>${hotel.name}</option>`).join("")}</select>
-        <label class="booking-control"><span>Th\u00e1ng</span><input type="month" value="${yearMonth}" data-booking-month></label>
-        <label class="booking-control"><span>Ng\u00e0y m\u1ed1c</span><input type="date" value="${filters.date || todayISO()}" data-booking-date></label>
+        <label class="booking-control"><span>Th\u00e1ng</span>${localizedMonthSelect(yearMonth, "data-booking-month")}</label>
+        <label class="booking-control"><span>Ng\u00e0y m\u1ed1c</span>${localizedDateControl(filters.date || todayISO(), "data-booking-date", false, "ngày mốc")}</label>
         <button class="booking-date" type="button">\u25a3 ${monthLabel} - ${bookingPeriodLabel(filters.period)}</button>
         <div class="booking-tabs">
           <button type="button" data-booking-period="day" class="${filters.period === "day" ? "active" : ""}">Ng\u00e0y</button>
@@ -2485,7 +2485,7 @@ function rentalsView() {
         <div class="rental-filters">
           <label class="search-box rental-search"><input type="search" placeholder="Tìm tên, SĐT, mã xe, biển số..." value="${state.query}" data-filter="query"><span>⌕</span></label>
           <select data-filter="status"><option value="all">Tất cả trạng thái</option>${rentalStatuses.map((status) => `<option value="${status}" ${state.filter === status ? "selected" : ""}>${status}</option>`).join("")}</select>
-          <label class="rental-date-filter"><span>◔</span><input type="date" value="${state.rentalDate || ""}" data-rental-date><em>Chọn khoảng thời gian</em></label>
+          <label class="rental-date-filter"><span>◔</span>${localizedDateControl(state.rentalDate || "", "data-rental-date", false, "ngày thuê")}<em>Chọn ngày thuê</em></label>
           <button class="secondary rental-export" data-action="export-rentals-excel">⇩ Xuất Excel</button>
         </div>
         <div class="table-wrap rental-table-wrap"><table class="rental-table">
@@ -3247,7 +3247,7 @@ function financeView() {
           <h3>Lọc doanh thu và chi phí</h3>
           <span class="hint">Chọn tháng để xem doanh thu, công nợ, chi phí sửa xe và lợi nhuận từng chủ xe.</span>
         </div>
-        <label class="month-filter">Tháng <input type="month" value="${month}" data-report-month></label>
+        <label class="month-filter">Tháng ${localizedMonthSelect(month, "data-report-month")}</label>
       </div>
     </div>
     <div class="grid cols-3">
@@ -3431,7 +3431,7 @@ function monthlyBikeRentalSection(report) {
         <h3>Tổng hợp số lượng xe cho thuê trong tháng</h3>
         <span class="hint">Cách tính: 1 xe thuê trong 1 ngày = 1 xe-ngày. Xe thuê nhiều ngày sẽ cộng theo từng ngày.</span>
       </div>
-      <label class="month-filter">Tháng <input type="month" value="${report.month}" data-report-month></label>
+      <label class="month-filter">Tháng ${localizedMonthSelect(report.month, "data-report-month")}</label>
     </div>
     <div class="grid cols-4">
       ${reportKpi("Tổng xe-ngày", report.totalBikeDays, `TTổng số ngày có xe được thuê trong tháng ${report.month}`)}
@@ -3669,8 +3669,8 @@ function attendanceControls(db) {
     <select data-attendance-filter="period">
       ${[["day", "Theo ngày"], ["month", "Theo tháng"], ["year", "Theo năm"]].map(([value, label]) => `<option value="${value}" ${state.attendance.period === value ? "selected" : ""}>${label}</option>`).join("")}
     </select>
-    <input data-attendance-filter="date" type="date" value="${state.attendance.date}">
-    <input data-attendance-filter="month" type="month" value="${state.attendance.month}">
+    ${localizedDateControl(state.attendance.date, `data-attendance-filter="date"`, false, "ngày chấm công")}
+    ${localizedMonthSelect(state.attendance.month, `data-attendance-filter="month"`)}
     <input data-attendance-filter="year" type="number" min="2020" max="2100" value="${state.attendance.year}">
     <select data-attendance-filter="shift">
       <option value="all">Tất cả ca</option>
@@ -4062,6 +4062,9 @@ function rentalForm(id) {
   const bikes = id
     ? db.motorbikes.filter((b) => b.status === "Có sẵn" || b.id === r.bikeId)
     : db.motorbikes.filter((b) => b.status !== "Ngừng sử dụng");
+  const defaultBike = id
+    ? bikes.find((bike) => bike.id === r.bikeId)
+    : bikes.find((bike) => bike.status === "Có sẵn") || bikes[0];
   const bikePicker = id
     ? selectField("bikeId", "Xe thuê", bikes.map((b) => [b.id, `${b.code}  · ${b.name}`]), r.bikeId, true)
     : multiBikeRentalPicker(bikes);
@@ -4069,7 +4072,8 @@ function rentalForm(id) {
     ${field("customer", "Tên khách", r.customer, true)}${field("phone", "Số điện thoại", r.phone, true)}
     ${field("room", "Số phòng", r.room)}${bikePicker}
     ${field("start", "Thời gian nhận", r.start || `${todayISO()}T09:00`, true, "datetime-local")}${field("end", "Thời gian trả", r.end || `${todayISO(1)}T09:00`, true, "datetime-local")}
-    ${field("price", "Đơn giá", r.price || 180000, true, "number")}${field("surcharge", "Phụ thu", r.surcharge || 0, false, "number")}
+    ${!id ? `<input name="autoBikePrice" type="hidden" value="yes">` : ""}
+    ${field("price", "Đơn giá", r.price || defaultBike?.weekdayPrice || 180000, true, "number")}${field("surcharge", "Phụ thu", r.surcharge || 0, false, "number")}
     ${field("discount", "Giảm giá", r.discount || 0, false, "number")}${field("deposit", "Tiền cọc", r.deposit || 0, false, "number")}
     ${field("paid", "Đã thanh toán", r.paid || 0, false, "number")}${selectField("paymentMethod", "Phương thức", ["Tiền mặt", "Chuyển khoản", "Thẻ", "Chưa thanh toán"], r.paymentMethod || "Tiền mặt")}
     ${selectField("status", "Trạng thái", rentalStatuses, r.status || "Đã đặt")}
@@ -4088,7 +4092,7 @@ function multiBikeRentalPicker(bikes) {
           const available = bike.status === "Có sẵn";
           return `
           <label class="multi-bike-option ${available ? "" : "unavailable"} ${index === defaultIndex ? "selected" : ""}">
-            <input type="checkbox" name="bikeIds" value="${bike.id}" ${index === defaultIndex ? "checked" : ""}>
+            <input type="checkbox" name="bikeIds" value="${bike.id}" data-bike-price="${Number(bike.weekdayPrice || 0)}" ${index === defaultIndex ? "checked" : ""}>
             <span class="multi-bike-check" aria-hidden="true"></span>
             <span class="multi-bike-info"><strong>${bike.code} · ${bike.name}</strong><small>${bike.plate || "-"} · ${bike.type || ""}</small></span>
             <span class="multi-bike-status">${pill(bike.status)}</span>
@@ -4389,9 +4393,18 @@ function field(name, label, value = "", required = false, type = "text") {
   if (type === "date") {
     return `<div class="field localized-date-field">
       <label>${label}</label>
-      <div class="localized-date-control">
-        <input name="${name}" type="text" value="${formatDateInput(value)}" inputmode="numeric" placeholder="DD/MM/YYYY" autocomplete="off" data-date-input ${required ? "required" : ""}>
-        <button type="button" class="date-picker-trigger" data-date-for="${name}" aria-label="Chọn ${label}">▣</button>
+      ${localizedDateControl(value, `name="${name}"`, required, label)}
+    </div>`;
+  }
+  if (type === "datetime-local") {
+    const [datePart = "", rawTime = "09:00"] = String(value || "").split("T");
+    const timePart = rawTime.slice(0, 5) || "09:00";
+    return `<div class="field localized-datetime-field">
+      <label>${label}</label>
+      <div class="localized-datetime-control">
+        ${localizedDateControl(datePart, "data-datetime-date", required, `${label} - ngày`)}
+        <input type="time" value="${timePart}" data-datetime-time aria-label="${label} - giờ" ${required ? "required" : ""}>
+        <input type="hidden" name="${name}" value="${datePart}${datePart ? `T${timePart}` : ""}" data-datetime-value>
       </div>
     </div>`;
   }
@@ -4428,6 +4441,31 @@ function formatDateInput(value) {
   return date ? `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}` : "";
 }
 
+function localizedDateControl(value, attributes = "", required = false, label = "ngày") {
+  return `<div class="localized-date-control">
+    <input type="text" value="${formatDateInput(value)}" inputmode="numeric" placeholder="DD/MM/YYYY" autocomplete="off" data-date-input ${attributes} ${required ? "required" : ""}>
+    <button type="button" class="date-picker-trigger" data-date-for="localized" aria-label="Chọn ${label}">▣</button>
+  </div>`;
+}
+
+function localizedDateValue(input, fallback = "") {
+  const parsed = parseDateInput(input?.value);
+  return parsed ? dateToInputISO(parsed) : fallback;
+}
+
+function localizedMonthSelect(value, attributes = "") {
+  const selected = /^\d{4}-\d{2}$/.test(String(value || "")) ? String(value) : todayISO().slice(0, 7);
+  const selectedYear = Number(selected.slice(0, 4));
+  const options = [];
+  for (let year = selectedYear - 5; year <= selectedYear + 5; year += 1) {
+    for (let month = 1; month <= 12; month += 1) {
+      const monthValue = `${year}-${String(month).padStart(2, "0")}`;
+      options.push(`<option value="${monthValue}" ${monthValue === selected ? "selected" : ""}>Tháng ${month}/${year}</option>`);
+    }
+  }
+  return `<select ${attributes} aria-label="Chọn tháng">${options.join("")}</select>`;
+}
+
 function formatMoneyInput(value) {
   const digits = String(value ?? "").replace(/[^\d-]/g, "");
   const amount = Number(digits || 0);
@@ -4446,11 +4484,21 @@ function normalizeFormInputs(form) {
       return;
     }
     input.value = dateToInputISO(date);
+    syncLocalizedDatetime(input.closest(".localized-datetime-control"));
   });
   form.querySelectorAll("[data-money-input]").forEach((input) => {
     input.value = String(input.value || "").replace(/[^\d-]/g, "") || "0";
   });
   return valid;
+}
+
+function syncLocalizedDatetime(control) {
+  if (!control) return;
+  const dateInput = control.querySelector("[data-datetime-date]");
+  const timeInput = control.querySelector("[data-datetime-time]");
+  const valueInput = control.querySelector("[data-datetime-value]");
+  const isoDate = localizedDateValue(dateInput);
+  if (valueInput) valueInput.value = isoDate ? `${isoDate}T${timeInput?.value || "00:00"}` : "";
 }
 
 function closeDatePicker() {
@@ -4544,6 +4592,11 @@ function bindLocalizedInputs() {
   document.querySelectorAll("[data-date-input]").forEach((input) => {
     input.addEventListener("focus", () => openDatePicker(input));
     input.addEventListener("click", () => openDatePicker(input));
+    input.addEventListener("change", () => syncLocalizedDatetime(input.closest(".localized-datetime-control")));
+  });
+  document.querySelectorAll("[data-datetime-time]").forEach((input) => {
+    input.addEventListener("input", () => syncLocalizedDatetime(input.closest(".localized-datetime-control")));
+    input.addEventListener("change", () => syncLocalizedDatetime(input.closest(".localized-datetime-control")));
   });
   document.querySelectorAll("[data-date-for]").forEach((button) => button.addEventListener("click", () => {
     const input = button.closest(".localized-date-control")?.querySelector("[data-date-input]");
@@ -4615,7 +4668,22 @@ function bindApp() {
   });
   document.querySelectorAll(".multi-bike-option input[name='bikeIds']").forEach((input) => input.addEventListener("change", (event) => {
     event.currentTarget.closest(".multi-bike-option")?.classList.toggle("selected", event.currentTarget.checked);
+    const form = event.currentTarget.closest("form");
+    const priceInput = form?.querySelector("input[name='price']");
+    const autoPriceInput = form?.querySelector("input[name='autoBikePrice']");
+    const selectedBike = event.currentTarget.checked
+      ? event.currentTarget
+      : form?.querySelector("input[name='bikeIds']:checked");
+    if (priceInput && selectedBike?.dataset.bikePrice) {
+      priceInput.value = formatMoneyInput(selectedBike.dataset.bikePrice);
+      if (autoPriceInput) autoPriceInput.value = "yes";
+    }
   }));
+  const rentalPriceInput = document.querySelector("#modal-form[data-form='rental'] input[name='price']");
+  rentalPriceInput?.addEventListener("input", () => {
+    const autoPriceInput = rentalPriceInput.form?.querySelector("input[name='autoBikePrice']");
+    if (autoPriceInput) autoPriceInput.value = "no";
+  });
   document.querySelectorAll("[data-bike-status]").forEach((select) => select.addEventListener("change", (event) => {
     setBikeStatus(event.target.dataset.bikeStatus, event.target.value);
   }));
@@ -4635,7 +4703,7 @@ function bindApp() {
   }));
   document.querySelectorAll("[data-booking-date]").forEach((input) => input.addEventListener("change", (event) => {
     const filters = bookingFilterState();
-    filters.date = event.target.value || todayISO();
+    filters.date = localizedDateValue(event.target, todayISO());
     filters.month = filters.date.slice(0, 7);
     render();
   }));
@@ -4657,7 +4725,7 @@ function bindApp() {
     render();
   }));
   document.querySelectorAll("[data-rental-date]").forEach((input) => input.addEventListener("change", (event) => {
-    state.rentalDate = event.target.value;
+    state.rentalDate = event.target.value ? localizedDateValue(event.target) : "";
     render();
   }));
   document.querySelectorAll("[data-filter]").forEach((input) => {
@@ -4668,10 +4736,13 @@ function bindApp() {
     };
     input.addEventListener(input.tagName === "SELECT" ? "change" : "input", updateFilter);
   });
-  document.querySelectorAll("[data-attendance-filter]").forEach((input) => input.addEventListener("input", (event) => {
-    state.attendance[event.target.dataset.attendanceFilter] = event.target.value;
-    render();
-  }));
+  document.querySelectorAll("[data-attendance-filter]").forEach((input) => {
+    input.addEventListener(input.type === "number" ? "input" : "change", (event) => {
+      const key = event.target.dataset.attendanceFilter;
+      state.attendance[key] = key === "date" ? localizedDateValue(event.target, state.attendance.date) : event.target.value;
+      render();
+    });
+  });
   document.querySelectorAll("[data-audit-filter]").forEach((input) => input.addEventListener("input", (event) => {
     state.auditFilters[event.target.dataset.auditFilter] = event.target.value;
     render();
@@ -4962,7 +5033,7 @@ function upsertRental(db, data, id) {
   const bikeIds = id ? [data.bikeId] : (data.bikeIds?.length ? data.bikeIds : [data.bikeId]);
   const count = Math.max(1, bikeIds.length);
   bikeIds.forEach((bikeId, index) => {
-    const payload = rentalPayloadForBike(data, bikeId, count, index);
+    const payload = rentalPayloadForBike(db, data, bikeId, count, index);
     if (id) Object.assign(db.rentals.find((r) => r.id === id), payload);
     else db.rentals.push({ id: uid("R"), code: uid("RT"), ...payload });
     const bike = db.motorbikes.find((b) => b.id === bikeId);
@@ -4970,25 +5041,26 @@ function upsertRental(db, data, id) {
   });
 }
 
-function rentalPayloadForBike(data, bikeId, count, index) {
+function rentalPayloadForBike(db, data, bikeId, count, index) {
   const days = Math.max(1, Math.ceil((new Date(data.end) - new Date(data.start)) / 86400000));
+  const configuredBikePrice = Number(db.motorbikes.find((bike) => bike.id === bikeId)?.weekdayPrice || 0);
+  const price = data.autoBikePrice === "yes" && configuredBikePrice > 0 ? configuredBikePrice : Number(data.price);
   const surcharge = splitAmount(data.surcharge, count, index);
   const discount = splitAmount(data.discount, count, index);
   const deposit = splitAmount(data.deposit, count, index);
   const paid = splitAmount(data.paid, count, index);
-  const total = days * Number(data.price) + surcharge - discount;
   const groupNote = count > 1 ? `Tạo nhanh theo đoàn ${count} xe.` : "";
   const notes = [data.notes || "", groupNote].filter(Boolean).join("\n");
-  const { bikeIds, ...rest } = data;
+  const { bikeIds, autoBikePrice, ...rest } = data;
   return {
     ...rest,
     bikeId,
-    price: +data.price,
+    price,
     surcharge,
     discount,
     deposit,
     paid,
-    total,
+    total: days * price + surcharge - discount,
     kmOut: "",
     fuelOut: "",
     kmIn: "",

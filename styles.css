@@ -5942,6 +5942,7 @@ table td,
   position: relative;
   display: flex;
   align-items: stretch;
+  width: 100%;
 }
 
 .localized-date-control input {
@@ -5962,6 +5963,33 @@ table td,
   color: #dffcff;
   background: rgba(11, 54, 76, 0.96);
   font-size: 16px;
+}
+
+.localized-datetime-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.localized-datetime-control > input[type="time"] {
+  min-width: 0;
+}
+
+.localized-datetime-control > input[type="hidden"] {
+  display: none;
+}
+
+.booking-control .localized-date-control,
+.rental-date-filter .localized-date-control,
+.attendance-controls .localized-date-control {
+  min-width: 160px;
+}
+
+@media (max-width: 640px) {
+  .localized-datetime-control {
+    grid-template-columns: minmax(0, 1fr) 104px;
+  }
 }
 
 .money-input-field .hint {
