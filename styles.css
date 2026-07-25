@@ -1723,6 +1723,19 @@ button {
   text-decoration: none;
 }
 
+.rental-customer-room {
+  width: max-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid rgba(109, 231, 237, 0.32);
+  border-radius: 5px;
+  color: #f4fbff;
+  background: rgba(20, 184, 166, 0.14);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .rental-quick-bike span,
 .rental-quick-time span {
   color: #d7eaf3;
@@ -1925,6 +1938,7 @@ button {
   }
 
   .rental-quick-customer a,
+  .rental-customer-room,
   .rental-quick-bike span,
   .rental-quick-bike em,
   .rental-quick-time span {
@@ -6322,6 +6336,7 @@ table td,
   }
 
   .rental-quick-customer a,
+  .rental-customer-room,
   .rental-quick-bike span,
   .rental-quick-bike em,
   .rental-quick-time span {

@@ -2553,8 +2553,10 @@ function rentalStatCard(icon, label, value, caption, tone) {
 
 function rentalModernRow(r, db = getDb()) {
   const bike = db.motorbikes.find((b) => b.id === r.bikeId);
+  const room = String(r.room || r.roomNumber || r.roomNo || r.roomCode || "").trim();
+  const roomLabel = room ? (/^phòng\b/i.test(room) ? room : `Phòng ${room}`) : "Chưa có số phòng";
   return `<tr>
-    <td><div class="rental-quick-customer"><strong>${r.customer || "Chưa có tên"}</strong><a href="tel:${String(r.phone || "").replace(/\s/g, "")}">${r.phone || "Chưa có SĐT"}</a></div></td>
+    <td><div class="rental-quick-customer"><strong>${r.customer || "Chưa có tên"}</strong><a href="tel:${String(r.phone || "").replace(/\s/g, "")}">${r.phone || "Chưa có SĐT"}</a><span class="rental-customer-room">${roomLabel}</span></div></td>
     <td><div class="rental-quick-bike"><strong>${bike?.code || "-"}</strong><span>${bike?.name || "Chưa xác định xe"}</span><em>${bike?.plate || "Chưa có biển số"}</em></div></td>
     <td><div class="rental-quick-time"><span><b>Từ ngày</b> ${formatDate(r.start.slice(0, 10))}</span><span><b>Đến ngày</b> ${formatDate(r.end.slice(0, 10))}</span></div></td>
     <td><div class="rental-status-cell">${pill(r.status)}<span>${r.status === "Quá hạn" ? overdueText(r) : rentalStatusText(r.status)}</span></div></td>
