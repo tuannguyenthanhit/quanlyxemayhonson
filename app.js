@@ -1874,7 +1874,7 @@ function bikeAvatar(bike) {
   const image = Array.isArray(bike.images) ? bike.images[0] : "";
   const alt = `Ảnh đại diện ${bike.code}`;
   if (image) {
-    return `<div class="bike-avatar" tabindex="0"><img src="${image}" alt="${alt}"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
+    return `<div class="bike-avatar" tabindex="0"><img src="${image}" alt="${alt}" onerror="this.closest('.bike-avatar')?.classList.add('image-load-error')"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
   }
   return `<div class="bike-avatar placeholder" tabindex="0"><span>${bike.code}</span><div class="bike-avatar-zoom placeholder"><span>${bike.code}<small>Chưa có ảnh</small></span></div></div>`;
 }
@@ -1884,7 +1884,7 @@ function personAvatar(person) {
   const initials = String(person.name || person.code || "NS").split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase();
   const alt = `Ảnh nhân viên ${person.name || person.code}`;
   if (image) {
-    return `<div class="bike-avatar person-avatar" tabindex="0"><img src="${image}" alt="${alt}"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
+    return `<div class="bike-avatar person-avatar" tabindex="0"><img src="${image}" alt="${alt}" onerror="this.closest('.bike-avatar')?.classList.add('image-load-error')"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
   }
   return `<div class="bike-avatar person-avatar placeholder" tabindex="0"><span>${initials || person.code}</span><div class="bike-avatar-zoom placeholder"><span>${person.name || person.code}<small>Chưa có ảnh</small></span></div></div>`;
 }
@@ -2367,9 +2367,9 @@ function motorbikePhotoCode(bike) {
   const images = Array.isArray(bike.images) ? bike.images.filter(Boolean).slice(0, 5) : [];
   const image = images[0] || "";
   const photo = image
-    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
+    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}" onerror="this.closest('.bike-photo-hover')?.classList.add('image-load-error')"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
     : `<div class="bike-photo-empty">XE</div>`;
-  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
+  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}" onerror="this.closest('.bike-photo-hover')?.classList.add('image-load-error')"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
   const more = Array.isArray(bike.images) && bike.images.length > 5 ? `<em>+${bike.images.length - 5}</em>` : "";
   return `<div class="bike-photo-code"><div class="bike-photo-stack">${photo}<div class="bike-photo-strip">${thumbs}${more}</div></div><span>${String(bike.code || "").replace(/^[^0-9]*/, "") || bike.code}</span></div>`;
 }

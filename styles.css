@@ -2393,6 +2393,29 @@ tbody tr:focus-within .row-number span {
   transform: translateY(-50%) scale(1);
 }
 
+.bike-avatar.image-load-error {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 142, 142, 0.78);
+  border-radius: 8px;
+  color: #ffb8b8;
+  background: rgba(255, 92, 92, 0.12);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.bike-avatar.image-load-error::after {
+  content: "Ảnh đã mất";
+}
+
+.bike-avatar.image-load-error > img,
+.bike-avatar.image-load-error .bike-avatar-zoom {
+  display: none;
+}
+
 .panel-title {
   display: flex;
   align-items: center;
@@ -3188,6 +3211,22 @@ tbody tr:focus-within .row-number span {
 .bike-photo-hover:focus-within .bike-photo-zoom {
   display: block;
 }
+.bike-photo-hover.image-load-error {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed rgba(255, 142, 142, 0.78);
+  border-radius: 8px;
+  color: #ffb8b8;
+  background: rgba(255, 92, 92, 0.12);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+}
+.bike-photo-hover.image-load-error::after { content: "Ảnh đã mất"; }
+.bike-photo-hover.image-load-error.thumb::after { content: "!"; }
+.bike-photo-hover.image-load-error > img,
+.bike-photo-hover.image-load-error .bike-photo-zoom { display: none !important; }
 .bike-photo-code > span { display: grid; place-items: center; min-width: 54px; min-height: 48px; border: 1px solid #cde9e7; border-radius: 8px; color: var(--sea-dark); background: #e7f8f6; font-weight: 900; }
 .bike-name { display: block; color: #102437; font-size: 17px; }
 .bike-sub, .price-line, .maintenance-cell span, .status-stack span, .owner-cell span { display: block; margin-top: 6px; color: var(--muted); }

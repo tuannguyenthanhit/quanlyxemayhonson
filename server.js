@@ -121,6 +121,19 @@ async function ensureSchema() {
           INDEX idx_app_sessions_expires (expires_at)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_uploads (
+          id CHAR(32) PRIMARY KEY,
+          folder VARCHAR(32) NOT NULL DEFAULT 'general',
+          mime_type VARCHAR(50) NOT NULL,
+          file_ext VARCHAR(8) NOT NULL,
+          byte_size INT UNSIGNED NOT NULL,
+          file_data LONGBLOB NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_app_uploads_folder (folder),
+          INDEX idx_app_uploads_created (created_at)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+      `);
       await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
       const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
       if (!rows.length) {
@@ -222,7 +235,7 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function saveUploadedImage(dataUrl, folder = "general") {
+async function saveUploadedImage(dataUrl, folder = "general") {
   const match = String(dataUrl || "").match(/^data:image\/(png|jpe?g|webp);base64,([a-z0-9+/=]+)$/i);
   if (!match) {
     const error = new Error("File ảnh không hợp lệ.");
@@ -237,6 +250,16 @@ function saveUploadedImage(dataUrl, folder = "general") {
     throw error;
   }
   const safeFolder = String(folder || "general").replace(/[^a-z0-9_-]/gi, "").slice(0, 32) || "general";
+  if (pool) {
+    await ensureSchema();
+    const id = crypto.randomBytes(16).toString("hex");
+    const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    await pool.query(
+      "INSERT INTO app_uploads (id, folder, mime_type, file_ext, byte_size, file_data) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, safeFolder, mimeType, ext, buffer.length, buffer]
+    );
+    return `/uploads/db/${id}.${ext}`;
+  }
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const uploadDir = path.join(root, "uploads", safeFolder, month);
@@ -247,8 +270,15 @@ function saveUploadedImage(dataUrl, folder = "general") {
   return `/uploads/${safeFolder}/${month}/${filename}`;
 }
 
-function deleteUploadedImage(url) {
+async function deleteUploadedImage(url) {
   const cleanUrl = String(url || "").split("?")[0];
+  const databaseImage = cleanUrl.match(/^\/uploads\/db\/([a-f0-9]{32})(?:\.[a-z0-9]+)?$/i);
+  if (databaseImage) {
+    if (!pool) return { deleted: false, missing: true };
+    await ensureSchema();
+    const [result] = await pool.query("DELETE FROM app_uploads WHERE id = ?", [databaseImage[1]]);
+    return { deleted: Boolean(result.affectedRows), missing: !result.affectedRows };
+  }
   if (!cleanUrl.startsWith("/uploads/")) {
     return { deleted: false, skipped: true };
   }
@@ -265,6 +295,41 @@ function deleteUploadedImage(url) {
   }
   fs.unlinkSync(filePath);
   return { deleted: true };
+}
+
+async function serveDatabaseUpload(req, res, urlPath) {
+  const match = String(urlPath || "").match(/^\/uploads\/db\/([a-f0-9]{32})(?:\.[a-z0-9]+)?$/i);
+  if (!match) return false;
+  if (!pool) {
+    res.writeHead(404, { "Cache-Control": "no-store" });
+    res.end("Image not found");
+    return true;
+  }
+  try {
+    await ensureSchema();
+    const [rows] = await pool.query(
+      "SELECT mime_type, byte_size, file_data FROM app_uploads WHERE id = ? LIMIT 1",
+      [match[1]]
+    );
+    if (!rows.length) {
+      res.writeHead(404, { "Cache-Control": "no-store" });
+      res.end("Image not found");
+      return true;
+    }
+    const image = rows[0];
+    res.writeHead(200, {
+      "Content-Type": image.mime_type,
+      "Content-Length": Number(image.byte_size || image.file_data.length),
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff"
+    });
+    if (req.method === "HEAD") res.end();
+    else res.end(image.file_data);
+  } catch (error) {
+    res.writeHead(500, { "Cache-Control": "no-store" });
+    res.end("Unable to load image");
+  }
+  return true;
 }
 
 function parseCookies(req) {
@@ -370,8 +435,12 @@ function sendStatic(req, res, filePath, data) {
 async function handleApi(req, res, urlPath) {
   if (urlPath === "/api/uploads" && req.method === "POST") {
     try {
+      if (pool && !(await currentSession(req))) {
+        sendJson(res, 401, { ok: false, message: "Chưa đăng nhập." });
+        return true;
+      }
       const body = await readBody(req);
-      const url = saveUploadedImage(body.image, body.folder || "general");
+      const url = await saveUploadedImage(body.image, body.folder || "general");
       sendJson(res, 200, { ok: true, url });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
@@ -381,8 +450,12 @@ async function handleApi(req, res, urlPath) {
 
   if (urlPath === "/api/uploads" && req.method === "DELETE") {
     try {
+      if (pool && !(await currentSession(req))) {
+        sendJson(res, 401, { ok: false, message: "Chưa đăng nhập." });
+        return true;
+      }
       const body = await readBody(req);
-      const result = deleteUploadedImage(body.url);
+      const result = await deleteUploadedImage(body.url);
       sendJson(res, 200, { ok: true, ...result });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, error: error.message });
@@ -540,6 +613,11 @@ async function handleApi(req, res, urlPath) {
 
 const server = http.createServer(async (req, res) => {
   const urlPath = decodeURIComponent(req.url.split("?")[0]);
+
+  if (urlPath.startsWith("/uploads/db/")) {
+    await serveDatabaseUpload(req, res, urlPath);
+    return;
+  }
 
   if (urlPath.startsWith("/api/")) {
     await handleApi(req, res, urlPath);
