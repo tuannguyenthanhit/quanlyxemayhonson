@@ -3228,6 +3228,49 @@ tbody tr:focus-within .row-number span {
 .bike-photo-hover.image-load-error > img,
 .bike-photo-hover.image-load-error .bike-photo-zoom { display: none !important; }
 .bike-photo-code > span { display: grid; place-items: center; min-width: 54px; min-height: 48px; border: 1px solid #cde9e7; border-radius: 8px; color: var(--sea-dark); background: #e7f8f6; font-weight: 900; }
+.oil-history-card { border-color: rgba(45, 212, 191, 0.38); }
+.oil-history-title { align-items: flex-start; }
+.oil-history-toolbar {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(260px, 1fr) minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.oil-history-toolbar > label { display: grid; gap: 6px; color: var(--text); font-size: 12px; font-weight: 800; }
+.oil-history-toolbar select,
+.oil-history-toolbar input { min-height: 42px; }
+.oil-history-summary {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto auto auto auto auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(45, 212, 191, 0.08);
+  white-space: nowrap;
+}
+.oil-history-summary strong { color: #5eead4; }
+.oil-history-summary span { color: var(--muted); font-size: 11px; }
+.oil-history-card tbody tr { transition: background-color 0.15s ease, box-shadow 0.15s ease; }
+.oil-history-card tbody tr:hover { background: rgba(45, 212, 191, 0.12); box-shadow: inset 3px 0 #2dd4bf; }
+.bike-oil-history { grid-column: 1 / -1; }
+.oil-change-modal { max-width: 760px; }
+@media (max-width: 900px) {
+  .oil-history-toolbar { grid-template-columns: 1fr 1fr; }
+  .oil-history-search,
+  .oil-history-summary { grid-column: 1 / -1; }
+  .oil-history-summary { justify-content: start; overflow-x: auto; }
+}
+@media (max-width: 560px) {
+  .oil-history-title { display: grid; }
+  .oil-history-title .primary { width: 100%; }
+  .oil-history-toolbar { grid-template-columns: 1fr; }
+  .oil-history-search,
+  .oil-history-summary { grid-column: auto; }
+}
 .bike-name { display: block; color: #102437; font-size: 17px; }
 .bike-sub, .price-line, .maintenance-cell span, .status-stack span, .owner-cell span { display: block; margin-top: 6px; color: var(--muted); }
 .plate-badge { display: inline-flex; margin-top: 8px; padding: 5px 9px; border: 1px solid #cfdde2; border-radius: 6px; background: #f8fbfc; color: #102437; font-weight: 700; }

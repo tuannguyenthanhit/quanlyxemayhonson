@@ -169,7 +169,13 @@ const state = {
     oilAlerts: 1,
     bikeTicketHistory: 1,
     equipmentTicketHistory: 1,
-    bookingHistory: 1
+    bookingHistory: 1,
+    oilChangeHistory: 1
+  },
+  oilHistory: {
+    month: todayISO().slice(0, 7),
+    bike: "all",
+    query: ""
   },
   rentalDate: "",
   attendance: {
@@ -206,7 +212,7 @@ const VI_MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "
 const MONEY_FIELD_NAMES = new Set([
   "total", "paid", "weekdayPrice", "weekendPrice", "holidayPrice", "price",
   "surcharge", "discount", "deposit", "estimatedCost", "actualCost", "salary",
-  "expectedSalary"
+  "expectedSalary", "oilCost"
 ]);
 let activeDatePicker = null;
 let datePickerDocumentBound = false;
@@ -801,6 +807,19 @@ function migrateDb(db) {
     }
     if (bike.oilChangeIntervalKm === undefined) {
       bike.oilChangeIntervalKm = 1500;
+      changed = true;
+    }
+    if (!Array.isArray(bike.oilChangeHistory)) {
+      bike.oilChangeHistory = bike.lastOilChangeDate ? [{
+        id: `OIL-INITIAL-${bike.id}`,
+        date: bike.lastOilChangeDate,
+        odometer: Number(bike.lastOilChangeKm || 0),
+        cost: 0,
+        oilType: "",
+        note: "Dữ liệu lần thay gần nhất trước khi mở sổ lịch sử",
+        createdAt: bike.lastOilChangeDate,
+        createdBy: "Hệ thống"
+      }] : [];
       changed = true;
     }
     if (bike.lastMaintenanceKm === undefined) {
@@ -2747,6 +2766,7 @@ function bikeMaintenanceOverview(db = getDb()) {
       ${metric("Tổng lần sửa/bảo trì", repairTotal)}
     </div>
     ${oilChangeAlertTable(rows)}
+    ${oilChangeHistoryTable(db)}
     <div class="maintenance-history-grid">
       ${ticketNotificationPanel(db, "Xe máy")}
       ${ticketHistoryPanel(db, "Xe máy")}
@@ -2771,7 +2791,7 @@ function bikeMaintenanceOverview(db = getDb()) {
             <td>${can("costs") ? money(repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
             <td>${latestTicket ? `<strong>${formatDate(latestTicket.foundDate || latestTicket.dueDate)}</strong><br><span class="hint">${latestTicket.issue} · ${money(ticketCost(latestTicket))}</span>` : "<span class='hint'>Chưa có</span>"}</td>
             <td>${bikeStatusControl(bike)}</td>
-            <td><div class="actions"><button class="secondary" data-modal="bikeDetail:${bike.id}">Chi tiết</button><button class="ghost" data-action="set-bike-status:${bike.id}:Có sẵn">Có sẵn</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang sửa">Đang sửa</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang thuê">Đang thuê</button><button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật km</button><button class="ghost" data-modal="ticket:Xe máy:${bike.id}">Tạo phiếu</button></div></td>
+            <td><div class="actions"><button class="secondary" data-modal="bikeDetail:${bike.id}">Chi tiết</button>${can("bike_maintenance") ? `<button class="ghost" data-modal="oilChange:${bike.id}">Ghi thay nhớt</button>` : ""}<button class="ghost" data-action="set-bike-status:${bike.id}:Có sẵn">Có sẵn</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang sửa">Đang sửa</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang thuê">Đang thuê</button><button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật km</button><button class="ghost" data-modal="ticket:Xe máy:${bike.id}">Tạo phiếu</button></div></td>
           </tr>`).join("")}</tbody>
       </table></div>
     </div>
@@ -2815,6 +2835,57 @@ function oilChangeAlertTable(rows) {
       </table></div>
       ${panelPagination("oilAlerts", paged)}
     </div>`;
+}
+
+function oilHistoryFilters() {
+  state.oilHistory = state.oilHistory || { month: todayISO().slice(0, 7), bike: "all", query: "" };
+  return state.oilHistory;
+}
+
+function oilChangeHistoryRows(db = getDb()) {
+  return db.motorbikes.flatMap((bike) => (bike.oilChangeHistory || []).map((entry) => ({ bike, entry })))
+    .sort((a, b) => new Date(b.entry.date || b.entry.createdAt || 0) - new Date(a.entry.date || a.entry.createdAt || 0));
+}
+
+function oilChangeHistoryTable(db = getDb()) {
+  const filters = oilHistoryFilters();
+  const query = String(filters.query || "").trim().toLocaleLowerCase("vi-VN");
+  const allRows = oilChangeHistoryRows(db).filter(({ bike, entry }) => {
+    const matchesMonth = !filters.month || String(entry.date || "").slice(0, 7) === filters.month;
+    const matchesBike = filters.bike === "all" || bike.id === filters.bike;
+    const haystack = `${bike.code} ${bike.name} ${bike.plate} ${entry.oilType || ""} ${entry.note || ""}`.toLocaleLowerCase("vi-VN");
+    return matchesMonth && matchesBike && (!query || haystack.includes(query));
+  });
+  const paged = paginatePanel(allRows, "oilChangeHistory", 10);
+  const bikeCount = new Set(allRows.map(({ bike }) => bike.id)).size;
+  const totalCost = allRows.reduce((sum, { entry }) => sum + Number(entry.cost || 0), 0);
+  return `<div class="card oil-history-card">
+    <div class="panel-title oil-history-title">
+      <div><h3>Lịch sử thay nhớt theo tháng</h3><span class="hint">Tra cứu từng xe theo tháng, ngày thay, số km và chi phí thực tế.</span></div>
+      ${can("bike_maintenance") ? `<button class="primary" data-modal="oilChange">+ Ghi nhận thay nhớt</button>` : ""}
+    </div>
+    <div class="oil-history-toolbar">
+      <label><span>Tháng</span>${localizedMonthSelect(filters.month, "data-oil-history-month")}</label>
+      <label><span>Xe</span><select data-oil-history-bike><option value="all">Tất cả xe</option>${db.motorbikes.map((bike) => `<option value="${bike.id}" ${filters.bike === bike.id ? "selected" : ""}>${bike.code} · ${bike.name} · ${bike.plate}</option>`).join("")}</select></label>
+      <label class="oil-history-search"><span>Tìm nhanh</span><input type="search" value="${filters.query || ""}" placeholder="Mã xe, biển số, loại nhớt..." data-oil-history-query></label>
+      <div class="oil-history-summary"><strong>${allRows.length}</strong><span>lần thay</span><strong>${bikeCount}</strong><span>xe</span><strong>${money(totalCost)}</strong><span>chi phí</span></div>
+    </div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>STT</th><th>Ngày thay</th><th>Xe</th><th>Số km</th><th>Loại nhớt</th><th>Chi phí</th><th>Ghi chú</th><th>Người cập nhật</th><th>Thao tác</th></tr></thead>
+      <tbody>${paged.rows.map(({ bike, entry }, index) => `<tr>
+        <td><strong>${paged.start + index}</strong></td>
+        <td><strong>${formatDate(entry.date)}</strong></td>
+        <td><strong>${bike.code} · ${bike.name}</strong><br><span class="hint">${bike.plate} · ${bike.type || ""}</span></td>
+        <td>${Number(entry.odometer || 0).toLocaleString("vi-VN")} km</td>
+        <td>${entry.oilType || "-"}</td>
+        <td><strong>${money(entry.cost || 0)}</strong></td>
+        <td>${entry.note || "-"}</td>
+        <td>${entry.createdBy || "-"}<br><span class="hint">${entry.createdAt ? formatDateTime(entry.createdAt) : ""}</span></td>
+        <td><button class="ghost" data-modal="bikeDetail:${bike.id}">Xem xe</button></td>
+      </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có lịch sử thay nhớt trong tháng đã chọn.</td></tr>`}</tbody>
+    </table></div>
+    ${panelPagination("oilChangeHistory", paged)}
+  </div>`;
 }
 
 function ticketNotificationPanel(db = getDb(), assetType = "Xe máy") {
@@ -3931,6 +4002,7 @@ function modalView() {
   }
   if (type === "bikeDetail") return detailBikeModal(db.motorbikes.find((b) => b.id === id));
   if (type === "bikeKm") return bikeKmModal(db.motorbikes.find((b) => b.id === id));
+  if (type === "oilChange") return oilChangeModal(id ? db.motorbikes.find((b) => b.id === id) : null);
   if (type === "equipmentHistory") return equipmentHistoryModal(db.equipment.find((item) => item.id === id));
   if (type === "return" && !can("rental_return")) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền trả xe. Admin có thể bật quyền tại Nhân viên → Sửa quyền → Xe máy → Trả xe.</p></div></div></div>`;
@@ -3951,6 +4023,7 @@ function modalView() {
 
 function modalPermission(type, id, extra, db = getDb()) {
   if (["bike", "bikeType", "owner"].includes(type)) return "bike_manage";
+  if (type === "oilChange") return "bike_maintenance";
   if (type === "rental") return "rentals";
   if (type === "swapRental") return can("rentals") ? "rentals" : "rental_return";
   if (["hotel", "room"].includes(type)) return "booking_edit";
@@ -4339,6 +4412,25 @@ function bikeKmModal(b) {
   </form></div>`;
 }
 
+function oilChangeModal(selectedBike = null) {
+  const db = getDb();
+  const bikeOptions = db.motorbikes.map((bike) => [bike.id, `${bike.code} · ${bike.name} · ${bike.plate}`]);
+  const defaultBike = selectedBike || db.motorbikes[0] || null;
+  const currentKm = Number(defaultBike?.odometer || 0);
+  return `<div class="modal-backdrop"><form class="modal oil-change-modal" id="oil-change-form" data-id="${selectedBike?.id || ""}">
+    <header><div><h3>Ghi nhận thay nhớt</h3><span class="hint">Lưu vào lịch sử của xe và tự cập nhật mốc cảnh báo tiếp theo.</span></div><button class="ghost" data-action="close-modal" type="button">Đóng</button></header>
+    <div class="modal-body form-grid">
+      ${selectField("bikeId", "Chọn xe", bikeOptions, defaultBike?.id || "", true)}
+      ${field("oilDate", "Ngày thay nhớt", todayISO(), true, "date")}
+      ${field("oilOdometer", "Số km khi thay", currentKm, true, "number")}
+      ${field("oilCost", "Chi phí thay nhớt", 0, false, "number")}
+      ${field("oilType", "Loại nhớt / nhãn hiệu", "", false)}
+      <div class="field full"><label>Ghi chú</label><textarea name="oilNote" placeholder="Ví dụ: thay nhớt máy, kiểm tra lọc nhớt..." rows="3"></textarea></div>
+    </div>
+    <footer><button class="ghost" data-action="close-modal" type="button">Hủy</button><button class="primary" type="submit">Lưu lần thay nhớt</button></footer>
+  </form></div>`;
+}
+
 function detailBikeModal(b) {
   const db = getDb();
   const rentals = db.rentals.filter((r) => r.bikeId === b.id);
@@ -4364,9 +4456,21 @@ function detailBikeModal(b) {
           <div class="image-grid">${(b.images || []).map((src, index) => `<img src="${src}" alt="Hình xe ${index + 1}">`).join("") || `<span>Chưa có hình ảnh đính kèm.</span>`}</div>
         </div>
       </div>
+      ${bikeOilHistoryCard(b)}
       <div class="grid cols-2"><div class="card"><h3>Lịch sử thuê</h3>${rentals.map(calendarItem).join("") || "<div class='empty'>Chưa có.</div>"}</div>${bikeRepairHistoryCard(tickets)}</div>
     </div>
   </div></div>`;
+}
+
+function bikeOilHistoryCard(bike) {
+  const rows = [...(bike.oilChangeHistory || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  return `<div class="card bike-oil-history">
+    <div class="panel-title"><div><h3>Lịch sử thay nhớt</h3><span class="hint">${bike.code} · ${bike.name} · ${rows.length} lần đã ghi nhận</span></div>${can("bike_maintenance") ? `<button class="primary" data-modal="oilChange:${bike.id}">+ Ghi thay nhớt</button>` : ""}</div>
+    <div class="table-wrap compact-table"><table>
+      <thead><tr><th>STT</th><th>Ngày thay</th><th>Số km</th><th>Loại nhớt</th><th>Chi phí</th><th>Ghi chú</th><th>Người cập nhật</th></tr></thead>
+      <tbody>${rows.map((entry, index) => `<tr><td>${index + 1}</td><td><strong>${formatDate(entry.date)}</strong></td><td>${Number(entry.odometer || 0).toLocaleString("vi-VN")} km</td><td>${entry.oilType || "-"}</td><td>${money(entry.cost || 0)}</td><td>${entry.note || "-"}</td><td>${entry.createdBy || "-"}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Xe này chưa có lịch sử thay nhớt.</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
 }
 
 function bikeRepairHistoryCard(tickets) {
@@ -4693,6 +4797,21 @@ function bindApp() {
     state.reportMonth = event.target.value || todayISO().slice(0, 7);
     render();
   }));
+  document.querySelectorAll("[data-oil-history-month]").forEach((input) => input.addEventListener("change", (event) => {
+    oilHistoryFilters().month = event.target.value || todayISO().slice(0, 7);
+    state.panelPages.oilChangeHistory = 1;
+    render();
+  }));
+  document.querySelectorAll("[data-oil-history-bike]").forEach((input) => input.addEventListener("change", (event) => {
+    oilHistoryFilters().bike = event.target.value || "all";
+    state.panelPages.oilChangeHistory = 1;
+    render();
+  }));
+  document.querySelectorAll("[data-oil-history-query]").forEach((input) => input.addEventListener("change", (event) => {
+    oilHistoryFilters().query = event.target.value;
+    state.panelPages.oilChangeHistory = 1;
+    render();
+  }));
   document.querySelectorAll("[data-booking-hotel]").forEach((input) => input.addEventListener("change", (event) => {
     bookingFilterState().hotel = event.target.value || "all";
     render();
@@ -4753,6 +4872,12 @@ function bindApp() {
   document.getElementById("return-form")?.addEventListener("submit", saveReturn);
   document.getElementById("swap-rental-form")?.addEventListener("submit", saveRentalSwap);
   document.getElementById("bike-km-form")?.addEventListener("submit", saveBikeKm);
+  document.getElementById("oil-change-form")?.addEventListener("submit", saveOilChange);
+  document.querySelector("#oil-change-form select[name='bikeId']")?.addEventListener("change", (event) => {
+    const bike = getDb().motorbikes.find((item) => item.id === event.target.value);
+    const odometer = event.target.form?.querySelector("input[name='oilOdometer']");
+    if (bike && odometer) odometer.value = Number(bike.odometer || 0);
+  });
   document.getElementById("bike-image-preview")?.addEventListener("click", handleBikeImagePreviewClick);
   document.querySelector("input[name='afterPhoto']")?.addEventListener("change", previewPhoto);
   document.querySelector("input[name='bikeImages']")?.addEventListener("change", previewBikeImages);
@@ -5011,7 +5136,17 @@ function upsertBike(db, data, id) {
     oilChangeIntervalKm: +data.oilChangeIntervalKm,
     lastMaintenanceKm: +data.lastMaintenanceKm,
     maintenanceIntervalKm: +data.maintenanceIntervalKm,
-    images: data.images || existing?.images || []
+    images: data.images || existing?.images || [],
+    oilChangeHistory: existing?.oilChangeHistory || (data.lastOilChangeDate ? [{
+      id: uid("OIL"),
+      date: data.lastOilChangeDate,
+      odometer: Number(data.lastOilChangeKm || 0),
+      cost: 0,
+      oilType: "",
+      note: "Lần thay nhớt gần nhất khi thêm xe",
+      createdAt: nowLocal(),
+      createdBy: state.user?.name || "Hệ thống"
+    }] : [])
   };
   if (id) Object.assign(db.motorbikes.find((b) => b.id === id), payload);
   else db.motorbikes.push({ id: uid("B"), ...payload });
@@ -5460,8 +5595,10 @@ async function readReturnPhoto(form, id) {
 
 function saveBikeKm(event) {
   event.preventDefault();
-  const id = event.currentTarget.dataset.id;
-  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const form = event.currentTarget;
+  if (!normalizeFormInputs(form)) return;
+  const id = form.dataset.id;
+  const data = Object.fromEntries(new FormData(form));
   mutateDb((db) => {
     const bike = db.motorbikes.find((item) => item.id === id);
     if (!bike) return { record: id };
@@ -5470,8 +5607,13 @@ function saveBikeKm(event) {
     bike.lastOilChangeKm = data.markOilChanged === "yes" ? odometer : +data.lastOilChangeKm || 0;
     bike.lastOilChangeDate = data.markOilChanged === "yes" ? (data.lastOilChangeDate || todayISO()) : (data.lastOilChangeDate || bike.lastOilChangeDate || todayISO());
     if (data.markOilChanged === "yes") {
-      bike.oilAlertEnabled = true;
-      bike.oilAlertHandled = true;
+      appendOilChangeHistory(bike, {
+        date: bike.lastOilChangeDate,
+        odometer,
+        cost: 0,
+        oilType: "",
+        note: "Ghi nhận khi cập nhật số km"
+      });
     }
     bike.oilChangeIntervalKm = +data.oilChangeIntervalKm || 0;
     bike.lastMaintenanceKm = data.markMaintained === "yes" ? odometer : +data.lastMaintenanceKm || 0;
@@ -5484,6 +5626,60 @@ function saveBikeKm(event) {
     };
   }, "Cập nhật km, thay nhớt và bảo trì xe");
   showToast("Đã cập nhật km, mốc thay nhớt và bảo trì.");
+}
+
+function appendOilChangeHistory(bike, values = {}) {
+  const entry = {
+    id: uid("OIL"),
+    date: values.date || todayISO(),
+    odometer: Number(values.odometer || 0),
+    cost: Number(values.cost || 0),
+    oilType: String(values.oilType || "").trim(),
+    note: String(values.note || "").trim(),
+    createdAt: nowLocal(),
+    createdBy: state.user?.name || "Hệ thống"
+  };
+  bike.oilChangeHistory = Array.isArray(bike.oilChangeHistory) ? bike.oilChangeHistory : [];
+  bike.oilChangeHistory.unshift(entry);
+  const latestDate = String(bike.lastOilChangeDate || "");
+  if (!latestDate || entry.date >= latestDate) {
+    bike.lastOilChangeDate = entry.date;
+    bike.lastOilChangeKm = entry.odometer;
+    bike.oilAlertEnabled = true;
+    bike.oilAlertHandled = true;
+  }
+  bike.odometer = Math.max(Number(bike.odometer || 0), entry.odometer);
+  return entry;
+}
+
+function saveOilChange(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!normalizeFormInputs(form)) return;
+  const data = Object.fromEntries(new FormData(form));
+  if (!data.bikeId) {
+    showToast("Hãy chọn xe cần ghi nhận thay nhớt.");
+    return;
+  }
+  mutateDb((db) => {
+    const bike = db.motorbikes.find((item) => item.id === data.bikeId);
+    if (!bike) return { record: data.bikeId };
+    const entry = appendOilChangeHistory(bike, {
+      date: data.oilDate,
+      odometer: data.oilOdometer,
+      cost: data.oilCost,
+      oilType: data.oilType,
+      note: data.oilNote
+    });
+    state.modal = null;
+    state.oilHistory = { ...oilHistoryFilters(), month: entry.date.slice(0, 7), bike: bike.id };
+    state.panelPages.oilChangeHistory = 1;
+    return {
+      record: bike.code,
+      after: `Thay nhớt ngày ${entry.date} tại ${entry.odometer} km · ${money(entry.cost)}`
+    };
+  }, "Ghi nhận lịch sử thay nhớt");
+  showToast("Đã lưu lịch sử thay nhớt và cập nhật cảnh báo của xe.");
 }
 
 function setBikeStatus(id, status) {
@@ -5513,11 +5709,12 @@ function markOilChanged(id) {
   mutateDb((db) => {
     const bike = db.motorbikes.find((item) => item.id === id);
     if (!bike) return { record: id };
-    bike.lastOilChangeDate = todayISO();
-    bike.lastOilChangeKm = Number(bike.odometer || bike.lastOilChangeKm || 0);
-    bike.oilAlertHandled = true;
-    bike.oilAlertEnabled = true;
-    return { record: bike.code, after: `Đã thay nhớt ngày ${bike.lastOilChangeDate} tại ${bike.lastOilChangeKm} km` };
+    const entry = appendOilChangeHistory(bike, {
+      date: todayISO(),
+      odometer: Number(bike.odometer || bike.lastOilChangeKm || 0),
+      note: "Ghi nhận nhanh từ bảng cảnh báo"
+    });
+    return { record: bike.code, after: `Đã thay nhớt ngày ${entry.date} tại ${entry.odometer} km` };
   }, "Đánh dấu xe đã thay nhớt");
   showToast("Đã cập nhật xe đã thay nhớt và tắt cảnh báo hiện tại.");
 }
