@@ -1886,7 +1886,7 @@ function daysSinceOilChange(bike) {
 }
 
 function isOilDateAlert(bike) {
-  return Boolean(bike.oilAlertEnabled !== false && !bike.oilAlertHandled && daysSinceOilChange(bike) > 60);
+  return Boolean(bike.oilAlertEnabled !== false && daysSinceOilChange(bike) > 60);
 }
 
 function bikeAvatar(bike) {
@@ -2809,12 +2809,12 @@ function latestBikeTicket(tickets = []) {
 function oilChangeAlertTable(rows) {
   const allRows = rows
     .map((row) => ({ ...row, days: daysSinceOilChange(row.bike), alert: isOilDateAlert(row.bike) }))
-    .filter((row) => row.alert || row.bike.oilAlertEnabled !== false)
+    .filter((row) => row.days > 60)
     .sort((a, b) => b.days - a.days);
   const paged = paginatePanel(allRows, "oilAlerts", 5);
   return `<div class="card oil-alert-card">
     <div class="panel-title">
-      <div><h3>Thông báo cảnh báo thay nhớt quá 60 ngày</h3><span class="hint">Bảng riêng để bật/tắt cảnh báo và cập nhật khi xe đã được thay nhớt.</span></div>
+      <div><h3>Thông báo cảnh báo thay nhớt quá 60 ngày</h3><span class="hint">Chỉ hiển thị xe đã quá 60 ngày. Ghi nhận thay nhớt xong, xe sẽ tự rời bảng này.</span></div>
       <span class="pill warning">${allRows.filter((row) => row.alert).length} cảnh báo</span>
     </div>
     <div class="table-wrap compact-table"><table>
@@ -2825,10 +2825,10 @@ function oilChangeAlertTable(rows) {
         <td><strong>${days} ngày</strong><br><span class="hint">Ngưỡng cảnh báo: 60 ngày</span></td>
         <td>${Number(bike.lastOilChangeKm || 0).toLocaleString("vi-VN")} km</td>
         <td>${bike.oilAlertEnabled === false ? pill("Tắt") : pill(alert ? "Quá hạn" : "Đang bật")}</td>
-        <td>${bike.oilAlertHandled ? pill("Đã xử lý") : pill(alert ? "Cần thay nhớt" : "Đang theo dõi")}</td>
+        <td>${pill(alert ? "Cần thay nhớt" : "Đã tắt cảnh báo")}</td>
         <td><div class="actions">
           <button class="ghost" data-action="toggle-oil-alert:${bike.id}">${bike.oilAlertEnabled === false ? "Bật cảnh báo" : "Tắt cảnh báo"}</button>
-          <button class="secondary" data-action="mark-oil-changed:${bike.id}">Đã thay nhớt</button>
+          <button class="secondary" data-action="mark-oil-changed:${bike.id}" title="Ghi ngày hôm nay và số km hiện tại vào lịch sử thay nhớt">Đã thay nhớt</button>
           <button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật</button>
         </div></td>
       </tr>`).join("") || `<tr><td colspan="7" class="empty">Chưa có xe cần cảnh báo theo ngày thay nhớt.</td></tr>`}</tbody>
@@ -5646,7 +5646,7 @@ function appendOilChangeHistory(bike, values = {}) {
     bike.lastOilChangeDate = entry.date;
     bike.lastOilChangeKm = entry.odometer;
     bike.oilAlertEnabled = true;
-    bike.oilAlertHandled = true;
+    bike.oilAlertHandled = false;
   }
   bike.odometer = Math.max(Number(bike.odometer || 0), entry.odometer);
   return entry;
