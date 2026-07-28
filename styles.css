@@ -6460,6 +6460,19 @@ table td,
   width: min(680px, calc(100vw - 24px));
 }
 
+button.oil-alert-trigger {
+  border: 1px solid rgba(245, 158, 11, 0.72);
+  background: rgba(245, 158, 11, 0.12);
+  color: #ffd47a;
+}
+
+button.oil-alert-trigger:hover,
+button.oil-alert-trigger.active {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #08243a;
+}
+
 .rental-swap-modal header p {
   margin: 4px 0 0;
   color: var(--muted);

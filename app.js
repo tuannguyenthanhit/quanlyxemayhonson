@@ -805,6 +805,10 @@ function migrateDb(db) {
       bike.oilAlertHandled = false;
       changed = true;
     }
+    if (bike.oilManualAlert === undefined) {
+      bike.oilManualAlert = false;
+      changed = true;
+    }
     if (bike.oilChangeIntervalKm === undefined) {
       bike.oilChangeIntervalKm = 1500;
       changed = true;
@@ -1886,7 +1890,10 @@ function daysSinceOilChange(bike) {
 }
 
 function isOilDateAlert(bike) {
-  return Boolean(bike.oilAlertEnabled !== false && daysSinceOilChange(bike) > 60);
+  return Boolean(
+    bike.oilAlertEnabled !== false
+    && (bike.oilManualAlert === true || daysSinceOilChange(bike) > 60)
+  );
 }
 
 function bikeAvatar(bike) {
@@ -2760,7 +2767,7 @@ function bikeMaintenanceOverview(db = getDb()) {
   const repairTotal = rows.reduce((sum, row) => sum + row.tickets.length, 0);
   return `
     <div class="grid cols-4">
-      ${metric("Cảnh báo quá 60 ngày", oilDateAlerts)}
+      ${metric("Cảnh báo thay nhớt", oilDateAlerts)}
       ${metric("Xe đến hạn thay nhớt", oilDue)}
       ${metric("Xe đến hạn bảo trì", maintenanceDue)}
       ${metric("Tổng lần sửa/bảo trì", repairTotal)}
@@ -2791,7 +2798,7 @@ function bikeMaintenanceOverview(db = getDb()) {
             <td>${can("costs") ? money(repairCost) : "<span class='hint'>Ẩn theo quyền</span>"}</td>
             <td>${latestTicket ? `<strong>${formatDate(latestTicket.foundDate || latestTicket.dueDate)}</strong><br><span class="hint">${latestTicket.issue} · ${money(ticketCost(latestTicket))}</span>` : "<span class='hint'>Chưa có</span>"}</td>
             <td>${bikeStatusControl(bike)}</td>
-            <td><div class="actions"><button class="secondary" data-modal="bikeDetail:${bike.id}">Chi tiết</button>${can("bike_maintenance") ? `<button class="ghost" data-modal="oilChange:${bike.id}">Ghi thay nhớt</button>` : ""}<button class="ghost" data-action="set-bike-status:${bike.id}:Có sẵn">Có sẵn</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang sửa">Đang sửa</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang thuê">Đang thuê</button><button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật km</button><button class="ghost" data-modal="ticket:Xe máy:${bike.id}">Tạo phiếu</button></div></td>
+            <td><div class="actions"><button class="secondary" data-modal="bikeDetail:${bike.id}">Chi tiết</button>${can("bike_maintenance") ? `<button class="ghost" data-modal="oilChange:${bike.id}">Ghi thay nhớt</button><button class="oil-alert-trigger ${bike.oilManualAlert === true ? "active" : ""}" data-action="request-oil-alert:${bike.id}" title="${bike.oilManualAlert === true ? "Bỏ yêu cầu thay nhớt thủ công" : "Đưa xe lên bảng cảnh báo thay nhớt"}">${bike.oilManualAlert === true ? "Bỏ cảnh báo nhớt" : "Cảnh báo nhớt"}</button>` : ""}<button class="ghost" data-action="set-bike-status:${bike.id}:Có sẵn">Có sẵn</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang sửa">Đang sửa</button><button class="ghost" data-action="set-bike-status:${bike.id}:Đang thuê">Đang thuê</button><button class="ghost" data-modal="bikeKm:${bike.id}">Cập nhật km</button><button class="ghost" data-modal="ticket:Xe máy:${bike.id}">Tạo phiếu</button></div></td>
           </tr>`).join("")}</tbody>
       </table></div>
     </div>
@@ -2809,23 +2816,23 @@ function latestBikeTicket(tickets = []) {
 function oilChangeAlertTable(rows) {
   const allRows = rows
     .map((row) => ({ ...row, days: daysSinceOilChange(row.bike), alert: isOilDateAlert(row.bike) }))
-    .filter((row) => row.days > 60)
-    .sort((a, b) => b.days - a.days);
+    .filter((row) => row.alert)
+    .sort((a, b) => Number(b.bike.oilManualAlert === true) - Number(a.bike.oilManualAlert === true) || b.days - a.days);
   const paged = paginatePanel(allRows, "oilAlerts", 5);
   return `<div class="card oil-alert-card">
     <div class="panel-title">
-      <div><h3>Thông báo cảnh báo thay nhớt quá 60 ngày</h3><span class="hint">Chỉ hiển thị xe đã quá 60 ngày. Ghi nhận thay nhớt xong, xe sẽ tự rời bảng này.</span></div>
-      <span class="pill warning">${allRows.filter((row) => row.alert).length} cảnh báo</span>
+      <div><h3>Thông báo cảnh báo thay nhớt</h3><span class="hint">Hiển thị xe quá 60 ngày hoặc được đánh dấu thủ công. Ghi nhận thay nhớt xong, xe sẽ tự rời bảng này.</span></div>
+      <span class="pill warning">${allRows.length} cảnh báo</span>
     </div>
     <div class="table-wrap compact-table"><table>
       <thead><tr><th>Xe</th><th>Ngày thay nhớt gần nhất</th><th>Số ngày</th><th>Km thay gần nhất</th><th>Cảnh báo</th><th>Trạng thái xử lý</th><th>Thao tác</th></tr></thead>
       <tbody>${paged.rows.map(({ bike, days, alert }) => `<tr class="${alert ? "alert-row" : ""}">
         <td><strong>${bike.code}  · ${bike.name}</strong><br><span class="hint">${bike.plate}</span></td>
         <td>${formatDate(bike.lastOilChangeDate)}</td>
-        <td><strong>${days} ngày</strong><br><span class="hint">Ngưỡng cảnh báo: 60 ngày</span></td>
+        <td><strong>${days} ngày</strong><br><span class="hint">${bike.oilManualAlert === true ? "Kỹ thuật được yêu cầu thay nhớt" : "Ngưỡng cảnh báo: 60 ngày"}</span></td>
         <td>${Number(bike.lastOilChangeKm || 0).toLocaleString("vi-VN")} km</td>
-        <td>${bike.oilAlertEnabled === false ? pill("Tắt") : pill(alert ? "Quá hạn" : "Đang bật")}</td>
-        <td>${pill(alert ? "Cần thay nhớt" : "Đã tắt cảnh báo")}</td>
+        <td>${pill(bike.oilManualAlert === true ? "Cảnh báo thủ công" : "Quá hạn 60 ngày")}</td>
+        <td>${pill("Cần thay nhớt")}</td>
         <td><div class="actions">
           <button class="ghost" data-action="toggle-oil-alert:${bike.id}">${bike.oilAlertEnabled === false ? "Bật cảnh báo" : "Tắt cảnh báo"}</button>
           <button class="secondary" data-action="mark-oil-changed:${bike.id}" title="Ghi ngày hôm nay và số km hiện tại vào lịch sử thay nhớt">Đã thay nhớt</button>
@@ -4937,6 +4944,7 @@ function handleAction(event) {
   }
   if (action?.startsWith("delete-bike:")) deleteBike(action.split(":")[1]);
   if (action?.startsWith("toggle-oil-alert:")) toggleOilAlert(action.split(":")[1]);
+  if (action?.startsWith("request-oil-alert:")) requestOilAlert(action.split(":")[1]);
   if (action?.startsWith("mark-oil-changed:")) markOilChanged(action.split(":")[1]);
   if (action?.startsWith("toggle-equipment-alert:")) toggleEquipmentAlert(action.split(":")[1]);
   if (action?.startsWith("mark-equipment-maintained:")) markEquipmentMaintained(action.split(":")[1]);
@@ -5641,6 +5649,7 @@ function appendOilChangeHistory(bike, values = {}) {
   };
   bike.oilChangeHistory = Array.isArray(bike.oilChangeHistory) ? bike.oilChangeHistory : [];
   bike.oilChangeHistory.unshift(entry);
+  bike.oilManualAlert = false;
   const latestDate = String(bike.lastOilChangeDate || "");
   if (!latestDate || entry.date >= latestDate) {
     bike.lastOilChangeDate = entry.date;
@@ -5700,9 +5709,30 @@ function toggleOilAlert(id) {
     if (!bike) return { record: id };
     bike.oilAlertEnabled = bike.oilAlertEnabled === false;
     if (bike.oilAlertEnabled) bike.oilAlertHandled = false;
+    if (!bike.oilAlertEnabled) bike.oilManualAlert = false;
     return { record: bike.code, after: bike.oilAlertEnabled ? "Bật cảnh báo thay nhớt" : "Tắt cảnh báo thay nhớt" };
   }, "Cập nhật cảnh báo thay nhớt");
   showToast("Đã cập nhật trạng thái cảnh báo thay nhớt.");
+}
+
+function requestOilAlert(id) {
+  let manualAlertEnabled = false;
+  mutateDb((db) => {
+    const bike = db.motorbikes.find((item) => item.id === id);
+    if (!bike) return { record: id };
+    manualAlertEnabled = bike.oilManualAlert !== true;
+    bike.oilManualAlert = manualAlertEnabled;
+    bike.oilAlertEnabled = true;
+    bike.oilAlertHandled = false;
+    state.panelPages.oilAlerts = 1;
+    return {
+      record: bike.code,
+      after: manualAlertEnabled ? "Yêu cầu kỹ thuật thay nhớt" : "Bỏ yêu cầu thay nhớt thủ công"
+    };
+  }, "Cập nhật yêu cầu thay nhớt");
+  showToast(manualAlertEnabled
+    ? "Đã đưa xe lên bảng cảnh báo thay nhớt."
+    : "Đã bỏ cảnh báo thay nhớt thủ công của xe.");
 }
 
 function markOilChanged(id) {
