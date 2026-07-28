@@ -1897,12 +1897,42 @@ function isOilDateAlert(bike) {
 }
 
 function bikeAvatar(bike) {
-  const image = Array.isArray(bike.images) ? bike.images[0] : "";
+  const images = Array.isArray(bike.images) ? bike.images.filter(Boolean) : [];
+  const image = images[0] || "";
   const alt = `Ảnh đại diện ${bike.code}`;
   if (image) {
-    return `<div class="bike-avatar" tabindex="0"><img src="${image}" alt="${alt}" onerror="this.closest('.bike-avatar')?.classList.add('image-load-error')"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
+    return `<div class="bike-avatar" tabindex="0"><img src="${image}" alt="${alt}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
   }
   return `<div class="bike-avatar placeholder" tabindex="0"><span>${bike.code}</span><div class="bike-avatar-zoom placeholder"><span>${bike.code}<small>Chưa có ảnh</small></span></div></div>`;
+}
+
+function handleManagedImageError(image) {
+  const original = decodeURIComponent(image.dataset.imageOriginal || "");
+  if (/^\/uploads\/db\//.test(original) && image.dataset.imageRetried !== "true") {
+    image.dataset.imageRetried = "true";
+    image.src = `${original.split("?")[0]}?retry=${Date.now()}`;
+    return;
+  }
+
+  let fallbacks = [];
+  try {
+    fallbacks = JSON.parse(decodeURIComponent(image.dataset.imageFallbacks || "%5B%5D"));
+  } catch (error) {
+    fallbacks = [];
+  }
+  const next = fallbacks.shift();
+  const container = image.closest(".bike-avatar, .bike-photo-hover");
+  if (next) {
+    image.dataset.imageOriginal = encodeURIComponent(next);
+    image.dataset.imageFallbacks = encodeURIComponent(JSON.stringify(fallbacks));
+    image.dataset.imageRetried = "false";
+    container?.classList.remove("image-load-error");
+    image.src = next;
+    const zoomImage = container?.querySelector(".bike-avatar-zoom img, .bike-photo-zoom img");
+    if (zoomImage && zoomImage !== image) zoomImage.src = next;
+    return;
+  }
+  container?.classList.add("image-load-error");
 }
 
 function personAvatar(person) {
@@ -2393,9 +2423,9 @@ function motorbikePhotoCode(bike) {
   const images = Array.isArray(bike.images) ? bike.images.filter(Boolean).slice(0, 5) : [];
   const image = images[0] || "";
   const photo = image
-    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}" onerror="this.closest('.bike-photo-hover')?.classList.add('image-load-error')"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
+    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
     : `<div class="bike-photo-empty">XE</div>`;
-  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}" onerror="this.closest('.bike-photo-hover')?.classList.add('image-load-error')"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
+  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}" data-image-original="${encodeURIComponent(src)}" data-image-fallbacks="%5B%5D" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
   const more = Array.isArray(bike.images) && bike.images.length > 5 ? `<em>+${bike.images.length - 5}</em>` : "";
   return `<div class="bike-photo-code"><div class="bike-photo-stack">${photo}<div class="bike-photo-strip">${thumbs}${more}</div></div><span>${String(bike.code || "").replace(/^[^0-9]*/, "") || bike.code}</span></div>`;
 }
@@ -4860,7 +4890,27 @@ function bindApp() {
     const updateFilter = (event) => {
       if (event.target.dataset.filter === "query") state.query = event.target.value;
       if (event.target.dataset.filter === "status") state.filter = event.target.value;
+      if (event.target.tagName === "SELECT") {
+        render();
+        return;
+      }
+      const filterKey = event.target.dataset.filter;
+      const selectionStart = event.target.selectionStart;
+      const selectionEnd = event.target.selectionEnd;
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
       render();
+      const replacement = document.querySelector(`[data-filter="${filterKey}"]`);
+      if (!replacement) return;
+      try {
+        replacement.focus({ preventScroll: true });
+      } catch (error) {
+        replacement.focus();
+      }
+      if (typeof replacement.setSelectionRange === "function" && selectionStart !== null) {
+        replacement.setSelectionRange(selectionStart, selectionEnd ?? selectionStart);
+      }
+      window.scrollTo(scrollX, scrollY);
     };
     input.addEventListener(input.tagName === "SELECT" ? "change" : "input", updateFilter);
   });
