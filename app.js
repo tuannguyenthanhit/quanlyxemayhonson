@@ -929,13 +929,33 @@ function syncStatuses() {
   const now = new Date();
   let changed = false;
   db.rentals.forEach((r) => {
-    if (["Đang thuê", "Đã đặt"].includes(r.status) && new Date(r.end) < now) {
+    const end = new Date(r.end);
+    const start = new Date(r.start);
+    const isClosed = ["Đã trả", "Đã hủy", "Chưa thanh toán đủ"].includes(r.status);
+    const bike = db.motorbikes.find((b) => b.id === r.bikeId);
+    if (!isClosed && end < now && r.status !== "Quá hạn") {
       r.status = "Quá hạn";
-      const bike = db.motorbikes.find((b) => b.id === r.bikeId);
       if (bike && bike.status !== "Hư hỏng" && bike.status !== "Đang sửa") bike.status = "Quá hạn";
-      if (!db.notifications.some((n) => n.title.includes(r.code))) {
+      const existingNotification = db.notifications.find((n) => n.type === "Quá hạn" && n.title.includes(r.code));
+      if (existingNotification) {
+        existingNotification.read = false;
+        existingNotification.message = `${r.customer} chưa trả xe đúng giờ.`;
+        existingNotification.createdAt = nowLocal();
+      } else {
         db.notifications.unshift({ id: uid("N"), title: `Phiếu ${r.code} quá hạn`, message: `${r.customer} chưa trả xe đúng giờ.`, type: "Quá hạn", read: false, createdAt: nowLocal() });
       }
+      changed = true;
+      return;
+    }
+    if (r.status === "Quá hạn" && end >= now) {
+      const restoredStatus = start > now ? "Đã đặt" : "Đang thuê";
+      r.status = restoredStatus;
+      if (bike && bike.status === "Quá hạn") bike.status = restoredStatus;
+      db.notifications.forEach((notification) => {
+        if (notification.type === "Quá hạn" && notification.title.includes(r.code) && !notification.read) {
+          notification.read = true;
+        }
+      });
       changed = true;
     }
   });
