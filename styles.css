@@ -2428,6 +2428,30 @@ tbody tr:focus-within .row-number span {
   margin: 0;
 }
 
+.former-employee-card {
+  margin-top: 16px;
+  border-left: 3px solid #ff6b7a;
+}
+
+.hr-row-actions {
+  flex-wrap: nowrap;
+}
+
+.hr-row-actions button {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .former-employee-card {
+    margin-top: 12px;
+  }
+
+  .hr-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .timeline {
   display: grid;
   gap: 10px;

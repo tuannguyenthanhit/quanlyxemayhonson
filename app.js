@@ -972,7 +972,7 @@ function showToast(text) {
 }
 
 function statusClass(status) {
-  if (["Hư hỏng", "Quá hạn", "Khẩn cấp", "Đã hủy", "Đang hư", "Nghỉ việc", "Không đạt", "Vắng"].includes(status)) return "danger";
+  if (["Hư hỏng", "Quá hạn", "Khẩn cấp", "Đã hủy", "Đang hư", "Nghỉ việc", "Đã nghỉ việc", "Không đạt", "Vắng"].includes(status)) return "danger";
   if (["Đang sửa", "Chờ phụ tùng", "Chờ nghiệm thu", "Đã đặt", "Chờ duyệt chi phí", "Sắp đến hạn", "Thử việc", "Mới", "Phỏng vấn", "Đi trễ", "Nửa ngày", "Nghỉ phép"].includes(status)) return "warning";
   if (["Có sẵn", "Hoàn thành", "Đã trả", "Hoạt động", "Đang làm", "Đạt", "Đã tuyển", "Đủ công", "TTăng ca"].includes(status)) return "success";
   return "muted";
@@ -3666,12 +3666,14 @@ function notificationsView() {
 
 function hrView() {
   const db = getDb();
-  const employees = filterRows(db.hrEmployees || [], ["code", "name", "phone", "email", "position", "department", "status"]);
+  const employeeSearchFields = ["code", "name", "phone", "email", "position", "department", "status", "terminationReason"];
+  const employees = filterRows((db.hrEmployees || []).filter((item) => !isFormerEmployee(item)), employeeSearchFields);
+  const formerEmployees = filterRows((db.hrEmployees || []).filter(isFormerEmployee), employeeSearchFields);
   const applicants = filterRows(db.jobApplicants || [], ["code", "name", "phone", "email", "position", "source", "status"]);
-  const activeCount = (db.hrEmployees || []).filter((item) => ["Đang làm", "Thử việc"].includes(item.status)).length;
+  const activeCount = (db.hrEmployees || []).filter((item) => !isFormerEmployee(item)).length;
   const interviewCount = (db.jobApplicants || []).filter((item) => ["Mới", "Phỏng vấn"].includes(item.status)).length;
-  const payroll = (db.hrEmployees || []).filter((item) => item.status !== "Nghỉ việc").reduce((sum, item) => sum + Number(item.salary || 0), 0);
-  const filterOptions = ["Đang làm", "Thử việc", "Nghỉ việc", "Mới", "Phỏng vấn", "Đạt", "Không đạt", "Đã tuyển"];
+  const payroll = (db.hrEmployees || []).filter((item) => !isFormerEmployee(item)).reduce((sum, item) => sum + Number(item.salary || 0), 0);
+  const filterOptions = ["Đang làm", "Thử việc", ["Nghỉ việc", "Đã nghỉ việc"], "Mới", "Phỏng vấn", "Đạt", "Không đạt", "Đã tuyển"];
   return `
     ${pageHeader("Quản lý nhân sự", "Theo dõi nhân viên đang làm, hồ sơ người xin việc, thông tin liên hệ, hợp đồng và lương dự kiến.", `
       <button class="primary" data-modal="hrEmployee">Th\u00eam nh\u00e2n vi\u00ean</button>
@@ -3684,7 +3686,7 @@ function hrView() {
       ${metric("Phòng ban", new Set((db.hrEmployees || []).map((item) => item.department).filter(Boolean)).size)}
     </div>
     ${filters(filterOptions)}
-    <div class="grid cols-2">
+    <div class="grid cols-2 hr-workflow-grid">
       <div class="card">
         <div class="panel-title"><h3>Nhân viên đang làm</h3><span class="pill success">${employees.length} hồ sơ</span></div>
         <div class="table-wrap compact-table"><table>
@@ -3719,8 +3721,38 @@ function hrView() {
         </table></div>
       </div>
     </div>
+    <div class="card former-employee-card">
+      <div class="panel-title">
+        <div><h3>Nhân viên đã nghỉ việc</h3><span class="hint">Lưu hồ sơ cũ và chuyển nhanh sang danh sách ứng viên khi nhân viên muốn ứng tuyển lại.</span></div>
+        <span class="pill danger">${formerEmployees.length} hồ sơ</span>
+      </div>
+      <div class="table-wrap compact-table"><table>
+        <thead><tr><th>Ảnh</th><th>Mã</th><th>Nhân viên</th><th>Vị trí cũ</th><th>Ngày vào</th><th>Ngày nghỉ</th><th>Lý do</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>${formerEmployees.map((item) => {
+          const reapplied = (db.jobApplicants || []).some((applicant) => applicant.formerEmployeeId === item.id && ["Mới", "Phỏng vấn", "Đạt"].includes(applicant.status));
+          return `<tr>
+            <td>${personAvatar(item)}</td>
+            <td><strong>${item.code}</strong></td>
+            <td><strong>${item.name}</strong><br><span class="hint">${item.phone || "-"} · ${item.email || "-"}</span></td>
+            <td>${item.position || "-"}<br><span class="hint">${item.department || "-"}</span></td>
+            <td>${formatDate(item.startDate)}</td>
+            <td><strong>${item.terminationDate ? formatDate(item.terminationDate) : "-"}</strong></td>
+            <td>${item.terminationReason || item.note || "-"}</td>
+            <td>${pill("Đã nghỉ việc")}</td>
+            <td><div class="actions hr-row-actions">
+              <button class="ghost" data-modal="hrEmployee:${item.id}">Sửa</button>
+              <button class="secondary" data-action="reapply-former-employee:${item.id}" ${reapplied ? "disabled" : ""}>${reapplied ? "Đã ứng tuyển lại" : "Ứng tuyển lại"}</button>
+            </div></td>
+          </tr>`;
+        }).join("") || `<tr><td colspan="9" class="empty">Chưa có nhân viên nghỉ việc.</td></tr>`}</tbody>
+      </table></div>
+    </div>
     ${attendanceSection(db)}
   `;
+}
+
+function isFormerEmployee(item = {}) {
+  return ["Nghỉ việc", "Đã nghỉ việc"].includes(item.status);
 }
 
 function attendanceSection(db = getDb()) {
@@ -3968,7 +4000,11 @@ function pageHeader(title, subtitle, actionHtml) {
 function filters(options) {
   return `<div class="toolbar"><div class="filters">
     <input type="search" placeholder="Tìm kiếm..." value="${state.query}" data-filter="query">
-    ${options.length ? `<select data-filter="status"><option value="all">TTất cả</option>${options.map((o) => `<option value="${o}" ${state.filter === o ? "selected" : ""}>${o}</option>`).join("")}</select>` : ""}
+    ${options.length ? `<select data-filter="status"><option value="all">Tất cả</option>${options.map((option) => {
+      const value = Array.isArray(option) ? option[0] : option;
+      const label = Array.isArray(option) ? option[1] : option;
+      return `<option value="${value}" ${state.filter === value ? "selected" : ""}>${label}</option>`;
+    }).join("")}</select>` : ""}
   </div><span class="hint">Có tìm kiếm, lọc, sắp xếp và phân trang rút gọn theo màn hình.</span></div>`;
 }
 
@@ -3976,7 +4012,10 @@ function filterRows(rows, fields) {
   const q = state.query.trim().toLowerCase();
   return rows.filter((row) => {
     const matchesQuery = !q || fields.some((field) => String(row[field] || "").toLowerCase().includes(q));
-    const matchesFilter = state.filter === "all" || Object.values(row).includes(state.filter);
+    const values = Object.values(row);
+    const matchesFilter = state.filter === "all"
+      || values.includes(state.filter)
+      || (state.filter === "Nghỉ việc" && values.includes("Đã nghỉ việc"));
     return matchesQuery && matchesFilter;
   }).slice(0, 50);
 }
@@ -4313,7 +4352,9 @@ function hrEmployeeForm(id) {
     ${field("startDate", "Ngày vào làm", item.startDate || todayISO(), true, "date")}
     ${selectField("contractType", "Loại hợp đồng", ["Thử việc", "Hợp đồng thời vụ", "Hợp đồng chính thức", "Cộng tác viên"], item.contractType || "Thử việc")}
     ${field("salary", "Lương/tháng", item.salary || 0, false, "number")}
-    ${selectField("status", "Trạng thái", ["Đang làm", "Thử việc", "Nghỉ việc"], item.status || "Đang làm")}
+    ${selectField("status", "Trạng thái", ["Đang làm", "Thử việc", ["Nghỉ việc", "Đã nghỉ việc"]], isFormerEmployee(item) ? "Nghỉ việc" : (item.status || "Đang làm"))}
+    ${field("terminationDate", "Ngày nghỉ việc", item.terminationDate || "", false, "date")}
+    ${field("terminationReason", "Lý do nghỉ việc", item.terminationReason || "")}
     <div class="field full">
       <label>Hình ảnh nhân viên</label>
       <input name="employeePhoto" type="file" accept="image/*">
@@ -5023,6 +5064,7 @@ function handleAction(event) {
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
+  if (action?.startsWith("reapply-former-employee:")) reapplyFormerEmployee(action.split(":")[1]);
   if (action?.startsWith("toggle-room:")) toggleRoomVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-room:")) deleteRoom(action.split(":")[1]);
   if (action?.startsWith("approve:")) approveTicket(action.split(":")[1]);
@@ -5046,6 +5088,57 @@ function handleAction(event) {
   if (action === "export-attendance-xls") exportAttendanceExcel();
   if (action === "print-attendance-pdf") printAttendancePdf();
   if (action === "print") window.print();
+}
+
+function reapplyFormerEmployee(id) {
+  if (!can("hr")) {
+    showToast("Tài khoản này không có quyền cập nhật hồ sơ nhân sự.");
+    return;
+  }
+  const employee = (getDb().hrEmployees || []).find((item) => item.id === id);
+  if (!employee || !isFormerEmployee(employee)) {
+    showToast("Không tìm thấy hồ sơ nhân viên đã nghỉ việc.");
+    return;
+  }
+  mutateDb((db) => {
+    const normalizedPhone = String(employee.phone || "").replace(/\D/g, "");
+    const normalizedEmail = String(employee.email || "").trim().toLowerCase();
+    let applicant = (db.jobApplicants || []).find((item) =>
+      item.formerEmployeeId === employee.id
+      || (normalizedPhone && String(item.phone || "").replace(/\D/g, "") === normalizedPhone)
+      || (normalizedEmail && String(item.email || "").trim().toLowerCase() === normalizedEmail)
+    );
+    const payload = {
+      name: employee.name || "",
+      gender: employee.gender || "Khác",
+      phone: employee.phone || "",
+      email: employee.email || "",
+      position: employee.position || "",
+      source: "Nhân viên cũ ứng tuyển lại",
+      applyDate: todayISO(),
+      interviewDate: "",
+      expectedSalary: Number(employee.salary || 0),
+      status: "Mới",
+      photo: employee.photo || "",
+      formerEmployeeId: employee.id,
+      experience: `Đã từng làm ${employee.position || "nhân viên"} tại ${employee.department || "COCO BAY"}.`,
+      note: `Ứng tuyển lại từ hồ sơ ${employee.code || employee.id}.`
+    };
+    if (applicant) Object.assign(applicant, payload);
+    else {
+      applicant = { id: uid("CV"), code: nextCode("UV", db.jobApplicants || []), ...payload };
+      db.jobApplicants = db.jobApplicants || [];
+      db.jobApplicants.push(applicant);
+    }
+    employee.reappliedAt = nowLocal();
+    employee.reapplicationId = applicant.id;
+    return {
+      record: `${employee.code} · ${employee.name}`,
+      before: "Nhân viên đã nghỉ việc",
+      after: `Đã chuyển sang ứng viên ${applicant.code}`
+    };
+  }, "Ứng tuyển lại nhân viên cũ");
+  showToast(`Đã đưa ${employee.name} sang bảng Người xin việc.`);
 }
 
 
@@ -5382,8 +5475,10 @@ function upsertHrEmployee(db, data, id) {
   }
   const payload = {
     ...data,
-    salary: +data.salary || 0
+    salary: +data.salary || 0,
+    status: isFormerEmployee(data) ? "Nghỉ việc" : data.status
   };
+  if (payload.status === "Nghỉ việc" && !payload.terminationDate) payload.terminationDate = todayISO();
   if (id) Object.assign(db.hrEmployees.find((item) => item.id === id), payload);
   else db.hrEmployees.push({ id: uid("HR"), ...payload });
 }
