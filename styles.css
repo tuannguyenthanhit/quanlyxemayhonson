@@ -4629,6 +4629,7 @@ table td,
   align-content: start;
   gap: 2px;
   border: 1px solid currentColor;
+  border-left: 4px solid var(--sale-color, currentColor);
   border-radius: 5px;
   padding: 5px 8px;
   text-align: left;
@@ -4639,6 +4640,31 @@ table td,
 }
 
 .booking-pill strong { color: #fff !important; font-size: 11px; }
+.booking-pill-sale,
+.booking-sales-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.booking-pill-sale {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--sale-color, #2de0d3);
+  font-size: 9px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.booking-pill-sale i,
+.booking-sales-name i,
+.booking-sale-badge > i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--sale-color, #2de0d3);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--sale-color, #2de0d3) 65%, transparent);
+}
 .booking-pill small { color: rgba(255,255,255,.78); }
 .booking-pill em {
   display: block;
@@ -4752,6 +4778,21 @@ table td,
   font-size: 25px;
 }
 
+.booking-sale-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--sale-color, #2de0d3) 42%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sale-color, #2de0d3) 10%, transparent);
+}
+.booking-sale-badge > i { width: 11px; height: 11px; flex-basis: 11px; }
+.booking-sale-badge span { display: grid; gap: 2px; }
+.booking-sale-badge small { color: #aac4d7; }
+.booking-sale-badge strong { color: #fff; }
+
 .booking-detail dl {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -4779,7 +4820,20 @@ table td,
 .booking-service.blue span { color: #61a7ff; }
 .booking-service.red span { color: #ff6b78; }
 
-.booking-pay dd:nth-of-type(3) { color: #ff6b78; }
+.booking-pay dd:nth-last-of-type(2) { color: #ff6b78; }
+.booking-gross-profit { color: #45e08f !important; font-weight: 950; }
+.booking-profit-field output {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #29526a;
+  border-radius: 7px;
+  color: #45e08f;
+  background: rgba(69, 224, 143, .08);
+  font-size: 17px;
+  font-weight: 950;
+}
 .booking-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
 .booking-actions button { min-height: 38px; justify-content: center; }
 
@@ -4787,6 +4841,102 @@ table td,
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+.booking-sales-summary {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #1f5268;
+  border-radius: 8px;
+  background: #0a2941;
+}
+.booking-sales-summary .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.booking-sales-summary h3,
+.booking-sales-summary p { margin: 0; }
+.booking-sales-summary p { margin-top: 4px; color: #aac4d7; font-size: 12px; }
+.booking-sales-summary .count {
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #07253a;
+  background: #d7fff2;
+  font-size: 12px;
+  font-weight: 900;
+}
+.booking-sales-summary tbody tr:hover { background: rgba(45, 224, 211, .08); }
+.booking-sales-name { color: #fff; }
+
+.booking-report-page { display: grid; gap: 16px; }
+.booking-report-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #1f5268;
+  border-radius: 8px;
+  background: #0a2941;
+}
+.booking-report-toolbar label { display: grid; gap: 7px; color: #fff; font-weight: 900; }
+.booking-report-toolbar select { min-width: 190px; }
+.booking-report-toolbar p { margin: 0; color: #aac4d7; font-size: 12px; }
+.booking-report-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.booking-report-kpis .report-kpi { min-height: 118px; }
+.booking-report-highlight {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  border: 1px solid rgba(255, 181, 69, .46);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 181, 69, .13), rgba(45, 224, 211, .07));
+}
+.booking-report-highlight span { color: #ffd58c; font-size: 12px; font-weight: 900; text-transform: uppercase; }
+.booking-report-highlight strong { color: #fff; font-size: 18px; }
+.booking-report-highlight b { color: #45e08f; font-size: 20px; }
+.booking-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.booking-report-sale { grid-column: 1 / -1; min-width: 0; }
+.booking-report-sale table { min-width: 1040px; }
+.booking-report-sale .booking-sales-name span { display: grid; gap: 2px; }
+.booking-report-sale .booking-sales-name small { color: #93afc3; }
+.booking-report-list { display: grid; gap: 1px; }
+.booking-report-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 4px;
+  border-bottom: 1px solid rgba(126, 176, 198, .2);
+}
+.booking-report-list > div:last-child { border-bottom: 0; }
+.booking-report-list span { display: grid; gap: 3px; }
+.booking-report-list span:last-child { text-align: right; }
+.booking-report-list small { color: #aac4d7; }
+.booking-report-list b { color: #fff; }
+
+@media (max-width: 700px) {
+  .booking-sales-summary { padding: 12px; }
+  .booking-sales-summary .table-wrap { overflow-x: auto; }
+  .booking-sales-summary table { min-width: 650px; }
+  .booking-report-toolbar { align-items: stretch; flex-direction: column; }
+  .booking-report-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .booking-report-grid { grid-template-columns: 1fr; }
+  .booking-report-highlight { grid-template-columns: 1fr; gap: 5px; }
+  .booking-report-highlight b { font-size: 17px; }
 }
 
 .booking-simple-card {
@@ -5549,6 +5699,19 @@ table td,
   color: #ff8585;
   font-size: 28px;
   font-weight: 900;
+}
+
+.sauce-ingredient-preview {
+  display: -webkit-box !important;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: #cfe5f4 !important;
+  font-size: 12px;
+}
+
+.sauce-ingredient-preview strong {
+  color: #7cf5ee;
 }
 
 .recipe-compact-main,

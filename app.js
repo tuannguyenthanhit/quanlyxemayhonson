@@ -70,6 +70,7 @@ const menu = [
   ["bookingTimeline", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng", "booking_view"],
   ["hotels", "Kh\u00e1ch s\u1ea1n", "booking_view"],
   ["rooms", "Ph\u00f2ng", "booking_view"],
+  ["bookingReports", "Báo cáo đặt phòng", "reports"],
   ["motorbikes", "Xe m\u00e1y", "bike_view"],
   ["bikeTypes", "Lo\u1ea1i xe", "bike_view"],
   ["rentals", "Thu\u00ea & tr\u1ea3 xe", "rentals"],
@@ -96,7 +97,7 @@ const menu = [
 
 const menuTree = [
   { key: "dashboard" },
-  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }] },
+  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }, { key: "bookingReports" }] },
   { key: "motorbikes", children: [{ key: "bikeTypes" }, { key: "rentals" }, { key: "calendar" }, { key: "bikeMaintenance" }] },
   { key: "equipment", children: [{ key: "equipmentTypes" }, { key: "equipmentMaintenance" }] },
   { key: "kitchen", children: [{ key: "dishes" }, { key: "kitchenRecipes" }, { key: "sauces" }, { key: "menuPrices" }] },
@@ -116,6 +117,7 @@ const menuMeta = {
   bookingTimeline: { icon: "\u25a6", color: "teal", desc: "Timeline \u0111\u1eb7t ph\u00f2ng t\u1ed5ng h\u1ee3p nhi\u1ec1u kh\u00e1ch s\u1ea1n" },
   hotels: { icon: "\u25a5", color: "blue", desc: "Danh s\u00e1ch kh\u00e1ch s\u1ea1n v\u00e0 s\u1ed1 ph\u00f2ng" },
   rooms: { icon: "\u25a4", color: "mint", desc: "Qu\u1ea3n l\u00fd ph\u00f2ng, lo\u1ea1i ph\u00f2ng v\u00e0 s\u1ee9c ch\u1ee9a" },
+  bookingReports: { icon: "\u25a5", color: "gold", desc: "Doanh số, lãi gộp, booking và hiệu quả từng sale" },
   motorbikes: { icon: "\u2668", color: "mint", desc: "Danh s\u00e1ch v\u00e0 qu\u1ea3n l\u00fd xe m\u00e1y" },
   bikeTypes: { icon: "\u2261", color: "mint", desc: "C\u1ea5u h\u00ecnh lo\u1ea1i xe v\u00e0 l\u1ecbch b\u1ea3o tr\u00ec" },
   rentals: { icon: "\u25c6", color: "gold", desc: "Qu\u1ea3n l\u00fd thu\u00ea, tr\u1ea3 xe v\u00e0 h\u1ee3p \u0111\u1ed3ng" },
@@ -145,6 +147,7 @@ const navSvgIcons = {
   bookingTimeline: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4" /><path d="M16 3v4" /><path d="M4 10h16" /><path d="M8 14h8" /><path d="M8 17h5" /></svg>`,
   hotels: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V6l7-3 7 3v14" /><path d="M9 20v-5h6v5" /><path d="M9 8h.01" /><path d="M12 8h.01" /><path d="M15 8h.01" /><path d="M9 12h.01" /><path d="M12 12h.01" /><path d="M15 12h.01" /></svg>`,
   rooms: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12" /><path d="M4 14h16" /><path d="M7 14v-3h5v3" /><path d="M14 14v-3h3" /></svg>`,
+  bookingReports: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 16v-4" /><path d="M12 16V8" /><path d="M16 16v-6" /><path d="M7 19h10" /></svg>`,
   motorbikes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16a3 3 0 1 0 0 .1" /><path d="M19 16a3 3 0 1 0 0 .1" /><path d="M7 16h4l3-5h2l3 5" /><path d="M10 9h3" /><path d="M14 7h3" /><path d="M16 7l2-2" /></svg>`,
   bikeTypes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h14l-1.7-5.2A3 3 0 0 0 14.5 9h-5A3 3 0 0 0 6.7 10.8L5 16Z" /><path d="M7 16v2" /><path d="M17 16v2" /><path d="M7.5 13h9" /></svg>`,
   rentals: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 4 12V4h8l8 8Z" /><path d="M8.5 8.5h.01" /></svg>`,
@@ -212,6 +215,7 @@ const state = {
     month: todayISO().slice(0, 7),
     date: todayISO()
   },
+  bookingReportMonth: todayISO().slice(0, 7),
   reportMonth: todayISO().slice(0, 7),
   auditFilters: {
     query: "",
@@ -230,6 +234,7 @@ const BIKE_IMAGE_MAX_SIZE = 520;
 const BIKE_IMAGE_QUALITY = 0.38;
 const BIKE_IMAGE_MAX_BYTES = 45000;
 const RECIPE_IMAGE_LIMIT = 5;
+const SAUCE_IMAGE_LIMIT = 3;
 const RECIPE_IMAGE_MAX_SIZE = 900;
 const RECIPE_IMAGE_QUALITY = 0.55;
 const RECIPE_IMAGE_MAX_BYTES = 120000;
@@ -238,7 +243,7 @@ const VI_MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "
 const MONEY_FIELD_NAMES = new Set([
   "total", "paid", "weekdayPrice", "weekendPrice", "holidayPrice", "price",
   "surcharge", "discount", "deposit", "estimatedCost", "actualCost", "salary",
-  "expectedSalary", "oilCost"
+  "expectedSalary", "oilCost", "totalCost", "grossProfit"
 ]);
 let activeDatePicker = null;
 let datePickerDocumentBound = false;
@@ -791,6 +796,12 @@ function migrateDb(db) {
     db.sauces = [];
     changed = true;
   }
+  db.sauces.forEach((sauce) => {
+    if (!Array.isArray(sauce.images)) {
+      sauce.images = [];
+      changed = true;
+    }
+  });
   db.users?.forEach((user) => {
     if (!Array.isArray(user.permissions)) {
       user.permissions = permissions[user.role] || [];
@@ -1403,6 +1414,7 @@ function viewContent() {
     bookingTimeline: bookingTimelineView,
     hotels: hotelsView,
     rooms: roomsView,
+    bookingReports: bookingReportsView,
     motorbikes: motorbikesView,
     bikeTypes: bikeTypesView,
     rentals: rentalsView,
@@ -2183,13 +2195,26 @@ function bookingTimelineView() {
         <div class="booking-legend"><span class="green">\u0110\u00e3 x\u00e1c nh\u1eadn</span><span class="blue">\u0110\u00e3 c\u1ecdc</span><span class="orange">\u0110ang \u1edf</span><span class="purple">Tr\u1ea3 ph\u00f2ng</span><span class="red">\u0110\u00e3 h\u1ee7y</span></div>
       </div>
       <div class="booking-layout"><div class="booking-board" style="${boardStyle}"><div class="booking-grid-head"><div></div>${days.map((day) => `<div class="${day.weekend ? "weekend" : ""}"><strong>${day.day}</strong><small>${day.label}</small></div>`).join("")}</div><div class="booking-rows">${visibleHotels.map((hotel) => bookingHotelBlock(hotel, data.rooms.filter((room) => room.hotelId === hotel.id), visibleBookings, days)).join("")}</div>${todayPosition === null ? "" : `<div class="today-line" style="left:${todayPosition}%"><span>H\u00f4m nay ${current.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>`}</div>${bookingDetailPanel(selected, data.services)}</div>
+      ${bookingSalesSummaryPanel(data.bookings, yearMonth)}
       ${bookingHistoryPanel(data)}
     </section>`;
 }
 
-function bookingDetailPanel(selected, services) {
+function bookingDetailPanelLegacy(selected, services) {
   if (!selected) return `<aside class="booking-detail"><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><p class="empty">Ch\u01b0a c\u00f3 \u0111\u1eb7t ph\u00f2ng.</p></aside>`;
   return `<aside class="booking-detail"><button class="booking-close">\u00d7</button><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><div class="booking-detail-title"><span>\u25ce</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>M\u00e3 \u0111\u1eb7t ph\u00f2ng</dt><dd>#${selected.id}</dd><dt>Kh\u00e1ch s\u1ea1n</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Ph\u00f2ng</dt><dd>${selected.room}</dd><dt>Ng\u00e0y \u0111\u1ebfn</dt><dd>${formatDate(selected.start)}</dd><dt>Ng\u00e0y \u0111i</dt><dd>${formatDate(selected.end)}</dd><dt>S\u1ed1 l\u01b0\u1ee3ng kh\u00e1ch</dt><dd>${selected.guests} ng\u01b0\u1eddi</dd><dt>Ng\u01b0\u1eddi li\u00ean h\u1ec7</dt><dd>${selected.customer}</dd><dt>S\u0110T</dt><dd>${selected.phone}</dd><dt>Ghi ch\u00fa d\u1ecbch v\u1ee5</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi ch\u00fa kh\u00e1c</dt><dd>${selected.notes || "-"}</dd></dl><h4>D\u1ecaCH V\u1ee4 \u0110\u00c3 \u0110\u1eb6T</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TO\u00c1N</h4><dl class="booking-pay"><dt>T\u1ed5ng ti\u1ec1n</dt><dd>${money(selected.total)}</dd><dt>\u0110\u00e3 c\u1ecdc</dt><dd>${money(selected.paid)}</dd><dt>C\u00f2n l\u1ea1i</dt><dd>${money(selected.total - selected.paid)}</dd><dt>Tr\u1ea1ng th\u00e1i</dt><dd>${pill(selected.status)}</dd></dl>${can("booking_edit") ? `<div class="booking-actions"><button class="secondary" data-modal="booking:${selected.id}">S\u1eeda \u0111\u1eb7t ph\u00f2ng</button><button class="secondary">Thanh to\u00e1n</button><button class="ghost">Check-in</button><button class="danger" type="button" data-action="delete-booking:${selected.id}">H\u1ee7y/x\u00f3a \u0111\u1eb7t ph\u00f2ng</button></div>` : `<p class="hint">T\u00e0i kho\u1ea3n n\u00e0y ch\u1ec9 c\u00f3 quy\u1ec1n xem l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p>`}</aside>`;
+}
+
+function bookingDetailPanel(selected, services) {
+  const html = bookingDetailPanelLegacy(selected, services);
+  if (!selected) return html;
+  const saleName = selected.salesName || selected.createdBy || "Chưa gán sale";
+  const grossProfit = Number(selected.grossProfit ?? (Number(selected.total || 0) - Number(selected.totalCost || 0)));
+  const saleBadge = `<div class="booking-sale-badge" style="--sale-color:${bookingSalesColor(saleName)}"><i></i><span><small>Sale phụ trách</small><strong>${saleName}</strong></span></div>`;
+  const financeRows = can("finance") ? `<dt>Tổng chi phí</dt><dd>${money(selected.totalCost)}</dd><dt>Lãi gộp</dt><dd class="booking-gross-profit">${money(grossProfit)}</dd>` : "";
+  return html
+    .replace("<dl>", `${saleBadge}<dl>`)
+    .replace('<dl class="booking-pay">', `<dl class="booking-pay">${financeRows}`);
 }
 
 function bookingGridWidth(days) { return 220 + days.length * 86; }
@@ -2218,13 +2243,121 @@ function bookingRoomRow(room, bookings, days) { return `<div class="booking-room
 function bookingSmallInfo(booking) {
   return [Number(booking.total) ? money(booking.total) : "", booking.serviceNote || "", booking.notes || ""].filter(Boolean).join(" \u00b7 ");
 }
-function bookingPill(booking, span) { return `<button class="booking-pill ${booking.tone || bookingStatusTone(booking.status)}" style="--span:${span}" ${can("booking_edit") ? `data-modal="booking:${booking.id}"` : ""}><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`; }
+function bookingSalesColor(name) {
+  const palette = ["#2de0d3", "#61a7ff", "#ffb545", "#b38cff", "#ff6b78", "#45e08f", "#f58bd6", "#93c5fd"];
+  const hash = [...String(name || "")].reduce((sum, character) => (sum * 31 + character.charCodeAt(0)) >>> 0, 7);
+  return palette[hash % palette.length];
+}
+function bookingPill(booking, span) {
+  const saleName = booking.salesName || booking.createdBy || "Chưa gán sale";
+  return `<button class="booking-pill ${booking.tone || bookingStatusTone(booking.status)}" style="--span:${span};--sale-color:${bookingSalesColor(saleName)}" ${can("booking_edit") ? `data-modal="booking:${booking.id}"` : ""}><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><span class="booking-pill-sale"><i></i>${saleName}</span><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`;
+}
+function bookingSalesSummaryPanel(bookings, yearMonth) {
+  if (!can("finance")) return "";
+  const rows = Object.values((bookings || []).filter((booking) => booking.status !== "Đã hủy" && String(booking.start || "").slice(0, 7) === yearMonth).reduce((summary, booking) => {
+    const salesName = booking.salesName || booking.createdBy || "Chưa gán sale";
+    if (!summary[salesName]) summary[salesName] = { salesName, bookings: 0, revenue: 0, cost: 0, grossProfit: 0 };
+    const total = Number(booking.total || 0);
+    const cost = Number(booking.totalCost || 0);
+    summary[salesName].bookings += 1;
+    summary[salesName].revenue += total;
+    summary[salesName].cost += cost;
+    summary[salesName].grossProfit += Number(booking.grossProfit ?? (total - cost));
+    return summary;
+  }, {})).sort((a, b) => b.grossProfit - a.grossProfit);
+  const monthLabel = parseISODate(`${yearMonth}-01`).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
+  return `<section class="booking-sales-summary"><div class="panel-head"><div><h3>Doanh thu và lãi gộp theo sale</h3><p>Tổng hợp booking phát sinh trong ${monthLabel}.</p></div><span class="count">${rows.length} sale</span></div><div class="table-wrap"><table><thead><tr><th>Nhân viên sale</th><th>Booking</th><th>Doanh thu</th><th>Tổng chi phí</th><th>Lãi gộp</th></tr></thead><tbody>${rows.length ? rows.map((row) => `<tr><td><span class="booking-sales-name" style="--sale-color:${bookingSalesColor(row.salesName)}"><i></i><strong>${row.salesName}</strong></span></td><td>${row.bookings}</td><td>${money(row.revenue)}</td><td>${money(row.cost)}</td><td class="booking-gross-profit">${money(row.grossProfit)}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Chưa có booking trong tháng này.</td></tr>`}</tbody></table></div></section>`;
+}
+
+function bookingReportData(month = todayISO().slice(0, 7), db = getDb()) {
+  const bookings = (db.hotelBookings || []).filter((booking) => String(booking.start || "").slice(0, 7) === month);
+  const validBookings = bookings.filter((booking) => booking.status !== "Đã hủy");
+  const totals = validBookings.reduce((result, booking) => {
+    const revenue = Number(booking.total || 0);
+    const cost = Number(booking.totalCost || 0);
+    result.revenue += revenue;
+    result.cost += cost;
+    result.grossProfit += Number(booking.grossProfit ?? (revenue - cost));
+    result.paid += Number(booking.paid || 0);
+    result.guests += Number(booking.guests || 0);
+    return result;
+  }, { revenue: 0, cost: 0, grossProfit: 0, paid: 0, guests: 0 });
+  totals.receivable = Math.max(0, totals.revenue - totals.paid);
+  totals.average = validBookings.length ? totals.revenue / validBookings.length : 0;
+  totals.margin = totals.revenue ? totals.grossProfit / totals.revenue * 100 : 0;
+
+  const saleRows = Object.values(validBookings.reduce((rows, booking) => {
+    const salesName = booking.salesName || booking.createdBy || "Chưa gán sale";
+    if (!rows[salesName]) rows[salesName] = { salesName, bookings: 0, guests: 0, revenue: 0, paid: 0, cost: 0, grossProfit: 0 };
+    const revenue = Number(booking.total || 0);
+    const cost = Number(booking.totalCost || 0);
+    rows[salesName].bookings += 1;
+    rows[salesName].guests += Number(booking.guests || 0);
+    rows[salesName].revenue += revenue;
+    rows[salesName].paid += Number(booking.paid || 0);
+    rows[salesName].cost += cost;
+    rows[salesName].grossProfit += Number(booking.grossProfit ?? (revenue - cost));
+    return rows;
+  }, {})).map((row) => ({ ...row, receivable: Math.max(0, row.revenue - row.paid), margin: row.revenue ? row.grossProfit / row.revenue * 100 : 0 })).sort((a, b) => b.grossProfit - a.grossProfit);
+
+  const hotels = db.hotels || [];
+  const rooms = db.rooms || [];
+  const hotelRows = Object.values(validBookings.reduce((rows, booking) => {
+    const room = rooms.find((item) => item.code === booking.room);
+    const hotel = hotels.find((item) => item.id === (booking.hotelId || room?.hotelId));
+    const hotelName = booking.hotelName || hotel?.name || "Chưa xác định";
+    if (!rows[hotelName]) rows[hotelName] = { hotelName, bookings: 0, guests: 0, revenue: 0, grossProfit: 0 };
+    const revenue = Number(booking.total || 0);
+    const cost = Number(booking.totalCost || 0);
+    rows[hotelName].bookings += 1;
+    rows[hotelName].guests += Number(booking.guests || 0);
+    rows[hotelName].revenue += revenue;
+    rows[hotelName].grossProfit += Number(booking.grossProfit ?? (revenue - cost));
+    return rows;
+  }, {})).sort((a, b) => b.revenue - a.revenue);
+
+  const statusRows = Object.entries(bookings.reduce((rows, booking) => {
+    const status = booking.status || "Chưa xác định";
+    rows[status] = (rows[status] || 0) + 1;
+    return rows;
+  }, {})).map(([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count);
+  return { month, bookings, validBookings, totals, saleRows, hotelRows, statusRows, cancelled: bookings.length - validBookings.length };
+}
+
+function bookingReportsView() {
+  const report = bookingReportData(state.bookingReportMonth);
+  const monthLabel = parseISODate(`${report.month}-01`).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
+  const topSale = report.saleRows[0];
+  return `<section class="booking-report-page">
+    ${pageHeader("Báo cáo đặt phòng", `Tổng hợp doanh số, lãi gộp và hiệu quả sale trong ${monthLabel}.`, `<button class="secondary" data-action="print">In / Lưu PDF</button><button class="primary" data-action="export-booking-report">Xuất Excel</button>`)}
+    <div class="booking-report-toolbar"><label><span>Tháng báo cáo</span>${localizedMonthSelect(report.month, "data-booking-report-month")}</label><p>Số liệu doanh thu được ghi nhận theo tháng của ngày khách đến.</p></div>
+    <div class="booking-report-kpis">
+      ${reportKpi("Tổng doanh số", money(report.totals.revenue), `${report.validBookings.length} booking hợp lệ`)}
+      ${reportKpi("Tổng lãi gộp", money(report.totals.grossProfit), `Biên lãi ${report.totals.margin.toFixed(1)}%`)}
+      ${reportKpi("Tổng booking", report.bookings.length, `${report.cancelled} booking đã hủy`)}
+      ${reportKpi("Tổng số khách", report.totals.guests, `Bình quân ${report.validBookings.length ? (report.totals.guests / report.validBookings.length).toFixed(1) : "0"} khách/booking`)}
+      ${reportKpi("Đã cọc / đã thu", money(report.totals.paid), `Tỷ lệ ${report.totals.revenue ? (report.totals.paid / report.totals.revenue * 100).toFixed(1) : "0"}%`)}
+      ${reportKpi("Còn phải thu", money(report.totals.receivable), "Theo tổng tiền trừ số đã thu")}
+      ${reportKpi("Tổng chi phí", money(report.totals.cost), "Chi phí đã nhập trong booking")}
+      ${reportKpi("Doanh số bình quân", money(report.totals.average), "Trên mỗi booking hợp lệ")}
+    </div>
+    <div class="booking-report-highlight"><span>Sale có lãi gộp cao nhất</span><strong>${topSale?.salesName || "Chưa có dữ liệu"}</strong><b>${topSale ? money(topSale.grossProfit) : money(0)}</b></div>
+    <div class="booking-report-grid">
+      <section class="card booking-report-sale"><div class="panel-title"><div><h3>Hiệu quả từng sale</h3><p>Doanh số, chi phí và lãi gộp theo người phụ trách booking.</p></div></div><div class="table-wrap"><table><thead><tr><th>Sale</th><th>Booking</th><th>Khách</th><th>Doanh số</th><th>Đã thu</th><th>Còn thu</th><th>Chi phí</th><th>Lãi gộp</th><th>Biên lãi</th></tr></thead><tbody>${report.saleRows.length ? report.saleRows.map((row, index) => `<tr><td><span class="booking-sales-name" style="--sale-color:${bookingSalesColor(row.salesName)}"><i></i><span><strong>${row.salesName}</strong><small>Hạng ${index + 1}</small></span></span></td><td>${row.bookings}</td><td>${row.guests}</td><td>${money(row.revenue)}</td><td>${money(row.paid)}</td><td>${money(row.receivable)}</td><td>${money(row.cost)}</td><td class="booking-gross-profit">${money(row.grossProfit)}</td><td>${row.margin.toFixed(1)}%</td></tr>`).join("") : `<tr><td colspan="9" class="empty">Chưa có booking trong tháng này.</td></tr>`}</tbody></table></div></section>
+      <section class="card"><div class="panel-title"><h3>Theo khách sạn</h3></div><div class="booking-report-list">${report.hotelRows.length ? report.hotelRows.map((row) => `<div><span><strong>${row.hotelName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><span><b>${money(row.revenue)}</b><small>Lãi ${money(row.grossProfit)}</small></span></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
+      <section class="card"><div class="panel-title"><h3>Trạng thái booking</h3></div><div class="booking-report-list">${report.statusRows.length ? report.statusRows.map((row) => `<div><span>${pill(row.status)}</span><strong>${row.count}</strong></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
+    </div>
+  </section>`;
+}
 function bookingStatusTone(status) { if (status === "\u0110\u00e3 c\u1ecdc") return "blue"; if (status === "\u0110ang \u1edf") return "orange"; if (status === "Tr\u1ea3 ph\u00f2ng") return "purple"; if (status === "\u0110\u00e3 h\u1ee7y") return "red"; return "green"; }
 function bookingServiceIcon(name) { if (name.includes("xe")) return "\u2668"; if (name.includes("Tour")) return "\u25c9"; return "\u25a3"; }
 function bookingDateInput(value) { return value ? String(value).slice(0, 10) : ""; }
 function bookingForm(id) {
   const data = bookingSeedData();
-  const booking = (getDb().hotelBookings || []).find((item) => item.id === id) || {};
+  const db = getDb();
+  const booking = (db.hotelBookings || []).find((item) => item.id === id) || {};
+  const currentSalesName = booking.salesName || booking.createdBy || state.user?.name || "Chưa gán sale";
+  const salesNames = [...new Set([...(db.users || []).filter((user) => user.active !== false).map((user) => user.name), currentSalesName].filter(Boolean))];
   const roomOptions = data.rooms.map((room) => {
     const hotel = data.hotels.find((item) => item.id === room.hotelId);
     return [room.code, `${hotel?.name || ""} \u00b7 ${room.code} - ${room.name}`];
@@ -2233,8 +2366,10 @@ function bookingForm(id) {
     ${field("group", "T\u00ean nh\u00f3m/kh\u00e1ch", booking.group || "", true)}${field("customer", "Ng\u01b0\u1eddi li\u00ean h\u1ec7", booking.customer || "", true)}
     ${field("phone", "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i", booking.phone || "", true)}${field("guests", "S\u1ed1 kh\u00e1ch", booking.guests || 2, true, "number")}
     ${selectField("room", "Kh\u00e1ch s\u1ea1n / ph\u00f2ng", roomOptions, booking.room || roomOptions[0]?.[0], true)}${selectField("status", "Tr\u1ea1ng th\u00e1i", ["\u0110\u00e3 x\u00e1c nh\u1eadn", "\u0110\u00e3 c\u1ecdc", "\u0110ang \u1edf", "Tr\u1ea3 ph\u00f2ng", "\u0110\u00e3 h\u1ee7y"], booking.status || "\u0110\u00e3 x\u00e1c nh\u1eadn")}
+    ${selectField("salesName", "Nh\u00e2n vi\u00ean sale ph\u1ee5 tr\u00e1ch", salesNames, currentSalesName, true)}
     ${field("start", "Ng\u00e0y \u0111\u1ebfn", bookingDateInput(booking.start) || todayISO(), true, "date")}${field("end", "Ng\u00e0y \u0111i", bookingDateInput(booking.end) || todayISO(1), true, "date")}
     ${field("total", "T\u1ed5ng ti\u1ec1n", booking.total || 0, false, "number")}${field("paid", "\u0110\u00e3 c\u1ecdc / \u0111\u00e3 thu", booking.paid || 0, false, "number")}
+    ${field("totalCost", "T\u1ed5ng chi ph\u00ed booking", booking.totalCost || 0, false, "number")}<div class="field booking-profit-field"><label>L\u00e3i g\u1ed9p d\u1ef1 ki\u1ebfn</label><output data-booking-profit-preview>${money(Number(booking.total || 0) - Number(booking.totalCost || 0))}</output><span class="hint">T\u1ed5ng ti\u1ec1n tr\u1eeb t\u1ed5ng chi ph\u00ed</span></div>
     <div class="field full"><label>Ghi ch\u00fa d\u1ecbch v\u1ee5</label><textarea name="serviceNote" placeholder="V\u00ed d\u1ee5: Thu\u00ea xe m\u00e1y 2 xe, \u0103n s\u00e1ng, ph\u1ee5 thu...">${booking.serviceNote || ""}</textarea></div>
     <div class="field full"><label>Ghi ch\u00fa</label><textarea name="notes">${booking.notes || ""}</textarea></div>
   </div>`;
@@ -2257,15 +2392,24 @@ function upsertBooking(db, data, id) {
   const seed = bookingSeedData();
   const room = seed.rooms.find((item) => item.code === data.room);
   const hotel = seed.hotels.find((item) => item.id === room?.hotelId);
+  const existing = id ? db.hotelBookings.find((item) => item.id === id) : null;
+  const total = Number(data.total || 0);
+  const totalCost = Number(data.totalCost || 0);
   const payload = {
     ...data,
     hotelId: room?.hotelId || "",
     hotelName: hotel?.name || "",
     guests: +data.guests,
-    total: +data.total,
+    salesName: data.salesName || existing?.salesName || state.user?.name || "Chưa gán sale",
+    total,
     paid: +data.paid,
+    totalCost,
+    grossProfit: total - totalCost,
     tone: bookingStatusTone(data.status),
-    createdAt: id ? (db.hotelBookings.find((item) => item.id === id)?.createdAt || nowLocal()) : nowLocal()
+    createdBy: existing?.createdBy || state.user?.name || "",
+    updatedBy: state.user?.name || "",
+    updatedAt: nowLocal(),
+    createdAt: existing?.createdAt || nowLocal()
   };
   if (id) Object.assign(db.hotelBookings.find((item) => item.id === id), payload);
   else db.hotelBookings.push({ id: uid("BK"), ...payload });
@@ -3500,13 +3644,23 @@ function saucesView() {
   return `<section class="kitchen-page">
     ${pageHeader("Công thức nước chấm", "Danh sách pha chế gọn để bếp tìm nhanh; mở chi tiết khi cần xem định lượng và từng bước.", can("kitchen_manage") ? `<button class="primary" data-modal="sauce">+ Thêm nước chấm</button>` : "")}
     ${filters([])}
-    <div class="recipe-group"><header><div><h3>Danh sách nước chấm</h3><small>${rows.length} công thức</small></div></header><div class="recipe-compact-list">${rows.map((item) => `<article class="recipe-compact-row sauce-compact-row"><div class="recipe-compact-image sauce-compact-icon">◉</div><div class="recipe-compact-main"><h4>${item.name}</h4><p>Dùng kèm: ${item.appliesTo || "Chưa ghi"}</p></div><div class="recipe-compact-meta"><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><div class="recipe-compact-actions"><button class="primary" data-modal="sauceDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:sauce:${item.id}">Xóa</button>` : ""}</div></article>`).join("") || `<div class="empty">Chưa có công thức nước chấm.</div>`}</div></div>
+    <div class="recipe-group"><header><div><h3>Danh sách nước chấm</h3><small>${rows.length} công thức</small></div></header><div class="recipe-compact-list">${rows.map((item) => {
+      const image = (item.images || []).find(Boolean);
+      return `<article class="recipe-compact-row sauce-compact-row"><div class="recipe-compact-image ${image ? "" : "sauce-compact-icon"}">${image ? `<img src="${image}" alt="${item.name}" onerror="this.closest('.recipe-compact-image')?.classList.add('image-load-error')">` : "◉"}</div><div class="recipe-compact-main"><h4>${item.name}</h4><p>Dùng kèm: ${item.appliesTo || "Chưa ghi"}</p><p class="sauce-ingredient-preview"><strong>Nguyên liệu:</strong> ${recipeTextPreview(item.ingredients)}</p></div><div class="recipe-compact-meta"><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><div class="recipe-compact-actions"><button class="primary" data-modal="sauceDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:sauce:${item.id}">Xóa</button>` : ""}</div></article>`;
+    }).join("") || `<div class="empty">Chưa có công thức nước chấm.</div>`}</div></div>
   </section>`;
+}
+
+function recipeTextPreview(value, limit = 2) {
+  const lines = String(value || "").split(/\r?\n|;/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return "Chưa ghi";
+  const preview = lines.slice(0, limit).join(" · ");
+  return `${preview}${lines.length > limit ? ` · +${lines.length - limit} mục` : ""}`;
 }
 
 function sauceDetailModal(item) {
   if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy công thức</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
-  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal"><header><div><small>Công thức nước chấm</small><h3>${item.name}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body recipe-detail-body"><div class="recipe-detail-summary"><span><small>Món dùng kèm</small><b>${item.appliesTo || "Chưa ghi"}</b></span><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section><section class="recipe-section"><h4>Cách pha</h4>${formatRecipeSteps(item.steps)}</section><div class="recipe-callout"><strong>Bảo quản</strong><span>${item.storage || "Chưa ghi"}</span></div>${item.note ? `<div class="recipe-callout warning"><strong>Lưu ý</strong><span>${item.note}</span></div>` : ""}</div><footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer></div></div>`;
+  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal"><header><div><small>Công thức nước chấm</small><h3>${item.name}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body recipe-detail-body">${(item.images || []).length ? renderRecipeGallery(item) : ""}<div class="recipe-detail-summary"><span><small>Món dùng kèm</small><b>${item.appliesTo || "Chưa ghi"}</b></span><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section><section class="recipe-section"><h4>Cách pha</h4>${formatRecipeSteps(item.steps)}</section><div class="recipe-callout"><strong>Bảo quản</strong><span>${item.storage || "Chưa ghi"}</span></div>${item.note ? `<div class="recipe-callout warning"><strong>Lưu ý</strong><span>${item.note}</span></div>` : ""}</div><footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer></div></div>`;
 }
 
 function menuPricesView() {
@@ -4668,6 +4822,11 @@ function renderEditableRecipeImages(images = []) {
 
 function sauceForm(id) {
   const item = getDb().sauces.find((row) => row.id === id) || {};
+  const draftId = `sauce:${id || "new"}`;
+  if (!state.recipeImageDraft || state.recipeImageDraft.formId !== draftId) {
+    const originalImages = [...(item.images || [])];
+    state.recipeImageDraft = { formId: draftId, images: [...originalImages], originalImages, deletedImages: [], limit: SAUCE_IMAGE_LIMIT };
+  }
   return `<div class="form-grid">
     ${field("name", "Tên nước chấm", item.name || "", true)}
     ${field("appliesTo", "Món dùng kèm", item.appliesTo || "", true)}
@@ -4677,6 +4836,11 @@ function sauceForm(id) {
     ${selectField("status", "Trạng thái", ["Đang dùng", "Tạm ngừng", "Ngừng dùng"], item.status || "Đang dùng")}
     <div class="field full"><label>Nguyên liệu và định lượng</label><textarea name="ingredients" rows="6" required placeholder="Mỗi nguyên liệu một dòng">${item.ingredients || ""}</textarea></div>
     <div class="field full"><label>Cách pha</label><textarea name="steps" rows="7" required placeholder="Mỗi bước một dòng">${item.steps || ""}</textarea></div>
+    <div class="field full">
+      <label>Ảnh minh họa nước chấm (tối đa ${SAUCE_IMAGE_LIMIT} ảnh, ảnh đầu tiên là ảnh đại diện)</label>
+      <input name="recipeImages" type="file" accept="image/*" multiple>
+      <div class="image-grid recipe-image-editor" id="recipe-image-preview">${renderEditableRecipeImages(state.recipeImageDraft.images)}</div>
+    </div>
     <div class="field full"><label>Ghi chú</label><textarea name="note" rows="2">${item.note || ""}</textarea></div>
   </div>`;
 }
@@ -5243,11 +5407,22 @@ function bindApp() {
     const autoPriceInput = rentalPriceInput.form?.querySelector("input[name='autoBikePrice']");
     if (autoPriceInput) autoPriceInput.value = "no";
   });
+  const bookingFormElement = document.querySelector("#modal-form[data-form='booking']");
+  const updateBookingProfit = () => {
+    const amount = (name) => Number(String(bookingFormElement?.querySelector(`[name='${name}']`)?.value || "0").replace(/[^\d-]/g, ""));
+    const output = bookingFormElement?.querySelector("[data-booking-profit-preview]");
+    if (output) output.textContent = money(amount("total") - amount("totalCost"));
+  };
+  bookingFormElement?.querySelectorAll("input[name='total'], input[name='totalCost']").forEach((input) => input.addEventListener("input", updateBookingProfit));
   document.querySelectorAll("[data-bike-status]").forEach((select) => select.addEventListener("change", (event) => {
     setBikeStatus(event.target.dataset.bikeStatus, event.target.value);
   }));
   document.querySelectorAll("[data-report-month]").forEach((input) => input.addEventListener("change", (event) => {
     state.reportMonth = event.target.value || todayISO().slice(0, 7);
+    render();
+  }));
+  document.querySelectorAll("[data-booking-report-month]").forEach((input) => input.addEventListener("change", (event) => {
+    state.bookingReportMonth = event.target.value || todayISO().slice(0, 7);
     render();
   }));
   document.querySelectorAll("[data-oil-history-month]").forEach((input) => input.addEventListener("change", (event) => {
@@ -5475,6 +5650,7 @@ function handleAction(event) {
   }
   if (action === "export-bikes-excel") exportBikesExcel();
   if (action === "export-rentals-excel") exportRentalsExcel();
+  if (action === "export-booking-report") exportBookingReportExcel();
   if (action === "export-report") exportCsv();
   if (action === "print-report") printReportPdf();
   if (action === "export-attendance-xls") exportAttendanceExcel();
@@ -5556,7 +5732,7 @@ function deleteKitchenItem(type, id) {
     showToast(`Không thể xóa nhóm “${item.name}” vì đang có ${linkedCategoryItems} món hoặc công thức sử dụng. Hãy chuyển chúng sang nhóm khác trước.`);
     return;
   }
-  const uploadedImages = type === "kitchenRecipe" ? (item.images || []).filter((src) => String(src).startsWith("/uploads/")) : [];
+  const uploadedImages = ["kitchenRecipe", "sauce"].includes(type) ? (item.images || []).filter((src) => String(src).startsWith("/uploads/")) : [];
   const warning = linkedRecipes ? `\n${linkedRecipes} công thức đang gắn với món này sẽ được giữ lại nhưng bỏ liên kết món.` : "";
   if (!confirm(`Xóa ${config.label} “${item.name || item.code}”?${warning}`)) return;
   mutateDb((draft) => {
@@ -5654,6 +5830,10 @@ async function saveModal(event) {
     data.images = await normalizeRecipeImages(state.recipeImageDraft?.images || []);
     delete data.recipeImages;
   }
+  if (type === "sauce") {
+    data.images = (await normalizeRecipeImages(state.recipeImageDraft?.images || [])).slice(0, SAUCE_IMAGE_LIMIT);
+    delete data.recipeImages;
+  }
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
     delete data.employeePhoto;
@@ -5692,7 +5872,7 @@ async function saveModal(event) {
     return;
   }
   const deletedBikeImages = type === "bike" ? [...(state.bikeImageDraft?.deletedImages || [])] : [];
-  const deletedRecipeImages = type === "kitchenRecipe" ? [...(state.recipeImageDraft?.deletedImages || [])] : [];
+  const deletedRecipeImages = ["kitchenRecipe", "sauce"].includes(type) ? [...(state.recipeImageDraft?.deletedImages || [])] : [];
   mutateDb((db) => {
     let savedTicket = null;
     if (type === "hotel") upsertHotel(db, data, id);
@@ -6696,6 +6876,24 @@ function exportBikesExcel() {
   showToast("Đã xuất Excel danh sách xe máy.");
 }
 
+function exportBookingReportExcel() {
+  const report = bookingReportData(state.bookingReportMonth);
+  const detailRows = report.bookings.map((booking) => {
+    const total = Number(booking.total || 0);
+    const cost = Number(booking.totalCost || 0);
+    return [booking.id, booking.group, booking.customer, booking.phone, booking.room, booking.salesName || booking.createdBy || "Chưa gán sale", formatDate(booking.start), formatDate(booking.end), booking.guests || 0, booking.status || "", total, Number(booking.paid || 0), cost, Number(booking.grossProfit ?? (total - cost))];
+  });
+  const html = `<html><head><meta charset="utf-8"><style>body{font-family:Arial;color:#17313b}h1,h2{color:#07566a}table{border-collapse:collapse;width:100%;margin-bottom:20px}th{background:#0f5c6c;color:#fff}td,th{border:1px solid #b9d8dd;padding:8px}.money{mso-number-format:"#,##0"}</style></head><body>
+    <h1>BÁO CÁO ĐẶT PHÒNG COCO BAY - THÁNG ${report.month}</h1><p>Ngày xuất: ${formatDateTime(new Date())}</p>
+    <h2>Tổng quan</h2>${excelTable(["Tổng booking", "Booking hợp lệ", "Đã hủy", "Tổng khách", "Tổng doanh số", "Đã thu", "Còn phải thu", "Tổng chi phí", "Lãi gộp", "Biên lãi (%)"], [[report.bookings.length, report.validBookings.length, report.cancelled, report.totals.guests, report.totals.revenue, report.totals.paid, report.totals.receivable, report.totals.cost, report.totals.grossProfit, report.totals.margin.toFixed(1)]], "kpi")}
+    <h2>Hiệu quả từng sale</h2>${excelTable(["Sale", "Booking", "Khách", "Doanh số", "Đã thu", "Còn phải thu", "Chi phí", "Lãi gộp", "Biên lãi (%)"], report.saleRows.map((row) => [row.salesName, row.bookings, row.guests, row.revenue, row.paid, row.receivable, row.cost, row.grossProfit, row.margin.toFixed(1)]))}
+    <h2>Theo khách sạn</h2>${excelTable(["Khách sạn", "Booking", "Khách", "Doanh số", "Lãi gộp"], report.hotelRows.map((row) => [row.hotelName, row.bookings, row.guests, row.revenue, row.grossProfit]))}
+    <h2>Chi tiết booking</h2>${excelTable(["Mã booking", "Nhóm khách", "Người liên hệ", "Điện thoại", "Phòng", "Sale", "Ngày đến", "Ngày đi", "Số khách", "Trạng thái", "Tổng tiền", "Đã thu", "Chi phí", "Lãi gộp"], detailRows)}
+  </body></html>`;
+  downloadBlob(new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), `bao-cao-dat-phong-${report.month}.xls`);
+  showToast("Đã xuất Excel báo cáo đặt phòng.");
+}
+
 function exportCsv() {
   const db = getDb();
   const month = state.reportMonth || todayISO().slice(0, 7);
@@ -7194,17 +7392,18 @@ async function previewRecipeImages(event) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
   const current = state.recipeImageDraft?.images || [];
-  const slots = Math.max(0, RECIPE_IMAGE_LIMIT - current.length);
+  const imageLimit = Number(state.recipeImageDraft?.limit || RECIPE_IMAGE_LIMIT);
+  const slots = Math.max(0, imageLimit - current.length);
   if (!slots) {
-    showToast(`Đã đủ ${RECIPE_IMAGE_LIMIT} ảnh. Hãy xóa ảnh cũ trước khi thêm.`);
+    showToast(`Đã đủ ${imageLimit} ảnh. Hãy xóa ảnh cũ trước khi thêm.`);
     event.target.value = "";
     return;
   }
   if (files.length > slots) showToast(`Chỉ thêm được ${slots} ảnh nữa.`);
-  preview.innerHTML = `<span>Đang tối ưu và tải ảnh công thức lên hosting...</span>`;
+  preview.innerHTML = `<span>Đang tối ưu và tải ảnh minh họa lên hosting...</span>`;
   const urls = await Promise.all(files.slice(0, slots).map(compressRecipeImageFile));
   state.recipeImageDraft = state.recipeImageDraft || { formId: "new", images: [], originalImages: [], deletedImages: [] };
-  state.recipeImageDraft.images = [...current, ...urls].slice(0, RECIPE_IMAGE_LIMIT);
+  state.recipeImageDraft.images = [...current, ...urls].slice(0, imageLimit);
   preview.innerHTML = renderEditableRecipeImages(state.recipeImageDraft.images);
   event.target.value = "";
 }
