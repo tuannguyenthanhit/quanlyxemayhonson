@@ -25,8 +25,8 @@ const roles = {
 };
 
 const permissions = {
-  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
-  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "hr", "finance", "costs", "reports"],
+  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
+  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
   receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write"],
   technician: ["bike_view", "bike_maintenance", "damage", "photos", "equipment_view", "equipment_maintenance", "costs"]
 };
@@ -35,6 +35,7 @@ const permissionGroups = [
   ["motorbikes", "Xe máy", "Quản lý đội xe, thuê/trả xe và sửa chữa xe"],
   ["booking", "Lịch đặt phòng", "Timeline, khách sạn, phòng và phiếu đặt phòng"],
   ["equipment", "Thiết bị khách sạn", "Danh mục thiết bị và sửa chữa/bảo trì thiết bị"],
+  ["kitchen", "Đầu bếp & chế biến", "Món ăn, công thức, nước chấm và bảng giá"],
   ["hr", "Quản lý nhân sự", "Hồ sơ nhân viên, ứng viên và chấm công"],
   ["system", "Tài chính và hệ thống", "Báo cáo, tài khoản, nhật ký và cài đặt"]
 ];
@@ -53,6 +54,8 @@ const permissionCatalog = [
   ["equipment_view", "Xem thiết bị", "Xem danh sách, tình trạng và lịch bảo trì thiết bị", "equipment"],
   ["equipment_manage", "Quản lý thiết bị", "Thêm, sửa thiết bị và loại thiết bị", "equipment"],
   ["equipment_maintenance", "Sửa chữa thiết bị", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì thiết bị", "equipment"],
+  ["kitchen_view", "Xem nội dung bếp", "Xem món ăn, công thức chế biến, nước chấm và bảng giá", "kitchen"],
+  ["kitchen_manage", "Quản lý nội dung bếp", "Thêm, sửa, xóa món ăn, công thức và nước chấm", "kitchen"],
   ["hr", "Quản lý nhân sự", "Hồ sơ nhân viên, người xin việc, ca làm và chấm công", "hr"],
   ["finance", "Tài chính", "Doanh thu, chi phí, lợi nhuận", "system"],
   ["costs", "Chi phí sửa chữa", "Xem và nhập chi phí", "system"],
@@ -76,6 +79,11 @@ const menu = [
   ["equipmentTypes", "Lo\u1ea1i thi\u1ebft b\u1ecb", "equipment_view"],
   ["equipmentMaintenance", "S\u1eeda ch\u1eefa thi\u1ebft b\u1ecb", "equipment_maintenance"],
   ["maintenanceCalendar", "L\u1ecbch b\u1ea3o tr\u00ec", "equipment_view"],
+  ["kitchen", "Đầu bếp & chế biến", "kitchen_view"],
+  ["dishes", "Danh sách món ăn", "kitchen_view"],
+  ["kitchenRecipes", "Công thức chế biến", "kitchen_view"],
+  ["sauces", "Nước chấm", "kitchen_view"],
+  ["menuPrices", "Bảng giá món ăn", "kitchen_view"],
   ["owners", "Ch\u1ee7 s\u1edf h\u1eefu xe", "bike_view"],
   ["finance", "Doanh thu v\u00e0 chi ph\u00ed", "finance"],
   ["reports", "B\u00e1o c\u00e1o", "reports"],
@@ -91,6 +99,7 @@ const menuTree = [
   { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }] },
   { key: "motorbikes", children: [{ key: "bikeTypes" }, { key: "rentals" }, { key: "calendar" }, { key: "bikeMaintenance" }] },
   { key: "equipment", children: [{ key: "equipmentTypes" }, { key: "equipmentMaintenance" }] },
+  { key: "kitchen", children: [{ key: "dishes" }, { key: "kitchenRecipes" }, { key: "sauces" }, { key: "menuPrices" }] },
   { key: "maintenanceCalendar" },
   { key: "owners" },
   { key: "finance" },
@@ -115,6 +124,11 @@ const menuMeta = {
   equipment: { icon: "\u25a3", color: "purple", desc: "Danh s\u00e1ch thi\u1ebft b\u1ecb kh\u00e1ch s\u1ea1n" },
   equipmentTypes: { icon: "\u2261", color: "purple", desc: "C\u1ea5u h\u00ecnh lo\u1ea1i thi\u1ebft b\u1ecb v\u00e0 b\u1ea3o tr\u00ec" },
   equipmentMaintenance: { icon: "\u2723", color: "orange", desc: "Qu\u1ea3n l\u00fd s\u1eeda ch\u1eefa thi\u1ebft b\u1ecb" },
+  kitchen: { icon: "♨", color: "orange", desc: "Quản lý nội dung bếp và chế biến" },
+  dishes: { icon: "≡", color: "gold", desc: "Danh mục món ăn đang phục vụ" },
+  kitchenRecipes: { icon: "▤", color: "green", desc: "Nguyên liệu và các bước chế biến" },
+  sauces: { icon: "◉", color: "red", desc: "Công thức nước chấm dùng kèm" },
+  menuPrices: { icon: "$", color: "gold", desc: "Bảng giá bán và giá vốn món ăn" },
   maintenanceCalendar: { icon: "\u25f4", color: "blue", desc: "L\u1ecbch b\u1ea3o tr\u00ec \u0111\u1ecbnh k\u1ef3 thi\u1ebft b\u1ecb, xe" },
   owners: { icon: "\u25cf", color: "green", desc: "Qu\u1ea3n l\u00fd ch\u1ee7 s\u1edf h\u1eefu v\u00e0 xe theo ch\u1ee7" },
   finance: { icon: "$", color: "gold", desc: "Theo d\u00f5i doanh thu v\u00e0 chi ph\u00ed" },
@@ -139,6 +153,11 @@ const navSvgIcons = {
   equipment: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="7" width="14" height="12" rx="2" /><path d="M9 7V5h6v2" /><path d="M5 12h14" /></svg>`,
   equipmentTypes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 8 4-8 4-8-4 8-4Z" /><path d="m4 12 8 4 8-4" /><path d="m4 16 8 4 8-4" /></svg>`,
   equipmentMaintenance: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="5" height="5" rx="1" /><rect x="15" y="4" width="5" height="5" rx="1" /><rect x="4" y="15" width="5" height="5" rx="1" /><rect x="15" y="15" width="5" height="5" rx="1" /><path d="M9 6.5h6" /><path d="M6.5 9v6" /><path d="M17.5 9v6" /><path d="M9 17.5h6" /></svg>`,
+  kitchen: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7a3 3 0 0 0 6 0V3" /><path d="M9 3v18" /><path d="M17 3v18" /><path d="M17 3c3 2 3 7 0 9" /></svg>`,
+  dishes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16" /><path d="M6 15a6 6 0 0 1 12 0" /><path d="M12 7V5" /><path d="M3 19h18" /></svg>`,
+  kitchenRecipes: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 8h8" /><path d="M8 12h8" /><path d="M8 16h5" /></svg>`,
+  sauces: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10l-1 5 2 9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2l2-9-1-5Z" /><path d="M8 9h8" /></svg>`,
+  menuPrices: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 7v10" /><path d="M15 9c-1-1-5-1-5 1s5 1 5 4-4 3-6 1" /></svg>`,
   maintenanceCalendar: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z" /><path d="m9 12 2 2 4-5" /></svg>`,
   owners: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>`,
   finance: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 7v10" /><path d="M15 9.5c-.8-.7-2.1-1-3-1-1.5 0-2.5.7-2.5 1.8 0 2.6 5 1.3 5 4 0 1.1-1 2-2.7 2-1.2 0-2.4-.4-3.2-1.1" /></svg>`,
@@ -157,6 +176,8 @@ const state = {
   filter: "all",
   modal: null,
   bikeImageDraft: null,
+  recipeImageDraft: null,
+  kitchenCategory: "all",
   mobileNav: false,
   bikeFilters: {
     owner: "all",
@@ -208,6 +229,11 @@ const BIKE_IMAGE_LIMIT = 10;
 const BIKE_IMAGE_MAX_SIZE = 520;
 const BIKE_IMAGE_QUALITY = 0.38;
 const BIKE_IMAGE_MAX_BYTES = 45000;
+const RECIPE_IMAGE_LIMIT = 5;
+const RECIPE_IMAGE_MAX_SIZE = 900;
+const RECIPE_IMAGE_QUALITY = 0.55;
+const RECIPE_IMAGE_MAX_BYTES = 120000;
+const DEFAULT_KITCHEN_CATEGORIES = ["Lẩu", "Nướng", "Chiên", "Luộc", "Tráng miệng", "Bánh"];
 const VI_MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 const MONEY_FIELD_NAMES = new Set([
   "total", "paid", "weekdayPrice", "weekendPrice", "holidayPrice", "price",
@@ -398,6 +424,10 @@ function emptyDb() {
     owners: [],
     bikeTypes: [],
     equipmentTypes: [],
+    kitchenCategories: DEFAULT_KITCHEN_CATEGORIES.map((name, index) => ({ id: `KC-${index + 1}`, name, sortOrder: index + 1, active: true })),
+    dishes: [],
+    kitchenRecipes: [],
+    sauces: [],
     motorbikes: [],
     rentals: [],
     equipment: [],
@@ -406,7 +436,7 @@ function emptyDb() {
     recoveryRequests: [],
     auditLogs: [],
     hotelBookings: [],
-    settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: false, deletedSeedBookings: [], bookingPermissionsMigrated: true }
+    settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: false, deletedSeedBookings: [], bookingPermissionsMigrated: true, kitchenPermissionsMigrated: true }
   };
 }
 
@@ -485,12 +515,18 @@ async function loadRemoteSession() {
   }
   try {
     const payload = await apiRequest("/me");
-    if (payload.db) apiState.remoteDb = payload.db;
+    let migrated = false;
+    if (payload.db) {
+      apiState.remoteDb = payload.db;
+      migrated = migrateDb(apiState.remoteDb);
+    }
     if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
     if (payload.user) {
-      state.user = { ...payload.user };
+      const migratedUser = (apiState.remoteDb?.users || []).find((user) => user.id === payload.user.id);
+      state.user = { ...(migratedUser || payload.user) };
       safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
     }
+    if (migrated) queueRemoteSave(apiState.remoteDb);
     return true;
   } catch (error) {
     if (error.status !== 401) apiState.lastError = error.message;
@@ -548,9 +584,11 @@ async function refreshRemoteDb(options = {}) {
       return false;
     }
     apiState.remoteDb = payload.db;
+    const migrated = migrateDb(apiState.remoteDb);
     if (Number.isInteger(remoteVersion)) apiState.version = remoteVersion;
     const currentUser = (payload.db.users || []).find((user) => user.id === state.user?.id && user.active);
     if (currentUser) state.user = { ...currentUser };
+    if (migrated) queueRemoteSave(apiState.remoteDb);
     apiState.lastError = "";
     render();
     return true;
@@ -722,6 +760,37 @@ function migrateDb(db) {
     db.attendanceRecords = [];
     changed = true;
   }
+  if (!Array.isArray(db.dishes)) {
+    db.dishes = [];
+    changed = true;
+  }
+  if (!Array.isArray(db.kitchenCategories)) {
+    db.kitchenCategories = DEFAULT_KITCHEN_CATEGORIES.map((name, index) => ({ id: `KC-${index + 1}`, name, sortOrder: index + 1, active: true }));
+    changed = true;
+  }
+  const knownKitchenCategories = new Set(db.kitchenCategories.map((item) => String(item.name || "").trim().toLocaleLowerCase("vi")));
+  [...db.dishes, ...(db.kitchenRecipes || [])].forEach((item) => {
+    const name = String(item.category || "").trim();
+    if (name && !knownKitchenCategories.has(name.toLocaleLowerCase("vi"))) {
+      db.kitchenCategories.push({ id: uid("KC"), name, sortOrder: db.kitchenCategories.length + 1, active: true });
+      knownKitchenCategories.add(name.toLocaleLowerCase("vi"));
+      changed = true;
+    }
+  });
+  if (!Array.isArray(db.kitchenRecipes)) {
+    db.kitchenRecipes = [];
+    changed = true;
+  }
+  db.kitchenRecipes.forEach((recipe) => {
+    if (!Array.isArray(recipe.images)) {
+      recipe.images = [];
+      changed = true;
+    }
+  });
+  if (!Array.isArray(db.sauces)) {
+    db.sauces = [];
+    changed = true;
+  }
   db.users?.forEach((user) => {
     if (!Array.isArray(user.permissions)) {
       user.permissions = permissions[user.role] || [];
@@ -765,6 +834,20 @@ function migrateDb(db) {
       if (additions.length) changed = true;
     });
     db.settings = { ...(db.settings || {}), domainPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.kitchenPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      if (!Array.isArray(user.permissions)) user.permissions = [];
+      if (["admin", "manager"].includes(user.role)) {
+        ["kitchen_view", "kitchen_manage"].forEach((permission) => {
+          if (!user.permissions.includes(permission)) user.permissions.push(permission);
+        });
+        changed = true;
+      }
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...user.permissions] };
+    });
+    db.settings = { ...(db.settings || {}), kitchenPermissionsMigrated: true };
     changed = true;
   }
   db.settings = db.settings || {};
@@ -1182,10 +1265,16 @@ function bindLogin() {
     if (apiState.enabled) {
       try {
         const payload = await apiRequest("/login", { method: "POST", body: JSON.stringify(data) });
-        if (payload.db) apiState.remoteDb = payload.db;
+        let migrated = false;
+        if (payload.db) {
+          apiState.remoteDb = payload.db;
+          migrated = migrateDb(apiState.remoteDb);
+        }
         if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
-        state.user = { ...payload.user };
+        const migratedUser = (apiState.remoteDb?.users || []).find((user) => user.id === payload.user.id);
+        state.user = { ...(migratedUser || payload.user) };
         safeLocalSet(SESSION_KEY, JSON.stringify({ userId: payload.user.id }), { silent: true });
+        if (migrated) queueRemoteSave(apiState.remoteDb);
         showToast(`Xin chào ${payload.user.name}`);
         render();
       } catch (error) {
@@ -1322,6 +1411,11 @@ function viewContent() {
     equipment: equipmentView,
     equipmentTypes: equipmentTypesView,
     equipmentMaintenance: () => ticketsView("Thiết bị"),
+    kitchen: kitchenView,
+    dishes: dishesView,
+    kitchenRecipes: kitchenRecipesView,
+    sauces: saucesView,
+    menuPrices: menuPricesView,
     maintenanceCalendar: maintenanceCalendarView,
     owners: ownersView,
     finance: financeView,
@@ -3271,6 +3365,176 @@ function equipmentTypesView() {
   `;
 }
 
+function kitchenView() {
+  const db = getDb();
+  const activeDishes = db.dishes.filter((item) => item.status !== "Ngừng bán");
+  const pricedDishes = db.dishes.filter((item) => Number(item.price || 0) > 0);
+  const averagePrice = pricedDishes.length
+    ? pricedDishes.reduce((sum, item) => sum + Number(item.price || 0), 0) / pricedDishes.length
+    : 0;
+  return `<section class="kitchen-page">
+    ${pageHeader("Đầu bếp & chế biến", "Quản lý tập trung danh sách món ăn, công thức chế biến, nước chấm và bảng giá.", can("kitchen_manage") ? `<button class="primary" data-modal="dish">+ Thêm món ăn</button>` : "")}
+    <div class="grid cols-4 kitchen-metrics">
+      ${metric("Tổng món ăn", db.dishes.length)}
+      ${metric("Đang phục vụ", activeDishes.length)}
+      ${metric("Công thức", db.kitchenRecipes.length)}
+      ${metric("Giá bán trung bình", money(averagePrice))}
+    </div>
+    <div class="kitchen-hub-grid">
+      ${kitchenHubCard("dishes", "Danh sách món ăn", `${db.dishes.length} món`, "Tên món, nhóm món, đơn vị và trạng thái phục vụ")}
+      ${kitchenHubCard("kitchenRecipes", "Công thức chế biến", `${db.kitchenRecipes.length} công thức`, "Định lượng nguyên liệu và trình tự chế biến")}
+      ${kitchenHubCard("sauces", "Nước chấm", `${db.sauces.length} công thức`, "Cách pha, bảo quản và món dùng kèm")}
+      ${kitchenHubCard("menuPrices", "Bảng giá món ăn", `${pricedDishes.length} món có giá`, "Giá vốn, giá bán và lợi nhuận dự kiến")}
+    </div>
+    ${kitchenRecentDishes(db.dishes)}
+  </section>`;
+}
+
+function kitchenHubCard(view, title, count, description) {
+  return `<button class="kitchen-hub-card" data-view="${view}">
+    <span class="nav-symbol ${navColor(view)}">${navIcon(view)}</span>
+    <span><strong>${title}</strong><small>${description}</small><em>${count}</em></span>
+    <b>›</b>
+  </button>`;
+}
+
+function kitchenRecentDishes(rows) {
+  const recent = [...rows].slice(-5).reverse();
+  return `<div class="card kitchen-recent"><div class="panel-title"><h3>Món ăn cập nhật gần đây</h3><button class="ghost" data-view="dishes">Xem tất cả</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Mã</th><th>Món ăn</th><th>Nhóm</th><th>Giá bán</th><th>Trạng thái</th></tr></thead>
+    <tbody>${recent.map((item) => `<tr><td>${item.code}</td><td><strong>${item.name}</strong></td><td>${item.category || "-"}</td><td>${money(item.price)}</td><td>${pill(item.status || "Đang bán")}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">Chưa có món ăn. Hãy thêm món đầu tiên.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+
+function dishesView() {
+  const rows = filterRows(getDb().dishes, ["code", "name", "category", "unit", "description", "status"]);
+  return `<section class="kitchen-page">
+    ${pageHeader("Danh sách món ăn", "Quản lý món ăn, nhóm món, đơn vị tính và trạng thái phục vụ.", can("kitchen_manage") ? `<button class="primary" data-modal="dish">+ Thêm món ăn</button>` : "")}
+    ${filters(["Đang bán", "Tạm hết", "Ngừng bán"])}
+    <div class="table-wrap kitchen-table"><table><thead><tr><th>STT</th><th>Mã món</th><th>Tên món</th><th>Nhóm món</th><th>Đơn vị</th><th>Giá bán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>${rows.map((item, index) => `<tr><td>${index + 1}</td><td><strong>${item.code}</strong></td><td><strong>${item.name}</strong><br><span class="hint">${item.description || "Chưa có mô tả"}</span></td><td>${item.category || "-"}</td><td>${item.unit || "Phần"}</td><td><strong>${money(item.price)}</strong></td><td>${pill(item.status || "Đang bán")}</td><td>${kitchenActions("dish", item.id)}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">Chưa có món ăn phù hợp.</td></tr>`}</tbody></table></div>
+  </section>`;
+}
+
+function kitchenRecipesView() {
+  const db = getDb();
+  const categories = kitchenCategoryOptions(db);
+  const rows = filterRows(db.kitchenRecipes, ["name", "category", "ingredients", "preparation", "steps", "presentation", "qualityStandard", "tips", "note"])
+    .filter((item) => state.kitchenCategory === "all" || recipeCategory(item, db) === state.kitchenCategory);
+  const groupedRows = categories.map((category) => ({ category, rows: rows.filter((item) => recipeCategory(item, db) === category) }))
+    .filter((group) => group.rows.length);
+  const uncategorized = rows.filter((item) => !categories.includes(recipeCategory(item, db)));
+  if (uncategorized.length) groupedRows.push({ category: "Chưa phân nhóm", rows: uncategorized });
+  const actions = can("kitchen_manage") ? `<button class="secondary" data-modal="kitchenCategory">+ Thêm nhóm món</button><button class="primary" data-modal="kitchenRecipe">+ Thêm công thức</button>` : "";
+  return `<section class="kitchen-page">
+    ${pageHeader("Công thức chế biến", "Danh sách món theo nhóm. Bấm Xem công thức để mở định lượng, quy trình và ảnh hướng dẫn.", actions)}
+    <div class="kitchen-category-toolbar">
+      <button class="${state.kitchenCategory === "all" ? "active" : ""}" data-action="filter-kitchen-category:all">Tất cả <b>${db.kitchenRecipes.length}</b></button>
+      ${categories.map((name) => {
+        const category = (db.kitchenCategories || []).find((item) => item.name === name);
+        const count = db.kitchenRecipes.filter((item) => recipeCategory(item, db) === name).length;
+        return `<span class="kitchen-category-chip ${state.kitchenCategory === name ? "active" : ""}"><button class="category-filter-button" data-action="filter-kitchen-category:${encodeURIComponent(name)}">${name} <b>${count}</b></button>${can("kitchen_manage") && category ? `<button class="category-edit-button" data-modal="kitchenCategory:${category.id}" title="Sửa tên nhóm ${name}" aria-label="Sửa tên nhóm ${name}">✎</button><button class="category-delete-button" data-action="delete-kitchen:kitchenCategory:${category.id}" title="Xóa nhóm ${name}" aria-label="Xóa nhóm ${name}">×</button>` : ""}</span>`;
+      }).join("")}
+    </div>
+    ${filters([])}
+    <div class="kitchen-recipe-groups">${groupedRows.map((group) => `<section class="recipe-group"><header><div><h3>Nhóm ${group.category}</h3><small>${group.rows.length} công thức</small></div>${can("kitchen_manage") && group.category !== "Chưa phân nhóm" ? categoryInlineActions(db, group.category) : ""}</header><div class="recipe-compact-list">${group.rows.map((item) => compactRecipeRow(item, db)).join("")}</div></section>`).join("") || `<div class="empty card">Chưa có công thức phù hợp.</div>`}</div>
+  </section>`;
+}
+
+function kitchenCategoryOptions(db = getDb()) {
+  return [...(db.kitchenCategories || [])].filter((item) => item.active !== false).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name), "vi")).map((item) => item.name);
+}
+
+function recipeCategory(item, db = getDb()) {
+  const dish = db.dishes.find((dishItem) => dishItem.id === item.dishId);
+  return String(item.category || dish?.category || "Chưa phân nhóm").trim();
+}
+
+function compactRecipeRow(item, db) {
+  const dish = db.dishes.find((dishItem) => dishItem.id === item.dishId);
+  const image = (item.images || []).find(Boolean);
+  return `<article class="recipe-compact-row">
+    <div class="recipe-compact-image">${image ? `<img src="${image}" alt="${item.name || dish?.name || "Món ăn"}" onerror="this.closest('.recipe-compact-image')?.classList.add('image-load-error')">` : `<span>Chưa có ảnh</span>`}</div>
+    <div class="recipe-compact-main"><h4>${item.name || dish?.name || "Công thức"}</h4><p>${dish ? `${dish.code} · ${dish.name}` : recipeCategory(item, db)}</p></div>
+    <div class="recipe-compact-meta"><span><small>Khẩu phần</small><b>${item.yield || "-"}</b></span><span><small>Thời gian</small><b>${item.cookTime || "-"}</b></span></div>
+    <div class="recipe-compact-actions"><button class="primary" data-modal="kitchenRecipeDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="kitchenRecipe:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:kitchenRecipe:${item.id}">Xóa</button>` : ""}</div>
+  </article>`;
+}
+
+function categoryInlineActions(db, name) {
+  const category = (db.kitchenCategories || []).find((item) => item.name === name);
+  return category ? `<div class="actions"><button class="ghost" data-modal="kitchenCategory:${category.id}">Sửa nhóm</button><button class="ghost danger-text" data-action="delete-kitchen:kitchenCategory:${category.id}">Xóa nhóm</button></div>` : "";
+}
+
+function renderRecipeGallery(item) {
+  const images = (item.images || []).filter(Boolean).slice(0, RECIPE_IMAGE_LIMIT);
+  if (!images.length) return `<div class="recipe-image-empty">Chưa có ảnh minh họa món ăn</div>`;
+  const main = images[0];
+  return `<div class="recipe-gallery">
+    <div class="recipe-main-image" tabindex="0"><img src="${main}" alt="${item.name || "Món ăn"}" onerror="this.closest('.recipe-main-image')?.classList.add('image-load-error')"><div class="recipe-image-zoom"><img src="${main}" alt="${item.name || "Món ăn"} phóng to"></div></div>
+    ${images.length > 1 ? `<div class="recipe-thumbs">${images.slice(1).map((src, imageIndex) => `<div class="recipe-thumb" tabindex="0"><img src="${src}" alt="Ảnh minh họa ${imageIndex + 2}" onerror="this.closest('.recipe-thumb')?.classList.add('image-load-error')"><div class="recipe-image-zoom"><img src="${src}" alt="Ảnh minh họa phóng to"></div></div>`).join("")}</div>` : ""}
+  </div>`;
+}
+
+function kitchenRecipeDetailModal(item, db = getDb()) {
+  if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy công thức</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
+  const dish = db.dishes.find((dishItem) => dishItem.id === item.dishId);
+  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal">
+    <header><div><small>Nhóm ${recipeCategory(item, db)}</small><h3>${item.name || dish?.name || "Công thức chế biến"}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header>
+    <div class="modal-body recipe-detail-body">
+      ${renderRecipeGallery(item)}
+      <div class="recipe-detail-summary"><span><small>Món áp dụng</small><b>${dish ? `${dish.code} · ${dish.name}` : "Không gắn món cụ thể"}</b></span><span><small>Khẩu phần</small><b>${item.yield || "-"}</b></span><span><small>Thời gian</small><b>${item.cookTime || "-"}</b></span></div>
+      <section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section>
+      ${item.preparation ? `<section class="recipe-section"><h4>Sơ chế</h4><div class="recipe-lines">${formatRecipeText(item.preparation)}</div></section>` : ""}
+      <section class="recipe-section"><h4>Các bước thực hiện</h4>${formatRecipeSteps(item.steps)}</section>
+      ${item.qualityStandard ? `<div class="recipe-callout success"><strong>Tiêu chuẩn thành phẩm</strong><span>${item.qualityStandard}</span></div>` : ""}
+      ${item.presentation ? `<div class="recipe-callout"><strong>Trình bày / phục vụ</strong><span>${item.presentation}</span></div>` : ""}
+      ${item.tips || item.note ? `<div class="recipe-callout warning"><strong>Lưu ý cho bếp</strong><span>${item.tips || item.note}</span></div>` : ""}
+    </div>
+    <footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="kitchenRecipe:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer>
+  </div></div>`;
+}
+
+function saucesView() {
+  const rows = filterRows(getDb().sauces, ["name", "appliesTo", "ingredients", "steps", "storage", "note"]);
+  return `<section class="kitchen-page">
+    ${pageHeader("Công thức nước chấm", "Danh sách pha chế gọn để bếp tìm nhanh; mở chi tiết khi cần xem định lượng và từng bước.", can("kitchen_manage") ? `<button class="primary" data-modal="sauce">+ Thêm nước chấm</button>` : "")}
+    ${filters([])}
+    <div class="recipe-group"><header><div><h3>Danh sách nước chấm</h3><small>${rows.length} công thức</small></div></header><div class="recipe-compact-list">${rows.map((item) => `<article class="recipe-compact-row sauce-compact-row"><div class="recipe-compact-image sauce-compact-icon">◉</div><div class="recipe-compact-main"><h4>${item.name}</h4><p>Dùng kèm: ${item.appliesTo || "Chưa ghi"}</p></div><div class="recipe-compact-meta"><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><div class="recipe-compact-actions"><button class="primary" data-modal="sauceDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:sauce:${item.id}">Xóa</button>` : ""}</div></article>`).join("") || `<div class="empty">Chưa có công thức nước chấm.</div>`}</div></div>
+  </section>`;
+}
+
+function sauceDetailModal(item) {
+  if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy công thức</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
+  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal"><header><div><small>Công thức nước chấm</small><h3>${item.name}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body recipe-detail-body"><div class="recipe-detail-summary"><span><small>Món dùng kèm</small><b>${item.appliesTo || "Chưa ghi"}</b></span><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section><section class="recipe-section"><h4>Cách pha</h4>${formatRecipeSteps(item.steps)}</section><div class="recipe-callout"><strong>Bảo quản</strong><span>${item.storage || "Chưa ghi"}</span></div>${item.note ? `<div class="recipe-callout warning"><strong>Lưu ý</strong><span>${item.note}</span></div>` : ""}</div><footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer></div></div>`;
+}
+
+function menuPricesView() {
+  const rows = filterRows(getDb().dishes, ["code", "name", "category", "unit", "status"]);
+  const totalMargin = rows.reduce((sum, item) => sum + Math.max(0, Number(item.price || 0) - Number(item.cost || 0)), 0);
+  return `<section class="kitchen-page">
+    ${pageHeader("Bảng giá món ăn", "Theo dõi giá vốn, giá bán và lợi nhuận dự kiến trên từng đơn vị món.", can("kitchen_manage") ? `<button class="primary" data-modal="dish">+ Thêm món và giá</button>` : "")}
+    <div class="grid cols-3 kitchen-metrics">${metric("Số món", rows.length)}${metric("Tổng giá niêm yết", money(rows.reduce((sum, item) => sum + Number(item.price || 0), 0)))}${metric("Lợi nhuận đơn vị dự kiến", money(totalMargin))}</div>
+    ${filters(["Đang bán", "Tạm hết", "Ngừng bán"])}
+    <div class="table-wrap kitchen-table"><table><thead><tr><th>STT</th><th>Mã</th><th>Món ăn</th><th>Nhóm</th><th>Giá vốn</th><th>Giá bán</th><th>Lãi dự kiến</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows.map((item, index) => { const margin = Number(item.price || 0) - Number(item.cost || 0); return `<tr><td>${index + 1}</td><td>${item.code}</td><td><strong>${item.name}</strong><br><span class="hint">/${item.unit || "phần"}</span></td><td>${item.category || "-"}</td><td>${money(item.cost)}</td><td><strong>${money(item.price)}</strong></td><td class="${margin < 0 ? "negative" : "positive"}">${money(margin)}</td><td>${pill(item.status || "Đang bán")}</td><td>${kitchenActions("dish", item.id)}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">Chưa có dữ liệu bảng giá.</td></tr>`}</tbody></table></div>
+  </section>`;
+}
+
+function kitchenActions(type, id) {
+  if (!can("kitchen_manage")) return `<span class="hint">Chỉ xem</span>`;
+  return `<div class="actions"><button class="secondary" data-modal="${type}:${id}">Sửa</button><button class="danger" data-action="delete-kitchen:${type}:${id}">Xóa</button></div>`;
+}
+
+function formatRecipeText(value) {
+  return String(value || "Chưa cập nhật").split(/\r?\n/).filter(Boolean).map((line) => `<span>${line}</span>`).join("");
+}
+
+function formatRecipeSteps(value) {
+  const steps = String(value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!steps.length) return `<p class="hint">Chưa cập nhật các bước.</p>`;
+  return `<ol class="recipe-steps">${steps.map((step) => `<li>${step.replace(/^\s*\d+[.)-]?\s*/, "")}</li>`).join("")}</ol>`;
+}
+
 function maintenanceCalendarView() {
   const db = getDb();
   const items = [
@@ -4100,6 +4364,8 @@ function modalView() {
   if (type === "bikeKm") return bikeKmModal(db.motorbikes.find((b) => b.id === id));
   if (type === "oilChange") return oilChangeModal(id ? db.motorbikes.find((b) => b.id === id) : null);
   if (type === "equipmentHistory") return equipmentHistoryModal(db.equipment.find((item) => item.id === id));
+  if (type === "kitchenRecipeDetail") return kitchenRecipeDetailModal(db.kitchenRecipes.find((item) => item.id === id), db);
+  if (type === "sauceDetail") return sauceDetailModal(db.sauces.find((item) => item.id === id));
   if (type === "return" && !can("rental_return")) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Không đủ quyền</h3>${close}</header><div class="modal-body"><p class="empty">Tài khoản này chưa được cấp quyền trả xe. Admin có thể bật quyền tại Nhân viên → Sửa quyền → Xe máy → Trả xe.</p></div></div></div>`;
   }
@@ -4109,7 +4375,7 @@ function modalView() {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
   }
 
-  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
+  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", dish: "món ăn", kitchenCategory: "nhóm món", kitchenRecipe: "công thức chế biến", sauce: "công thức nước chấm", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
   return `<div class="modal-backdrop"><form class="modal" id="modal-form" data-form="${type}" data-id="${id || ""}" data-extra="${extra || ""}">
     <header><h3>${id ? "Cập nhật" : "Thêm"} ${titleMap[type] || ""}</h3>${close}</header>
     <div class="modal-body">${modalFields(type, id, extra)}</div>
@@ -4125,6 +4391,9 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (["hotel", "room"].includes(type)) return "booking_edit";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
+  if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
+  if (type === "kitchenRecipeDetail") return "kitchen_view";
+  if (type === "sauceDetail") return "kitchen_view";
   if (type === "equipmentHistory") return "equipment_view";
   if (["hrEmployee", "applicant", "attendanceRecord", "attendanceShift"].includes(type)) return "hr";
   if (type === "user") return "users";
@@ -4152,6 +4421,10 @@ function modalFields(type, id, extra) {
   if (type === "ticket" || type === "ticketEdit") return ticketForm(type === "ticketEdit" ? id : "", id, extra);
   if (type === "equipment") return equipmentForm(id);
   if (type === "equipmentType") return equipmentTypeForm(id);
+  if (type === "dish") return dishForm(id);
+  if (type === "kitchenCategory") return kitchenCategoryForm(id);
+  if (type === "kitchenRecipe") return kitchenRecipeForm(id);
+  if (type === "sauce") return sauceForm(id);
   if (type === "owner") return ownerForm(id);
   if (type === "hrEmployee") return hrEmployeeForm(id);
   if (type === "applicant") return applicantForm(id);
@@ -4324,6 +4597,87 @@ function equipmentTypeForm(id) {
     <div class="field full"><label>Thông tin cần nhập</label><textarea name="requiredFields" placeholder="Ví dụ: HP/BTU, loại gas, phòng, serial...">${type.requiredFields || ""}</textarea></div>
     <div class="field full"><label>Checklist bảo trì</label><textarea name="checklist" placeholder="Ví dụ: vệ sinh, kiểm tra gas, nguồn điện, thoát nước...">${type.checklist || ""}</textarea></div>
     <div class="field full"><label>Ghi chú</label><textarea name="note">${type.note || ""}</textarea></div>
+  </div>`;
+}
+
+function dishForm(id) {
+  const db = getDb();
+  const item = db.dishes.find((row) => row.id === id) || {};
+  return `<div class="form-grid">
+    ${field("code", "Mã món", item.code || nextCode("MA", db.dishes), true)}
+    ${field("name", "Tên món ăn", item.name || "", true)}
+    ${selectField("category", "Nhóm món", kitchenCategoryOptions(db), item.category || kitchenCategoryOptions(db)[0] || "")}
+    ${field("unit", "Đơn vị tính", item.unit || "Phần", true)}
+    ${field("cost", "Giá vốn", item.cost || 0, false, "number")}
+    ${field("price", "Giá bán", item.price || 0, true, "number")}
+    ${selectField("status", "Trạng thái", ["Đang bán", "Tạm hết", "Ngừng bán"], item.status || "Đang bán")}
+    ${field("sortOrder", "Thứ tự hiển thị", item.sortOrder ?? db.dishes.length + 1, false, "number")}
+    <div class="field full"><label>Mô tả món ăn</label><textarea name="description" rows="3" placeholder="Thành phần nổi bật, khẩu vị, cách phục vụ...">${item.description || ""}</textarea></div>
+    <div class="field full"><label>Ghi chú nội bộ</label><textarea name="note" rows="2">${item.note || ""}</textarea></div>
+  </div>`;
+}
+
+function kitchenCategoryForm(id) {
+  const db = getDb();
+  const item = (db.kitchenCategories || []).find((row) => row.id === id) || {};
+  return `<div class="form-grid">
+    ${field("name", "Tên nhóm món", item.name || "", true)}
+    ${field("sortOrder", "Thứ tự hiển thị", item.sortOrder ?? (db.kitchenCategories || []).length + 1, false, "number")}
+    ${selectField("active", "Trạng thái", [["true", "Đang sử dụng"], ["false", "Tạm ẩn"]], String(item.active !== false))}
+    <div class="field full"><label>Mô tả nhóm</label><textarea name="description" rows="3" placeholder="Ví dụ: Các món lẩu hải sản, lẩu gà, lẩu chay...">${item.description || ""}</textarea></div>
+  </div>`;
+}
+
+function kitchenRecipeForm(id) {
+  const db = getDb();
+  const item = db.kitchenRecipes.find((row) => row.id === id) || {};
+  if (!state.recipeImageDraft || state.recipeImageDraft.formId !== (id || "new")) {
+    const originalImages = [...(item.images || [])];
+    state.recipeImageDraft = { formId: id || "new", images: [...originalImages], originalImages, deletedImages: [] };
+  }
+  return `<div class="form-grid">
+    ${selectField("dishId", "Món ăn áp dụng", [["", "Không gắn món cụ thể"], ...db.dishes.map((dish) => [dish.id, `${dish.code} · ${dish.name}`])], item.dishId || "")}
+    ${field("name", "Tên công thức", item.name || "", true)}
+    ${selectField("category", "Nhóm món", kitchenCategoryOptions(db), item.category || recipeCategory(item, db))}
+    ${field("yield", "Định lượng / khẩu phần", item.yield || "1 phần", true)}
+    ${field("cookTime", "Thời gian chế biến", item.cookTime || "", false)}
+    <div class="field full"><label>Nguyên liệu và định lượng</label><textarea name="ingredients" rows="7" required placeholder="Mỗi nguyên liệu một dòng, ví dụ:\nCá mú: 500 g\nHành tím: 20 g\nNước mắm: 15 ml">${item.ingredients || ""}</textarea></div>
+    <div class="field full"><label>Sơ chế nguyên liệu</label><textarea name="preparation" rows="4" placeholder="Mỗi thao tác một dòng: rửa, cắt, ướp, thời gian chờ...">${item.preparation || ""}</textarea></div>
+    <div class="field full"><label>Các bước chế biến</label><textarea name="steps" rows="8" required placeholder="Mỗi bước một dòng, theo đúng thứ tự thực hiện">${item.steps || ""}</textarea></div>
+    <div class="field full"><label>Tiêu chuẩn thành phẩm</label><textarea name="qualityStandard" rows="3" placeholder="Màu sắc, mùi vị, độ chín và nhiệt độ phục vụ...">${item.qualityStandard || ""}</textarea></div>
+    <div class="field full"><label>Trình bày và phục vụ</label><textarea name="presentation" rows="3" placeholder="Loại đĩa/chén, cách trang trí, món ăn kèm...">${item.presentation || ""}</textarea></div>
+    <div class="field full"><label>Lưu ý quan trọng cho bếp</label><textarea name="tips" rows="3" placeholder="Điểm dễ sai, dị ứng, cách bảo quản...">${item.tips || item.note || ""}</textarea></div>
+    <div class="field full">
+      <label>Ảnh minh họa món ăn (tối đa ${RECIPE_IMAGE_LIMIT} ảnh, ảnh đầu tiên là ảnh đại diện)</label>
+      <input name="recipeImages" type="file" accept="image/*" multiple>
+      <div class="image-grid recipe-image-editor" id="recipe-image-preview">${renderEditableRecipeImages(state.recipeImageDraft.images)}</div>
+    </div>
+  </div>`;
+}
+
+function renderEditableRecipeImages(images = []) {
+  if (!images.length) return `<span>Chưa có ảnh. Chọn ảnh món hoàn thiện hoặc ảnh từng bước chế biến.</span>`;
+  return images.map((src, index) => `<div class="image-thumb ${isLikelyBrokenImage(src) ? "image-load-error" : ""}">
+    <img src="${src}" alt="Ảnh công thức ${index + 1}" onerror="this.closest('.image-thumb')?.classList.add('image-load-error')">
+    <div class="image-thumb-zoom"><img src="${src}" alt="Ảnh công thức ${index + 1} phóng to"></div>
+    <strong class="image-error-label">Ảnh lỗi, hãy xóa và tải lại</strong>
+    <button type="button" data-action="remove-recipe-image:${index}" title="Xóa ảnh này">×</button>
+    ${index === 0 ? `<small>Ảnh đại diện</small>` : ""}
+  </div>`).join("");
+}
+
+function sauceForm(id) {
+  const item = getDb().sauces.find((row) => row.id === id) || {};
+  return `<div class="form-grid">
+    ${field("name", "Tên nước chấm", item.name || "", true)}
+    ${field("appliesTo", "Món dùng kèm", item.appliesTo || "", true)}
+    ${field("yield", "Định lượng thành phẩm", item.yield || "1 chén")}
+    ${field("shelfLife", "Thời hạn sử dụng", item.shelfLife || "Trong ngày")}
+    ${field("storage", "Cách bảo quản", item.storage || "Bảo quản mát")}
+    ${selectField("status", "Trạng thái", ["Đang dùng", "Tạm ngừng", "Ngừng dùng"], item.status || "Đang dùng")}
+    <div class="field full"><label>Nguyên liệu và định lượng</label><textarea name="ingredients" rows="6" required placeholder="Mỗi nguyên liệu một dòng">${item.ingredients || ""}</textarea></div>
+    <div class="field full"><label>Cách pha</label><textarea name="steps" rows="7" required placeholder="Mỗi bước một dòng">${item.steps || ""}</textarea></div>
+    <div class="field full"><label>Ghi chú</label><textarea name="note" rows="2">${item.note || ""}</textarea></div>
   </div>`;
 }
 
@@ -4863,11 +5217,12 @@ function bindApp() {
     render();
   }));
   document.querySelectorAll("[data-modal]").forEach((button) => button.addEventListener("click", () => {
+    if (state.recipeImageDraft) cleanupRecipeImageDraft();
     state.modal = button.dataset.modal;
     render();
   }));
   document.querySelectorAll("[data-action]").forEach((button) => {
-    if (button.dataset.action?.startsWith("remove-bike-image:")) return;
+    if (button.dataset.action?.startsWith("remove-bike-image:") || button.dataset.action?.startsWith("remove-recipe-image:")) return;
     button.addEventListener("click", handleAction);
   });
   document.querySelectorAll(".multi-bike-option input[name='bikeIds']").forEach((input) => input.addEventListener("change", (event) => {
@@ -4997,8 +5352,10 @@ function bindApp() {
     if (bike && odometer) odometer.value = Number(bike.odometer || 0);
   });
   document.getElementById("bike-image-preview")?.addEventListener("click", handleBikeImagePreviewClick);
+  document.getElementById("recipe-image-preview")?.addEventListener("click", handleRecipeImagePreviewClick);
   document.querySelector("input[name='afterPhoto']")?.addEventListener("change", previewPhoto);
   document.querySelector("input[name='bikeImages']")?.addEventListener("change", previewBikeImages);
+  document.querySelector("input[name='recipeImages']")?.addEventListener("change", previewRecipeImages);
   document.querySelector("input[name='employeePhoto']")?.addEventListener("change", previewEmployeePhoto);
   document.querySelector("input[name='applicantPhoto']")?.addEventListener("change", previewApplicantPhoto);
   document.querySelector("[data-import-json]")?.addEventListener("change", importJsonToMysql);
@@ -5007,6 +5364,14 @@ function bindApp() {
 
 function handleBikeImagePreviewClick(event) {
   const button = event.target.closest("[data-action^='remove-bike-image:']");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  handleAction({ currentTarget: button });
+}
+
+function handleRecipeImagePreviewClick(event) {
+  const button = event.target.closest("[data-action^='remove-recipe-image:']");
   if (!button) return;
   event.preventDefault();
   event.stopPropagation();
@@ -5026,8 +5391,10 @@ function handleAction(event) {
     render();
   }
   if (action === "close-modal") {
+    if (state.recipeImageDraft) cleanupRecipeImageDraft();
     state.modal = null;
     state.bikeImageDraft = null;
+    state.recipeImageDraft = null;
     render();
   }
   if (action?.startsWith("remove-bike-image:")) {
@@ -5040,6 +5407,23 @@ function handleAction(event) {
       const preview = document.getElementById("bike-image-preview");
       if (preview) preview.innerHTML = renderEditableBikeImages(state.bikeImageDraft.images);
       const input = document.querySelector("input[name='bikeImages']");
+      if (input) input.value = "";
+    }
+  }
+  if (action?.startsWith("remove-recipe-image:")) {
+    const index = Number(action.split(":")[1]);
+    if (state.recipeImageDraft?.images) {
+      const [removed] = state.recipeImageDraft.images.splice(index, 1);
+      if (removed && String(removed).startsWith("/uploads/")) {
+        if (state.recipeImageDraft.originalImages.includes(removed)) {
+          state.recipeImageDraft.deletedImages = [...(state.recipeImageDraft.deletedImages || []), removed];
+        } else {
+          deleteUploadedImages([removed]);
+        }
+      }
+      const preview = document.getElementById("recipe-image-preview");
+      if (preview) preview.innerHTML = renderEditableRecipeImages(state.recipeImageDraft.images);
+      const input = document.querySelector("input[name='recipeImages']");
       if (input) input.value = "";
     }
   }
@@ -5064,6 +5448,14 @@ function handleAction(event) {
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
+  if (action?.startsWith("delete-kitchen:")) {
+    const [, type, id] = action.split(":");
+    deleteKitchenItem(type, id);
+  }
+  if (action?.startsWith("filter-kitchen-category:")) {
+    state.kitchenCategory = decodeURIComponent(action.slice("filter-kitchen-category:".length));
+    render();
+  }
   if (action?.startsWith("reapply-former-employee:")) reapplyFormerEmployee(action.split(":")[1]);
   if (action?.startsWith("toggle-room:")) toggleRoomVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-room:")) deleteRoom(action.split(":")[1]);
@@ -5139,6 +5531,41 @@ function reapplyFormerEmployee(id) {
     };
   }, "Ứng tuyển lại nhân viên cũ");
   showToast(`Đã đưa ${employee.name} sang bảng Người xin việc.`);
+}
+
+function deleteKitchenItem(type, id) {
+  if (!can("kitchen_manage")) {
+    showToast("Tài khoản này không có quyền xóa nội dung bếp.");
+    return;
+  }
+  const db = getDb();
+  const config = {
+    dish: { rows: db.dishes, key: "dishes", label: "món ăn" },
+    kitchenCategory: { rows: db.kitchenCategories || [], key: "kitchenCategories", label: "nhóm món" },
+    kitchenRecipe: { rows: db.kitchenRecipes, key: "kitchenRecipes", label: "công thức chế biến" },
+    sauce: { rows: db.sauces, key: "sauces", label: "công thức nước chấm" }
+  }[type];
+  const item = config?.rows?.find((row) => row.id === id);
+  if (!config || !item) {
+    showToast("Không tìm thấy nội dung cần xóa.");
+    return;
+  }
+  const linkedRecipes = type === "dish" ? db.kitchenRecipes.filter((recipe) => recipe.dishId === id).length : 0;
+  const linkedCategoryItems = type === "kitchenCategory" ? [...db.dishes, ...db.kitchenRecipes].filter((row) => row.category === item.name).length : 0;
+  if (linkedCategoryItems) {
+    showToast(`Không thể xóa nhóm “${item.name}” vì đang có ${linkedCategoryItems} món hoặc công thức sử dụng. Hãy chuyển chúng sang nhóm khác trước.`);
+    return;
+  }
+  const uploadedImages = type === "kitchenRecipe" ? (item.images || []).filter((src) => String(src).startsWith("/uploads/")) : [];
+  const warning = linkedRecipes ? `\n${linkedRecipes} công thức đang gắn với món này sẽ được giữ lại nhưng bỏ liên kết món.` : "";
+  if (!confirm(`Xóa ${config.label} “${item.name || item.code}”?${warning}`)) return;
+  mutateDb((draft) => {
+    draft[config.key] = draft[config.key].filter((row) => row.id !== id);
+    if (type === "dish") draft.kitchenRecipes.forEach((recipe) => { if (recipe.dishId === id) recipe.dishId = ""; });
+    return { record: item.name || item.code, before: config.label, after: "Đã xóa" };
+  }, `Xóa ${config.label}`);
+  if (uploadedImages.length) deleteUploadedImages(uploadedImages);
+  showToast(`Đã xóa ${config.label}.`);
 }
 
 
@@ -5223,6 +5650,10 @@ async function saveModal(event) {
     data.images = await normalizeBikeImages(data.images);
     delete data.bikeImages;
   }
+  if (type === "kitchenRecipe") {
+    data.images = await normalizeRecipeImages(state.recipeImageDraft?.images || []);
+    delete data.recipeImages;
+  }
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
     delete data.employeePhoto;
@@ -5261,6 +5692,7 @@ async function saveModal(event) {
     return;
   }
   const deletedBikeImages = type === "bike" ? [...(state.bikeImageDraft?.deletedImages || [])] : [];
+  const deletedRecipeImages = type === "kitchenRecipe" ? [...(state.recipeImageDraft?.deletedImages || [])] : [];
   mutateDb((db) => {
     let savedTicket = null;
     if (type === "hotel") upsertHotel(db, data, id);
@@ -5272,6 +5704,10 @@ async function saveModal(event) {
     if (type === "ticket" || type === "ticketEdit") savedTicket = upsertTicket(db, data, type === "ticketEdit" ? id : "", extra);
     if (type === "equipment") upsertEquipment(db, data, id);
     if (type === "equipmentType") upsertEquipmentType(db, data, id);
+    if (type === "dish") upsertDish(db, data, id);
+    if (type === "kitchenCategory") upsertKitchenCategory(db, data, id);
+    if (type === "kitchenRecipe") upsertKitchenRecipe(db, data, id);
+    if (type === "sauce") upsertSauce(db, data, id);
     if (type === "owner") upsertOwner(db, data, id);
     if (type === "hrEmployee") upsertHrEmployee(db, data, id);
     if (type === "applicant") upsertApplicant(db, data, id);
@@ -5280,6 +5716,7 @@ async function saveModal(event) {
     if (type === "user") upsertUser(db, data, id);
     state.modal = null;
     state.bikeImageDraft = null;
+    state.recipeImageDraft = null;
     return { record: savedTicket?.code || id || data.code || data.name };
   }, `Lưu ${type}`);
   if (type === "ticket") showToast("Đã tạo phiếu sửa/bảo trì và gửi thông báo.");
@@ -5287,6 +5724,9 @@ async function saveModal(event) {
   else showToast("Đã lưu dữ liệu.");
   if (deletedBikeImages.length) {
     deleteUploadedImages(deletedBikeImages);
+  }
+  if (deletedRecipeImages.length) {
+    deleteUploadedImages(deletedRecipeImages);
   }
 }
 
@@ -5466,6 +5906,55 @@ function upsertEquipmentType(db, data, id) {
   };
   if (id) Object.assign(db.equipmentTypes.find((type) => type.id === id), payload);
   else db.equipmentTypes.push({ id: uid("ET"), ...payload });
+}
+
+function upsertDish(db, data, id) {
+  if (db.dishes.some((item) => item.id !== id && String(item.code).toLowerCase() === String(data.code).toLowerCase())) {
+    showToast("Mã món ăn đã tồn tại.");
+    throw new Error("Duplicate dish code");
+  }
+  const payload = {
+    ...data,
+    cost: Number(data.cost || 0),
+    price: Number(data.price || 0),
+    sortOrder: Number(data.sortOrder || 0),
+    updatedAt: nowLocal(),
+    updatedBy: state.user?.name || ""
+  };
+  if (id) Object.assign(db.dishes.find((item) => item.id === id), payload);
+  else db.dishes.push({ id: uid("DISH"), createdAt: nowLocal(), ...payload });
+  db.dishes.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name), "vi"));
+}
+
+function upsertKitchenCategory(db, data, id) {
+  db.kitchenCategories = db.kitchenCategories || [];
+  const normalizedName = String(data.name || "").trim();
+  if (db.kitchenCategories.some((item) => item.id !== id && String(item.name).trim().toLocaleLowerCase("vi") === normalizedName.toLocaleLowerCase("vi"))) {
+    showToast("Tên nhóm món đã tồn tại.");
+    throw new Error("Duplicate kitchen category");
+  }
+  const existing = db.kitchenCategories.find((item) => item.id === id);
+  const oldName = existing?.name || "";
+  const payload = { ...data, name: normalizedName, sortOrder: Number(data.sortOrder || 0), active: data.active !== "false", updatedAt: nowLocal() };
+  if (existing) Object.assign(existing, payload);
+  else db.kitchenCategories.push({ id: uid("KC"), ...payload });
+  if (oldName && oldName !== normalizedName) {
+    [...db.dishes, ...db.kitchenRecipes].forEach((item) => { if (item.category === oldName) item.category = normalizedName; });
+    if (state.kitchenCategory === oldName) state.kitchenCategory = normalizedName;
+  }
+  db.kitchenCategories.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name), "vi"));
+}
+
+function upsertKitchenRecipe(db, data, id) {
+  const payload = { ...data, updatedAt: nowLocal(), updatedBy: state.user?.name || "" };
+  if (id) Object.assign(db.kitchenRecipes.find((item) => item.id === id), payload);
+  else db.kitchenRecipes.push({ id: uid("RECIPE"), createdAt: nowLocal(), ...payload });
+}
+
+function upsertSauce(db, data, id) {
+  const payload = { ...data, updatedAt: nowLocal(), updatedBy: state.user?.name || "" };
+  if (id) Object.assign(db.sauces.find((item) => item.id === id), payload);
+  else db.sauces.push({ id: uid("SAUCE"), createdAt: nowLocal(), ...payload });
 }
 
 function upsertHrEmployee(db, data, id) {
@@ -6537,6 +7026,23 @@ async function compressBikeImageFile(file) {
   return uploadImageDataUrl(src, "bikes");
 }
 
+async function normalizeRecipeImages(images = []) {
+  const uniqueImages = [...new Set(images.filter(Boolean))].slice(0, RECIPE_IMAGE_LIMIT);
+  return Promise.all(uniqueImages.map(async (src) => {
+    if (isLikelyBrokenImage(src)) return src;
+    if (String(src).startsWith("data:image/")) {
+      const compressed = await compressImageSource(src, RECIPE_IMAGE_MAX_SIZE, RECIPE_IMAGE_QUALITY, RECIPE_IMAGE_MAX_BYTES);
+      return uploadImageDataUrl(await isBrokenCompressedImage(compressed) ? src : compressed, "recipes");
+    }
+    return src;
+  }));
+}
+
+async function compressRecipeImageFile(file) {
+  const src = await compressImageFile(file, RECIPE_IMAGE_MAX_SIZE, RECIPE_IMAGE_QUALITY, RECIPE_IMAGE_MAX_BYTES);
+  return uploadImageDataUrl(src, "recipes");
+}
+
 async function uploadImageDataUrl(src, folder = "general") {
   if (!String(src || "").startsWith("data:image/")) return src;
   try {
@@ -6557,7 +7063,7 @@ async function deleteUploadedImages(urls = []) {
   })));
   const failed = results.filter((result) => result.status === "rejected").length;
   if (failed) {
-    showToast(`Đã lưu xe, nhưng ${failed} ảnh cũ chưa xóa được trên hosting.`);
+    showToast(`Đã lưu dữ liệu, nhưng ${failed} ảnh cũ chưa xóa được trên hosting.`);
   } else {
     showToast(`Đã xóa ${uploadUrls.length} ảnh cũ trên hosting.`);
   }
@@ -6680,6 +7186,36 @@ async function previewBikeImages(event) {
   state.bikeImageDraft.images = [...current, ...urls].slice(0, BIKE_IMAGE_LIMIT);
   preview.innerHTML = renderEditableBikeImages(state.bikeImageDraft.images);
   event.target.value = "";
+}
+
+async function previewRecipeImages(event) {
+  const preview = document.getElementById("recipe-image-preview");
+  if (!preview) return;
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  const current = state.recipeImageDraft?.images || [];
+  const slots = Math.max(0, RECIPE_IMAGE_LIMIT - current.length);
+  if (!slots) {
+    showToast(`Đã đủ ${RECIPE_IMAGE_LIMIT} ảnh. Hãy xóa ảnh cũ trước khi thêm.`);
+    event.target.value = "";
+    return;
+  }
+  if (files.length > slots) showToast(`Chỉ thêm được ${slots} ảnh nữa.`);
+  preview.innerHTML = `<span>Đang tối ưu và tải ảnh công thức lên hosting...</span>`;
+  const urls = await Promise.all(files.slice(0, slots).map(compressRecipeImageFile));
+  state.recipeImageDraft = state.recipeImageDraft || { formId: "new", images: [], originalImages: [], deletedImages: [] };
+  state.recipeImageDraft.images = [...current, ...urls].slice(0, RECIPE_IMAGE_LIMIT);
+  preview.innerHTML = renderEditableRecipeImages(state.recipeImageDraft.images);
+  event.target.value = "";
+}
+
+function cleanupRecipeImageDraft() {
+  const draft = state.recipeImageDraft;
+  if (!draft) return;
+  const original = new Set(draft.originalImages || []);
+  const unusedUploads = (draft.images || []).filter((src) => String(src).startsWith("/uploads/") && !original.has(src));
+  if (unusedUploads.length) deleteUploadedImages(unusedUploads);
+  state.recipeImageDraft = null;
 }
 
 async function previewEmployeePhoto(event) {

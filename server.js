@@ -60,7 +60,7 @@ function defaultDb() {
       email: process.env.ADMIN_EMAIL || "admin@cocobay.vn",
       password: process.env.ADMIN_PASSWORD || "123456",
       role: "admin",
-      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit"],
+      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit", "kitchen_view", "kitchen_manage"],
       active: true,
       lastLoginAt: ""
     }],
@@ -80,6 +80,10 @@ function defaultDb() {
     attendanceRecords: [],
     bikeTypes: [],
     equipmentTypes: [],
+    kitchenCategories: ["Lẩu", "Nướng", "Chiên", "Luộc", "Tráng miệng", "Bánh"].map((name, index) => ({ id: `KC-${index + 1}`, name, sortOrder: index + 1, active: true })),
+    dishes: [],
+    kitchenRecipes: [],
+    sauces: [],
     auditLogs: [],
     settings: {
       timezone: "Asia/Ho_Chi_Minh",
