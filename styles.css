@@ -4871,39 +4871,154 @@ table td,
 .booking-sales-summary tbody tr:hover { background: rgba(45, 224, 211, .08); }
 .booking-sales-name { color: #fff; }
 
-.booking-report-page { display: grid; gap: 16px; }
-.booking-report-toolbar {
+.booking-report-page {
+  display: grid;
+  gap: 12px;
+  color: #f7fbff;
+}
+.booking-report-heading {
   display: flex;
-  align-items: end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid #1f5268;
-  border-radius: 8px;
-  background: #0a2941;
+  padding: 0 10px 5px;
 }
-.booking-report-toolbar label { display: grid; gap: 7px; color: #fff; font-weight: 900; }
-.booking-report-toolbar select { min-width: 190px; }
-.booking-report-toolbar p { margin: 0; color: #aac4d7; font-size: 12px; }
+.booking-report-heading h1 { margin: 0 0 10px; font-size: 27px; white-space: nowrap; }
+.booking-report-heading > div:last-child { display: flex; align-items: center; gap: 22px; padding-top: 18px; }
+.booking-report-heading p { margin: 0; color: #9db7c9; font-size: 12px; }
+.booking-report-heading button { min-height: 39px; white-space: nowrap; }
+.booking-report-export { display: flex; gap: 8px; }
+.booking-report-month { display: block; }
+.booking-report-month select { min-width: 190px; min-height: 38px; background: #09253c; border-color: #31546b; }
 .booking-report-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
+.booking-finance-kpi {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 94px;
+  padding: 12px 10px;
+  border: 1px solid #28516a;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #0c2d48, #08243b);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .12);
+}
+.booking-finance-kpi > i {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+  color: inherit;
+  font-size: 22px;
+  font-style: normal;
+}
+.booking-finance-kpi span { display: grid; gap: 3px; min-width: 0; }
+.booking-finance-kpi small { color: #b7cbd8; }
+.booking-finance-kpi strong { color: #fff; font-size: clamp(15px, 1.25vw, 20px); white-space: nowrap; }
+.booking-finance-kpi em { color: #9db7c9; font-size: 11px; font-style: normal; }
+.booking-finance-kpi > b { position: absolute; right: 9px; bottom: 7px; font-size: 16px; }
+.booking-finance-kpi.is-green { color: #40e1aa; }
+.booking-finance-kpi.is-blue { color: #58a2ff; }
+.booking-finance-kpi.is-gold { color: #ffc447; }
+.booking-finance-kpi.is-teal { color: #48e1bd; }
+.booking-report-visuals {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 8px;
+}
+.booking-report-visuals > .card { padding: 14px 18px; border-color: #28516a; background: #092740; }
+.booking-revenue-chart { min-width: 0; }
+.booking-revenue-chart .panel-title h3 { font-size: 20px; }
+.booking-revenue-chart .panel-title,
+.booking-status-chart .panel-title { margin-bottom: 0; }
+.chart-legend { display: flex; gap: 28px; margin: 8px 0 2px; color: #c8d8e2; font-size: 14px; font-weight: 700; }
+.chart-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; }
+.chart-legend .is-revenue::before { background: #31d4a0; }
+.chart-legend .is-paid::before { background: #4a9cff; }
+.booking-revenue-chart svg { display: block; width: 100%; height: 270px; margin-top: 4px; overflow: visible; }
+.booking-revenue-chart svg line { stroke: #446078; stroke-width: 1; }
+.booking-revenue-chart svg .chart-grid { stroke-dasharray: 3 5; opacity: .5; }
+.booking-revenue-chart svg polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
+.booking-revenue-chart svg .revenue-line { stroke: #31d4a0; }
+.booking-revenue-chart svg .paid-line { stroke: #4a9cff; }
+.booking-revenue-chart svg text { fill: #b9cbd7; font-size: 14px; font-weight: 700; }
+.booking-revenue-chart svg .axis-value { font-size: 12px; font-weight: 600; }
+.booking-revenue-chart svg .month-value { font-size: 13px; fill: #d9e5ec; }
+.booking-revenue-chart svg .revenue-value,
+.booking-revenue-chart svg .paid-value { font-size: 16px; font-weight: 900; paint-order: stroke; stroke: #092740; stroke-width: 4px; }
+.booking-revenue-chart svg .revenue-value { fill: #54e8ba; }
+.booking-revenue-chart svg .paid-value { fill: #73b5ff; }
+.booking-revenue-chart svg .revenue-point { fill: #31d4a0; stroke: #d8fff3; stroke-width: 2; }
+.booking-revenue-chart svg .paid-point { fill: #4a9cff; stroke: #e0efff; stroke-width: 2; }
+.booking-status-content { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 14px; min-height: 235px; }
+.booking-donut {
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  margin: auto;
+  border-radius: 50%;
+  background: conic-gradient(var(--booking-donut));
+  box-shadow: 0 0 30px rgba(49, 212, 160, .1);
+}
+.booking-donut::before { content: ""; grid-area: 1 / 1; width: 80px; height: 80px; border-radius: 50%; background: #092740; }
+.booking-donut span { z-index: 1; grid-area: 1 / 1; display: grid; text-align: center; }
+.booking-donut small { color: #b8cad6; }
+.booking-donut strong { color: #fff; font-size: 26px; }
+.booking-donut em { color: #8da9bb; font-size: 10px; font-style: normal; }
+.booking-status-legend { display: grid; gap: 10px; }
+.booking-status-legend > div { display: grid; grid-template-columns: 10px minmax(0, 1fr); align-items: center; gap: 5px 10px; }
+.booking-status-legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--status-color); }
+.booking-status-legend span { display: grid; gap: 2px; }
+.booking-status-legend b { color: #f5fbff; }
+.booking-status-legend small { color: #8da9bb; }
+.booking-status-legend > div > strong { grid-column: 2; color: #fff; font-size: 14px; }
 .booking-report-kpis .report-kpi { min-height: 118px; }
 .booking-report-highlight {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 38px 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 15px 18px;
-  border: 1px solid rgba(255, 181, 69, .46);
-  border-radius: 8px;
-  background: linear-gradient(90deg, rgba(255, 181, 69, .13), rgba(45, 224, 211, .07));
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 181, 69, .5);
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(255, 181, 69, .13), rgba(45, 224, 211, .05));
 }
-.booking-report-highlight span { color: #ffd58c; font-size: 12px; font-weight: 900; text-transform: uppercase; }
-.booking-report-highlight strong { color: #fff; font-size: 18px; }
-.booking-report-highlight b { color: #45e08f; font-size: 20px; }
+.booking-report-highlight > i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 181, 69, .18); color: #ffc447; font-size: 20px; font-style: normal; }
+.booking-report-highlight span { display: grid; gap: 2px; }
+.booking-report-highlight small { color: #ffc447; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.booking-report-highlight strong { color: #fff; font-size: 15px; }
+.booking-report-highlight b { color: #ffc447; font-size: 21px; }
+.booking-sale-chart { padding: 16px 18px; border-color: #28516a; background: #092740; }
+.booking-sale-chart .panel-title { margin-bottom: 10px; }
+.booking-sale-chart-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 14px; color: #a9c1d1; font-size: 11px; }
+.booking-sale-chart-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; }
+.booking-sale-chart-legend .is-total::before { background: #31d4a0; }
+.booking-sale-chart-legend .is-collected::before { background: #4a9cff; }
+.booking-sale-chart-legend .is-profit::before { background: #ffc447; }
+.booking-sale-bars { display: grid; gap: 8px; }
+.booking-sale-bars article { display: grid; grid-template-columns: minmax(190px, 260px) 1fr; grid-template-rows: repeat(3, 7px); gap: 4px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(126, 176, 198, .16); }
+.booking-sale-bars article:last-child { border-bottom: 0; }
+.booking-sale-bar-name { grid-row: 1 / 4; display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.booking-sale-bar-name > i { width: 8px; height: 34px; border-radius: 6px; background: var(--sale-color); }
+.booking-sale-bar-name span { display: grid; gap: 2px; }
+.booking-sale-bar-name strong { overflow: hidden; color: #fff; text-overflow: ellipsis; white-space: nowrap; }
+.booking-sale-bar-name small { color: #8faabc; }
+.booking-sale-bar-name b { color: #fff; white-space: nowrap; }
+.booking-sale-bar-track { position: relative; height: 7px; overflow: hidden; border-radius: 99px; background: rgba(133, 175, 197, .14); }
+.booking-sale-bar-track span { display: block; min-width: 2px; height: 100%; border-radius: inherit; }
+.booking-sale-bar-track span.is-total { background: linear-gradient(90deg, #169d7a, #31d4a0); }
+.booking-sale-bar-track span.is-collected { background: linear-gradient(90deg, #327bd1, #4a9cff); }
+.booking-sale-bar-track span.is-profit { background: linear-gradient(90deg, #d69320, #ffc447); }
+.booking-sale-bar-track.is-thin { height: 5px; }
 .booking-report-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4932,11 +5047,50 @@ table td,
   .booking-sales-summary { padding: 12px; }
   .booking-sales-summary .table-wrap { overflow-x: auto; }
   .booking-sales-summary table { min-width: 650px; }
-  .booking-report-toolbar { align-items: stretch; flex-direction: column; }
-  .booking-report-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .booking-report-heading, .booking-report-heading > div:last-child { align-items: stretch; flex-direction: column; }
+  .booking-report-heading > div:last-child { gap: 8px; padding-top: 0; }
+  .booking-report-export { display: grid; grid-template-columns: 1fr 1fr; }
+  .booking-report-heading h1 { font-size: 23px; }
+  .booking-report-month select { width: 100%; }
+  .booking-report-kpis { grid-template-columns: 1fr; }
+  .booking-finance-kpi { min-height: 86px; }
+  .booking-report-visuals { grid-template-columns: 1fr; }
+  .booking-status-content { grid-template-columns: 1fr; }
+  .booking-sale-bars article { grid-template-columns: 1fr; grid-template-rows: auto repeat(3, 6px); gap: 6px; }
+  .booking-sale-bar-name { grid-row: auto; }
+  .booking-revenue-chart svg { min-width: 520px; }
+  .booking-revenue-chart { overflow-x: auto; }
   .booking-report-grid { grid-template-columns: 1fr; }
-  .booking-report-highlight { grid-template-columns: 1fr; gap: 5px; }
+  .booking-report-highlight { grid-template-columns: 34px 1fr; }
+  .booking-report-highlight b { grid-column: 2; }
   .booking-report-highlight b { font-size: 17px; }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  .booking-report-page { gap: 8px; color: #17313b !important; }
+  .booking-report-export,
+  .booking-report-page .count { display: none !important; }
+  .booking-report-heading { padding: 0 0 4px; }
+  .booking-report-heading h1,
+  .booking-report-page h3,
+  .booking-report-page strong,
+  .booking-report-page b { color: #17313b !important; }
+  .booking-report-heading p,
+  .booking-report-page small,
+  .booking-report-page em { color: #55707d !important; }
+  .booking-report-month select { color: #17313b !important; background: #fff !important; border-color: #b9ced8 !important; }
+  .booking-finance-kpi,
+  .booking-report-visuals > .card,
+  .booking-sale-chart,
+  .booking-report-highlight,
+  .booking-report-grid > .card { background: #fff !important; border-color: #b9ced8 !important; box-shadow: none !important; }
+  .booking-donut::before { background: #fff !important; }
+  .booking-revenue-chart svg text,
+  .booking-status-legend small { fill: #55707d !important; color: #55707d !important; }
+  .booking-report-grid,
+  .booking-sale-chart { break-inside: avoid; }
+  .booking-report-sale table { min-width: 0; font-size: 9px; }
 }
 
 .booking-simple-card {

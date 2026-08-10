@@ -2328,24 +2328,59 @@ function bookingReportsView() {
   const report = bookingReportData(state.bookingReportMonth);
   const monthLabel = parseISODate(`${report.month}-01`).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
   const topSale = report.saleRows[0];
+  const paidRate = report.totals.revenue ? report.totals.paid / report.totals.revenue * 100 : 0;
+  const daysInMonth = new Date(Number(report.month.slice(0, 4)), Number(report.month.slice(5, 7)), 0).getDate();
+  const daily = Array.from({ length: daysInMonth }, (_, index) => ({ day: index + 1, revenue: 0, paid: 0 }));
+  report.validBookings.forEach((booking) => {
+    const day = Math.max(1, Math.min(daysInMonth, Number(String(booking.start || "").slice(8, 10)) || 1));
+    daily[day - 1].revenue += Number(booking.total || 0);
+    daily[day - 1].paid += Number(booking.paid || 0);
+  });
+  daily.reduce((running, item) => {
+    running.revenue += item.revenue;
+    running.paid += item.paid;
+    item.revenue = running.revenue;
+    item.paid = running.paid;
+    return running;
+  }, { revenue: 0, paid: 0 });
+  const chartWidth = 520;
+  const chartHeight = 250;
+  const chartLeft = 84;
+  const chartTop = 30;
+  const chartBottom = 42;
+  const chartMax = Math.max(1, ...daily.map((item) => item.revenue));
+  const chartX = (index) => chartLeft + index / Math.max(1, daysInMonth - 1) * (chartWidth - chartLeft - 16);
+  const chartY = (value) => chartTop + (1 - value / chartMax) * (chartHeight - chartTop - chartBottom);
+  const revenuePoints = daily.map((item, index) => `${chartX(index).toFixed(1)},${chartY(item.revenue).toFixed(1)}`).join(" ");
+  const paidPoints = daily.map((item, index) => `${chartX(index).toFixed(1)},${chartY(item.paid).toFixed(1)}`).join(" ");
+  const revenueArea = `${chartLeft},${chartHeight - chartBottom} ${revenuePoints} ${chartX(daysInMonth - 1)},${chartHeight - chartBottom}`;
+  const chartColors = ["#31d4a0", "#4a9cff", "#ffb53d", "#9869f7", "#ff6178", "#36c6dc"];
+  let hotelOffset = 0;
+  const hotelRevenueTotal = Math.max(1, report.hotelRows.reduce((sum, row) => sum + row.revenue, 0));
+  const hotelStops = report.hotelRows.map((row, index) => {
+    const start = hotelOffset;
+    hotelOffset += row.revenue / hotelRevenueTotal * 100;
+    return `${chartColors[index % chartColors.length]} ${start.toFixed(2)}% ${hotelOffset.toFixed(2)}%`;
+  }).join(", ");
+  const maxSaleRevenue = Math.max(1, ...report.saleRows.map((row) => row.revenue));
   return `<section class="booking-report-page">
-    ${pageHeader("Báo cáo đặt phòng", `Tổng hợp doanh số, lãi gộp và hiệu quả sale trong ${monthLabel}.`, `<button class="secondary" data-action="print">In / Lưu PDF</button><button class="primary" data-action="export-booking-report">Xuất Excel</button>`)}
-    <div class="booking-report-toolbar"><label><span>Tháng báo cáo</span>${localizedMonthSelect(report.month, "data-booking-report-month")}</label><p>Số liệu doanh thu được ghi nhận theo tháng của ngày khách đến.</p></div>
+    <div class="booking-report-heading"><div><h1>Báo cáo doanh thu</h1><label class="booking-report-month">${localizedMonthSelect(report.month, "data-booking-report-month")}</label></div><div><p>Số liệu doanh thu được ghi nhận theo tháng của ngày khách đến.</p><span class="booking-report-export"><button class="secondary" data-action="print">▣&nbsp; Xuất PDF</button><button class="secondary" data-action="export-booking-report">⇩&nbsp; Xuất Excel</button></span></div></div>
     <div class="booking-report-kpis">
-      ${reportKpi("Tổng doanh số", money(report.totals.revenue), `${report.validBookings.length} booking hợp lệ`)}
-      ${reportKpi("Tổng lãi gộp", money(report.totals.grossProfit), `Biên lãi ${report.totals.margin.toFixed(1)}%`)}
-      ${reportKpi("Tổng booking", report.bookings.length, `${report.cancelled} booking đã hủy`)}
-      ${reportKpi("Tổng số khách", report.totals.guests, `Bình quân ${report.validBookings.length ? (report.totals.guests / report.validBookings.length).toFixed(1) : "0"} khách/booking`)}
-      ${reportKpi("Đã cọc / đã thu", money(report.totals.paid), `Tỷ lệ ${report.totals.revenue ? (report.totals.paid / report.totals.revenue * 100).toFixed(1) : "0"}%`)}
-      ${reportKpi("Còn phải thu", money(report.totals.receivable), "Theo tổng tiền trừ số đã thu")}
-      ${reportKpi("Tổng chi phí", money(report.totals.cost), "Chi phí đã nhập trong booking")}
-      ${reportKpi("Doanh số bình quân", money(report.totals.average), "Trên mỗi booking hợp lệ")}
+      <article class="booking-finance-kpi is-green"><i>♙</i><span><small>Tổng doanh số</small><strong>${money(report.totals.revenue)}</strong><em>${report.validBookings.length} booking hợp lệ</em></span><b>⌁</b></article>
+      <article class="booking-finance-kpi is-blue"><i>▣</i><span><small>Đã cọc / đã thu</small><strong>${money(report.totals.paid)}</strong><em>Tỷ lệ ${paidRate.toFixed(1)}%</em></span><b>⌁</b></article>
+      <article class="booking-finance-kpi is-gold"><i>▤</i><span><small>Còn phải thu</small><strong>${money(report.totals.receivable)}</strong><em>Theo tổng tiền trừ số đã thu</em></span><b>⌁</b></article>
+      <article class="booking-finance-kpi is-teal"><i>%</i><span><small>Lãi gộp</small><strong>${money(report.totals.grossProfit)}</strong><em>Biên lãi ${report.totals.margin.toFixed(1)}%</em></span><b>⌁</b></article>
     </div>
-    <div class="booking-report-highlight"><span>Sale có lãi gộp cao nhất</span><strong>${topSale?.salesName || "Chưa có dữ liệu"}</strong><b>${topSale ? money(topSale.grossProfit) : money(0)}</b></div>
+    <div class="booking-report-visuals">
+      <section class="card booking-revenue-chart"><div class="panel-title"><h3>Doanh số & thu</h3></div><div class="chart-legend"><span class="is-revenue">Doanh số</span><span class="is-paid">Đã thu</span></div><svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Biểu đồ doanh số và số tiền đã thu trong ${monthLabel}"><defs><linearGradient id="bookingRevenueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#31d4a0" stop-opacity=".35"/><stop offset="1" stop-color="#31d4a0" stop-opacity="0"/></linearGradient></defs><line x1="${chartLeft}" y1="${chartTop}" x2="${chartLeft}" y2="${chartHeight - chartBottom}"/><line class="chart-grid" x1="${chartLeft}" y1="${chartTop}" x2="${chartWidth - 10}" y2="${chartTop}"/><line class="chart-grid" x1="${chartLeft}" y1="${chartY(chartMax / 2)}" x2="${chartWidth - 10}" y2="${chartY(chartMax / 2)}"/><line x1="${chartLeft}" y1="${chartHeight - chartBottom}" x2="${chartWidth - 10}" y2="${chartHeight - chartBottom}"/><text class="axis-value" x="${chartLeft - 10}" y="${chartTop + 5}" text-anchor="end">${money(chartMax)}</text><text class="axis-value" x="${chartLeft - 10}" y="${chartY(chartMax / 2) + 5}" text-anchor="end">${money(chartMax / 2)}</text><text class="axis-value" x="${chartLeft - 10}" y="${chartHeight - chartBottom + 5}" text-anchor="end">0</text><polygon points="${revenueArea}" fill="url(#bookingRevenueFill)"/><polyline class="revenue-line" points="${revenuePoints}"/><polyline class="paid-line" points="${paidPoints}"/><circle class="revenue-point" cx="${chartX(daysInMonth - 1)}" cy="${chartY(report.totals.revenue)}" r="4"/><circle class="paid-point" cx="${chartX(daysInMonth - 1)}" cy="${chartY(report.totals.paid)}" r="4"/><text x="${chartWidth - 14}" y="${Math.max(22, chartY(report.totals.revenue) - 10)}" text-anchor="end" class="revenue-value">${money(report.totals.revenue)}</text><text x="${chartWidth - 14}" y="${Math.min(chartHeight - chartBottom - 8, chartY(report.totals.paid) + 23)}" text-anchor="end" class="paid-value">${money(report.totals.paid)}</text><text class="month-value" x="${chartWidth / 2}" y="${chartHeight - 9}" text-anchor="middle">${monthLabel}</text></svg></section>
+      <section class="card booking-status-chart"><div class="panel-title"><h3>Doanh số theo khách sạn</h3></div><div class="booking-status-content"><div class="booking-donut" style="--booking-donut:${hotelStops || "#28465c 0 100%"}"><span><small>Tổng doanh số</small><strong>${report.hotelRows.length}</strong><em>khách sạn</em></span></div><div class="booking-status-legend">${report.hotelRows.length ? report.hotelRows.map((row, index) => `<div><i style="--status-color:${chartColors[index % chartColors.length]}"></i><span><b>${row.hotelName}</b><small>${row.bookings} booking · ${row.guests} khách</small></span><strong>${money(row.revenue)}</strong></div>`).join("") : `<p class="empty">Chưa có doanh số khách sạn trong tháng.</p>`}</div></div></section>
+    </div>
+    <div class="booking-report-highlight"><i>♛</i><span><small>Sale có lãi gộp cao nhất</small><strong>${topSale?.salesName || "Chưa gán sale"}</strong></span><b>${topSale ? money(topSale.grossProfit) : money(0)}</b></div>
+    <section class="card booking-sale-chart"><div class="panel-title"><div><h3>Doanh số từng sale</h3><p>So sánh doanh số, tiền đã thu và lãi gộp của từng người phụ trách booking.</p></div><span class="count">${report.saleRows.length} sale</span></div><div class="booking-sale-chart-legend"><span class="is-total">Doanh số</span><span class="is-collected">Đã thu</span><span class="is-profit">Lãi gộp</span></div><div class="booking-sale-bars">${report.saleRows.length ? report.saleRows.map((row, index) => `<article><div class="booking-sale-bar-name"><i style="--sale-color:${bookingSalesColor(row.salesName)}"></i><span><strong>${row.salesName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><b>${money(row.revenue)}</b></div><div class="booking-sale-bar-track" title="Doanh số ${money(row.revenue)}"><span class="is-total" style="width:${(row.revenue / maxSaleRevenue * 100).toFixed(2)}%"></span></div><div class="booking-sale-bar-track is-thin" title="Đã thu ${money(row.paid)}"><span class="is-collected" style="width:${(row.paid / maxSaleRevenue * 100).toFixed(2)}%"></span></div><div class="booking-sale-bar-track is-thin" title="Lãi gộp ${money(row.grossProfit)}"><span class="is-profit" style="width:${(Math.max(0, row.grossProfit) / maxSaleRevenue * 100).toFixed(2)}%"></span></div></article>`).join("") : `<p class="empty">Chưa có doanh số theo sale trong tháng này.</p>`}</div></section>
     <div class="booking-report-grid">
       <section class="card booking-report-sale"><div class="panel-title"><div><h3>Hiệu quả từng sale</h3><p>Doanh số, chi phí và lãi gộp theo người phụ trách booking.</p></div></div><div class="table-wrap"><table><thead><tr><th>Sale</th><th>Booking</th><th>Khách</th><th>Doanh số</th><th>Đã thu</th><th>Còn thu</th><th>Chi phí</th><th>Lãi gộp</th><th>Biên lãi</th></tr></thead><tbody>${report.saleRows.length ? report.saleRows.map((row, index) => `<tr><td><span class="booking-sales-name" style="--sale-color:${bookingSalesColor(row.salesName)}"><i></i><span><strong>${row.salesName}</strong><small>Hạng ${index + 1}</small></span></span></td><td>${row.bookings}</td><td>${row.guests}</td><td>${money(row.revenue)}</td><td>${money(row.paid)}</td><td>${money(row.receivable)}</td><td>${money(row.cost)}</td><td class="booking-gross-profit">${money(row.grossProfit)}</td><td>${row.margin.toFixed(1)}%</td></tr>`).join("") : `<tr><td colspan="9" class="empty">Chưa có booking trong tháng này.</td></tr>`}</tbody></table></div></section>
       <section class="card"><div class="panel-title"><h3>Theo khách sạn</h3></div><div class="booking-report-list">${report.hotelRows.length ? report.hotelRows.map((row) => `<div><span><strong>${row.hotelName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><span><b>${money(row.revenue)}</b><small>Lãi ${money(row.grossProfit)}</small></span></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
-      <section class="card"><div class="panel-title"><h3>Trạng thái booking</h3></div><div class="booking-report-list">${report.statusRows.length ? report.statusRows.map((row) => `<div><span>${pill(row.status)}</span><strong>${row.count}</strong></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
+      <section class="card"><div class="panel-title"><h3>Tổng quan tháng</h3></div><div class="booking-report-list"><div><span><strong>Tổng booking</strong><small>Gồm cả booking đã hủy</small></span><b>${report.bookings.length}</b></div><div><span><strong>Tổng số khách</strong><small>Bình quân ${report.validBookings.length ? (report.totals.guests / report.validBookings.length).toFixed(1) : "0"} khách/booking</small></span><b>${report.totals.guests}</b></div><div><span><strong>Tổng chi phí</strong><small>Chi phí đã nhập trong booking</small></span><b>${money(report.totals.cost)}</b></div></div></section>
     </div>
   </section>`;
 }
