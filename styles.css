@@ -7428,3 +7428,178 @@ button.oil-alert-trigger.active {
     grid-column: 1 / -1;
   }
 }
+.booking-owner-notice {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid rgba(45, 212, 191, .38);
+  border-radius: 8px;
+  background: rgba(13, 148, 136, .12);
+}
+
+.booking-owner-notice strong { color: #f8fafc; font-size: 16px; }
+.booking-owner-notice span { color: #a5f3fc; }
+.booking-owner-notice small { color: #b7cad7; }
+.booking-change-history { margin-top: 16px; }
+.booking-change-history table { min-width: 980px; }
+.booking-history-change { display: grid; gap: 4px; min-width: 270px; }
+.booking-history-change small { color: #9fb6c6; }
+.booking-history-change strong { color: #e6fffb; font-weight: 700; }
+
+/* Booking service package calculator */
+.combo-calculator-page {
+  width: min(1100px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.combo-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.combo-heading h1,
+.combo-heading p,
+.combo-section-title h2,
+.combo-section-title p { margin: 0; }
+.combo-heading p,
+.combo-section-title p { color: var(--muted); margin-top: 4px; }
+
+.combo-heading-icon,
+.combo-section-title > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  color: #5eead4;
+  background: linear-gradient(145deg, rgba(20, 184, 166, .32), rgba(8, 145, 178, .12));
+  border: 1px solid rgba(45, 212, 191, .34);
+}
+.combo-heading-icon svg { width: 29px; height: 29px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
+.combo-hotel-card,
+.combo-info-card,
+.combo-result-card { min-width: 0; padding: 20px; }
+.combo-hotel-card { display: grid; gap: 9px; }
+.combo-hotel-card > label { color: #f8fafc; font-weight: 800; text-transform: uppercase; }
+.combo-hotel-card small { color: var(--muted); }
+.combo-hotel-select {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(94, 234, 212, .34);
+  border-radius: 8px;
+  background: rgba(5, 28, 48, .76);
+}
+.combo-hotel-select > span { display: grid; place-items: center; color: #2dd4bf; }
+.combo-hotel-select svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.combo-hotel-select select { border: 0; background: transparent; color: #f8fafc; font-size: 16px; font-weight: 700; }
+
+.combo-section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.combo-section-title > span { width: 44px; height: 44px; font-size: 23px; }
+.combo-section-title h2 { font-size: 19px; }
+.combo-people-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 16px;
+}
+.combo-item-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 8px; color: #2dd4bf; }
+.combo-stepper { display: grid; grid-template-columns: 48px 62px 48px; gap: 8px; }
+.combo-stepper button,
+.combo-stepper output { min-height: 44px; display: grid; place-items: center; border: 1px solid rgba(94, 234, 212, .38); border-radius: 8px; color: #ecfeff; background: rgba(8, 47, 73, .82); font-size: 21px; font-weight: 800; }
+.combo-stepper button { cursor: pointer; color: #5eead4; }
+
+.combo-entry-table table,
+.combo-result-card table { min-width: 700px; }
+.combo-calculator-page .table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  border: 1px solid rgba(45, 212, 191, .28) !important;
+  background: #08243a !important;
+  scrollbar-color: #22c7ba #061d31;
+}
+.combo-calculator-page table { background: #08243a; }
+.combo-calculator-page thead th {
+  color: #67e8f9 !important;
+  background: #0c4055 !important;
+  border-color: rgba(125, 211, 252, .24) !important;
+}
+.combo-calculator-page tbody th,
+.combo-calculator-page tbody td {
+  color: #eefcff !important;
+  background: #08243a !important;
+  border-color: rgba(125, 211, 252, .18) !important;
+}
+.combo-calculator-page tbody tr:hover th,
+.combo-calculator-page tbody tr:hover td { background: #0d354b !important; }
+.combo-entry-table th:first-child,
+.combo-result-card th:first-child { text-align: left; }
+.combo-entry-table tbody th span,
+.combo-result-card tbody th span { display: inline-block; width: 28px; color: #2dd4bf; }
+.combo-entry-table td { min-width: 180px; }
+.combo-entry-table input,
+.combo-room-prices input { width: 100%; min-height: 42px; color: #f8fafc; background: #071f35; border: 1px solid rgba(148, 180, 200, .34); border-radius: 8px; padding: 9px 36px 9px 11px; }
+.combo-entry-table small { display: block; margin-top: 5px; color: #7dd3fc; }
+.combo-rate-note { color: var(--muted); font-size: 12px; }
+.combo-money-field { position: relative; }
+.combo-money-field > span,
+.combo-money-field > b { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #a5f3fc; }
+
+.combo-room-prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.combo-price-title { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 9px; color: #f8fafc; text-transform: uppercase; }
+.combo-price-title svg { width: 20px; height: 20px; fill: none; stroke: #d6a43b; stroke-width: 1.8; }
+.combo-room-prices label { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(45, 212, 191, .35); border-radius: 8px; background: rgba(13, 148, 136, .08); }
+.combo-room-prices label > span { color: #67e8f9; text-align: center; font-weight: 800; text-transform: uppercase; }
+.combo-room-prices label.holiday { border-color: rgba(245, 158, 11, .42); background: rgba(245, 158, 11, .07); }
+.combo-room-prices label.holiday > span { color: #fbbf24; }
+
+.combo-result-card td { text-align: right; font-variant-numeric: tabular-nums; }
+.combo-total-row th,
+.combo-total-row td { color: #5eead4; font-size: 15px; font-weight: 800; }
+.combo-total-row:last-child th,
+.combo-total-row:last-child td { color: #fbbf24; background: rgba(245, 158, 11, .08); }
+.combo-formula { margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(56, 189, 248, .3); border-radius: 8px; color: #dbeafe; background: rgba(14, 116, 144, .1); }
+.combo-apply-button { width: 100%; min-height: 52px; font-size: 17px; }
+
+@media (max-width: 720px) {
+  .combo-calculator-page { gap: 10px; }
+  .combo-heading { align-items: flex-start; }
+  .combo-heading h1 { font-size: 22px; }
+  .combo-heading p { font-size: 12px; }
+  .combo-hotel-card,
+  .combo-info-card,
+  .combo-result-card { padding: 12px; }
+  .combo-people-row { grid-template-columns: 36px 1fr; }
+  .combo-stepper { grid-column: 1 / -1; grid-template-columns: 1fr 72px 1fr; }
+  .combo-room-prices { grid-template-columns: 1fr; }
+  .combo-price-title { grid-column: auto; }
+  .combo-entry-table table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+  .combo-entry-table th,
+  .combo-entry-table td { padding: 9px 7px !important; font-size: 12px; }
+  .combo-entry-table th:first-child { width: 36%; }
+  .combo-entry-table th:nth-child(2) { width: 28%; }
+  .combo-entry-table th:nth-child(3) { width: 36%; }
+  .combo-entry-table tbody th span { width: 18px; }
+  .combo-entry-table td { min-width: 0; }
+  .combo-entry-table input,
+  .combo-room-prices input { min-width: 0; padding-left: 7px; font-size: 13px; }
+  .combo-rate-note,
+  .combo-entry-table small { font-size: 10px; line-height: 1.25; }
+  .combo-result-card table { min-width: 560px !important; }
+  .combo-formula { font-size: 12px; }
+}

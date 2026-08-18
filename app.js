@@ -25,9 +25,9 @@ const roles = {
 };
 
 const permissions = {
-  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
-  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
-  receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write"],
+  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
+  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
+  receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_checkin", "booking_payment"],
   technician: ["bike_view", "bike_maintenance", "damage", "photos", "equipment_view", "equipment_maintenance", "costs"]
 };
 
@@ -50,7 +50,10 @@ const permissionCatalog = [
   ["photos", "Hình ảnh xe", "Chụp hoặc tải ảnh xe", "motorbikes"],
   ["booking_view", "Xem lịch đặt phòng", "Xem timeline, bộ lọc khách sạn và chi tiết nhóm khách", "booking"],
   ["booking_write", "Tạo đặt phòng", "Tạo phiếu đặt phòng và ghi dữ liệu mới", "booking"],
-  ["booking_edit", "Sửa đặt phòng", "Sửa, cập nhật hoặc xóa phiếu đặt phòng; quản lý khách sạn/phòng", "booking"],
+  ["booking_edit", "Sửa đặt phòng", "Sale sửa ngày booking được phân công; Admin được sửa toàn bộ booking", "booking"],
+  ["booking_catalog_manage", "Quản lý khách sạn/phòng", "Thêm, sửa, ẩn và xóa danh mục khách sạn/phòng", "booking"],
+  ["booking_checkin", "Check-in khách", "Xác nhận khách đã nhận phòng và ghi nhận người thao tác", "booking"],
+  ["booking_payment", "Thanh toán đặt phòng", "Ghi nhận booking đã thanh toán đủ tổng tiền", "booking"],
   ["equipment_view", "Xem thiết bị", "Xem danh sách, tình trạng và lịch bảo trì thiết bị", "equipment"],
   ["equipment_manage", "Quản lý thiết bị", "Thêm, sửa thiết bị và loại thiết bị", "equipment"],
   ["equipment_maintenance", "Sửa chữa thiết bị", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì thiết bị", "equipment"],
@@ -70,6 +73,7 @@ const menu = [
   ["bookingTimeline", "L\u1ecbch \u0111\u1eb7t ph\u00f2ng", "booking_view"],
   ["hotels", "Kh\u00e1ch s\u1ea1n", "booking_view"],
   ["rooms", "Ph\u00f2ng", "booking_view"],
+  ["comboCalculator", "Bảng tính gói dịch vụ", "booking_view"],
   ["bookingReports", "Báo cáo đặt phòng", "reports"],
   ["motorbikes", "Xe m\u00e1y", "bike_view"],
   ["bikeTypes", "Lo\u1ea1i xe", "bike_view"],
@@ -97,7 +101,7 @@ const menu = [
 
 const menuTree = [
   { key: "dashboard" },
-  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }, { key: "bookingReports" }] },
+  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }, { key: "comboCalculator" }, { key: "bookingReports" }] },
   { key: "motorbikes", children: [{ key: "bikeTypes" }, { key: "rentals" }, { key: "calendar" }, { key: "bikeMaintenance" }] },
   { key: "equipment", children: [{ key: "equipmentTypes" }, { key: "equipmentMaintenance" }] },
   { key: "kitchen", children: [{ key: "dishes" }, { key: "kitchenRecipes" }, { key: "sauces" }, { key: "menuPrices" }] },
@@ -117,6 +121,7 @@ const menuMeta = {
   bookingTimeline: { icon: "\u25a6", color: "teal", desc: "Timeline \u0111\u1eb7t ph\u00f2ng t\u1ed5ng h\u1ee3p nhi\u1ec1u kh\u00e1ch s\u1ea1n" },
   hotels: { icon: "\u25a5", color: "blue", desc: "Danh s\u00e1ch kh\u00e1ch s\u1ea1n v\u00e0 s\u1ed1 ph\u00f2ng" },
   rooms: { icon: "\u25a4", color: "mint", desc: "Qu\u1ea3n l\u00fd ph\u00f2ng, lo\u1ea1i ph\u00f2ng v\u00e0 s\u1ee9c ch\u1ee9a" },
+  comboCalculator: { icon: "#", color: "teal", desc: "Tính nhanh giá phòng, vé tàu, xe máy và dịch vụ khác" },
   bookingReports: { icon: "\u25a5", color: "gold", desc: "Doanh số, lãi gộp, booking và hiệu quả từng sale" },
   motorbikes: { icon: "\u2668", color: "mint", desc: "Danh s\u00e1ch v\u00e0 qu\u1ea3n l\u00fd xe m\u00e1y" },
   bikeTypes: { icon: "\u2261", color: "mint", desc: "C\u1ea5u h\u00ecnh lo\u1ea1i xe v\u00e0 l\u1ecbch b\u1ea3o tr\u00ec" },
@@ -147,6 +152,7 @@ const navSvgIcons = {
   bookingTimeline: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4" /><path d="M16 3v4" /><path d="M4 10h16" /><path d="M8 14h8" /><path d="M8 17h5" /></svg>`,
   hotels: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V6l7-3 7 3v14" /><path d="M9 20v-5h6v5" /><path d="M9 8h.01" /><path d="M12 8h.01" /><path d="M15 8h.01" /><path d="M9 12h.01" /><path d="M12 12h.01" /><path d="M15 12h.01" /></svg>`,
   rooms: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12" /><path d="M4 14h16" /><path d="M7 14v-3h5v3" /><path d="M14 14v-3h3" /></svg>`,
+  comboCalculator: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8" /><path d="M8 11h2" /><path d="M14 11h2" /><path d="M8 15h2" /><path d="M14 15h2" /><path d="M8 18h8" /></svg>`,
   bookingReports: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 16v-4" /><path d="M12 16V8" /><path d="M16 16v-6" /><path d="M7 19h10" /></svg>`,
   motorbikes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16a3 3 0 1 0 0 .1" /><path d="M19 16a3 3 0 1 0 0 .1" /><path d="M7 16h4l3-5h2l3 5" /><path d="M10 9h3" /><path d="M14 7h3" /><path d="M16 7l2-2" /></svg>`,
   bikeTypes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h14l-1.7-5.2A3 3 0 0 0 14.5 9h-5A3 3 0 0 0 6.7 10.8L5 16Z" /><path d="M7 16v2" /><path d="M17 16v2" /><path d="M7.5 13h9" /></svg>`,
@@ -216,6 +222,20 @@ const state = {
     date: todayISO()
   },
   bookingReportMonth: todayISO().slice(0, 7),
+  comboCalculator: {
+    hotelId: "",
+    people: 1,
+    roomQty: 1,
+    ferryPrice: 0,
+    bikeQty: 0,
+    bikePrice: 0,
+    otherQty: 0,
+    otherPrice: 0,
+    weekdayPrice: 0,
+    saturdayPrice: 0,
+    holidayPrice: 0,
+    hotelSeeded: false
+  },
   reportMonth: todayISO().slice(0, 7),
   auditFilters: {
     query: "",
@@ -304,6 +324,51 @@ function canAny(keys) {
 
 function isSuperAdmin() {
   return state.user?.role === "admin";
+}
+
+function normalizedIdentity(value) {
+  return String(value || "").trim().toLocaleLowerCase("vi-VN");
+}
+
+function isBookingOwner(booking, user = state.user) {
+  if (!booking || !user) return false;
+  const userId = String(user.id || "");
+  const userEmail = normalizedIdentity(user.email);
+  const userName = normalizedIdentity(user.name);
+  return Boolean(
+    (booking.salesUserId && String(booking.salesUserId) === userId) ||
+    (booking.salesEmail && normalizedIdentity(booking.salesEmail) === userEmail) ||
+    normalizedIdentity(booking.salesName || booking.createdBy) === userName
+  );
+}
+
+function canEditAssignedBooking(booking) {
+  return can("booking_edit") && (isSuperAdmin() || isBookingOwner(booking));
+}
+
+function canOperateAssignedBooking(booking, permission) {
+  return (can(permission) || can("booking_edit")) && (isSuperAdmin() || isBookingOwner(booking));
+}
+
+function bookingHistoryEntry(db, booking, action, before = "", after = "") {
+  if (!booking) return;
+  if (!Array.isArray(db.bookingChangeLogs)) db.bookingChangeLogs = [];
+  db.bookingChangeLogs.unshift({
+    id: uid("BKH"),
+    bookingId: booking.id,
+    bookingCode: booking.code || booking.id,
+    customer: booking.customer || booking.group || "",
+    room: booking.room || "",
+    salesName: booking.salesName || booking.createdBy || "Chưa gán sale",
+    action,
+    before,
+    after,
+    userId: state.user?.id || "",
+    user: state.user?.name || "Hệ thống",
+    role: state.user ? roles[state.user.role] : "System",
+    createdAt: nowLocal()
+  });
+  db.bookingChangeLogs = db.bookingChangeLogs.slice(0, 2000);
 }
 
 
@@ -411,6 +476,7 @@ function seedDb() {
     ],
     recoveryRequests: [],
     auditLogs: [],
+    bookingChangeLogs: [],
     settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: true }
   };
 }
@@ -440,6 +506,7 @@ function emptyDb() {
     notifications: [],
     recoveryRequests: [],
     auditLogs: [],
+    bookingChangeLogs: [],
     hotelBookings: [],
     settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: false, deletedSeedBookings: [], bookingPermissionsMigrated: true, kitchenPermissionsMigrated: true }
   };
@@ -619,6 +686,7 @@ async function syncDeletedBooking(id) {
     const payload = await apiRequest(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
     apiState.lastError = "";
+    queueRemoteSave(getDb());
     showToast("Đã xóa đặt phòng và đồng bộ MySQL.");
   } catch (error) {
     apiState.lastError = error.message;
@@ -735,6 +803,10 @@ function migrateDb(db) {
     db.hotelBookings = [];
     changed = true;
   }
+  if (!Array.isArray(db.bookingChangeLogs)) {
+    db.bookingChangeLogs = [];
+    changed = true;
+  }
   if (!Array.isArray(db.recoveryRequests)) {
     db.recoveryRequests = [];
     changed = true;
@@ -828,6 +900,42 @@ function migrateDb(db) {
       });
     });
     db.settings = { ...(db.settings || {}), bookingPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.bookingOperationsPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      if (!Array.isArray(user.permissions)) user.permissions = [];
+      const current = new Set(user.permissions);
+      if (["admin", "manager", "receptionist"].includes(user.role) || current.has("booking_edit")) {
+        current.add("booking_checkin");
+        current.add("booking_payment");
+      }
+      user.permissions = [...current];
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...current] };
+    });
+    db.settings = { ...(db.settings || {}), bookingOperationsPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.bookingOwnershipPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      if (!Array.isArray(user.permissions)) user.permissions = [];
+      if (["admin", "manager", "receptionist"].includes(user.role) && !user.permissions.includes("booking_edit")) {
+        user.permissions.push("booking_edit");
+        changed = true;
+      }
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...user.permissions] };
+    });
+    db.settings = { ...(db.settings || {}), bookingOwnershipPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.bookingCatalogPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      const current = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      if (["admin", "manager"].includes(user.role)) current.add("booking_catalog_manage");
+      user.permissions = [...current];
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...current] };
+    });
+    db.settings = { ...(db.settings || {}), bookingCatalogPermissionsMigrated: true };
     changed = true;
   }
   if (!db.settings?.domainPermissionsMigrated) {
@@ -987,6 +1095,7 @@ function cleanupTemporaryStorage() {
 function compactDbForLocalStorage(db) {
   const compact = JSON.parse(JSON.stringify(db));
   compact.auditLogs = (compact.auditLogs || []).slice(0, 80);
+  compact.bookingChangeLogs = (compact.bookingChangeLogs || []).slice(0, 120);
   compact.notifications = (compact.notifications || []).slice(0, 80);
   compact.recoveryRequests = (compact.recoveryRequests || []).slice(0, 20);
   return compact;
@@ -995,6 +1104,7 @@ function compactDbForLocalStorage(db) {
 function compactDbForRemoteSave(db) {
   const compact = compactDbForLocalStorage(db);
   compact.auditLogs = (compact.auditLogs || []).slice(0, 200);
+  compact.bookingChangeLogs = (db.bookingChangeLogs || []).slice(0, 500);
   compact.notifications = (compact.notifications || []).slice(0, 150);
   return compact;
 }
@@ -1414,6 +1524,7 @@ function viewContent() {
     bookingTimeline: bookingTimelineView,
     hotels: hotelsView,
     rooms: roomsView,
+    comboCalculator: comboCalculatorView,
     bookingReports: bookingReportsView,
     motorbikes: motorbikesView,
     bikeTypes: bikeTypesView,
@@ -2202,7 +2313,19 @@ function bookingTimelineView() {
 
 function bookingDetailPanelLegacy(selected, services) {
   if (!selected) return `<aside class="booking-detail"><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><p class="empty">Ch\u01b0a c\u00f3 \u0111\u1eb7t ph\u00f2ng.</p></aside>`;
-  return `<aside class="booking-detail"><button class="booking-close">\u00d7</button><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><div class="booking-detail-title"><span>\u25ce</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>M\u00e3 \u0111\u1eb7t ph\u00f2ng</dt><dd>#${selected.id}</dd><dt>Kh\u00e1ch s\u1ea1n</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Ph\u00f2ng</dt><dd>${selected.room}</dd><dt>Ng\u00e0y \u0111\u1ebfn</dt><dd>${formatDate(selected.start)}</dd><dt>Ng\u00e0y \u0111i</dt><dd>${formatDate(selected.end)}</dd><dt>S\u1ed1 l\u01b0\u1ee3ng kh\u00e1ch</dt><dd>${selected.guests} ng\u01b0\u1eddi</dd><dt>Ng\u01b0\u1eddi li\u00ean h\u1ec7</dt><dd>${selected.customer}</dd><dt>S\u0110T</dt><dd>${selected.phone}</dd><dt>Ghi ch\u00fa d\u1ecbch v\u1ee5</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi ch\u00fa kh\u00e1c</dt><dd>${selected.notes || "-"}</dd></dl><h4>D\u1ecaCH V\u1ee4 \u0110\u00c3 \u0110\u1eb6T</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TO\u00c1N</h4><dl class="booking-pay"><dt>T\u1ed5ng ti\u1ec1n</dt><dd>${money(selected.total)}</dd><dt>\u0110\u00e3 c\u1ecdc</dt><dd>${money(selected.paid)}</dd><dt>C\u00f2n l\u1ea1i</dt><dd>${money(selected.total - selected.paid)}</dd><dt>Tr\u1ea1ng th\u00e1i</dt><dd>${pill(selected.status)}</dd></dl>${can("booking_edit") ? `<div class="booking-actions"><button class="secondary" data-modal="booking:${selected.id}">S\u1eeda \u0111\u1eb7t ph\u00f2ng</button><button class="secondary">Thanh to\u00e1n</button><button class="ghost">Check-in</button><button class="danger" type="button" data-action="delete-booking:${selected.id}">H\u1ee7y/x\u00f3a \u0111\u1eb7t ph\u00f2ng</button></div>` : `<p class="hint">T\u00e0i kho\u1ea3n n\u00e0y ch\u1ec9 c\u00f3 quy\u1ec1n xem l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p>`}</aside>`;
+  const cancelled = selected.status === "Đã hủy";
+  const checkedIn = selected.status === "Đang ở" || selected.status === "Trả phòng";
+  const paidInFull = Number(selected.paid || 0) >= Number(selected.total || 0);
+  const canEdit = canEditAssignedBooking(selected);
+  const canPay = canOperateAssignedBooking(selected, "booking_payment");
+  const canCheckIn = canOperateAssignedBooking(selected, "booking_checkin");
+  const actions = canEdit || canPay || canCheckIn ? `<div class="booking-actions">
+    ${canEdit ? `<button class="secondary" data-modal="booking:${selected.id}">${isSuperAdmin() ? "Sửa đặt phòng" : "Đổi ngày booking"}</button>` : ""}
+    ${canPay ? `<button class="secondary" type="button" data-action="pay-booking:${selected.id}" ${paidInFull || cancelled ? "disabled" : ""}>${paidInFull ? "Đã thanh toán" : "Thanh toán"}</button>` : ""}
+    ${canCheckIn ? `<button class="ghost" type="button" data-action="checkin-booking:${selected.id}" ${checkedIn || cancelled ? "disabled" : ""}>${checkedIn ? "Đã check-in" : "Check-in"}</button>` : ""}
+    ${isSuperAdmin() ? `<button class="danger" type="button" data-action="delete-booking:${selected.id}">Hủy/xóa đặt phòng</button>` : ""}
+  </div>` : `<p class="hint">Booking do <strong>${selected.salesName || selected.createdBy || "sale khác"}</strong> phụ trách. Tài khoản này chỉ được xem.</p>`;
+  return `<aside class="booking-detail"><button class="booking-close">×</button><h3>CHI TIẾT ĐẶT PHÒNG</h3><div class="booking-detail-title"><span>◎</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>Mã đặt phòng</dt><dd>#${selected.id}</dd><dt>Khách sạn</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Phòng</dt><dd>${selected.room}</dd><dt>Ngày đến</dt><dd>${formatDate(selected.start)}</dd><dt>Ngày đi</dt><dd>${formatDate(selected.end)}</dd><dt>Số lượng khách</dt><dd>${selected.guests} người</dd><dt>Người liên hệ</dt><dd>${selected.customer}</dd><dt>SĐT</dt><dd>${selected.phone}</dd><dt>Ghi chú dịch vụ</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi chú khác</dt><dd>${selected.notes || "-"}</dd></dl><h4>DỊCH VỤ ĐÃ ĐẶT</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TOÁN</h4><dl class="booking-pay"><dt>Tổng tiền</dt><dd>${money(selected.total)}</dd><dt>Đã cọc/đã thu</dt><dd>${money(selected.paid)}</dd><dt>Còn lại</dt><dd>${money(Math.max(0, Number(selected.total || 0) - Number(selected.paid || 0)))}</dd><dt>Trạng thái</dt><dd>${pill(selected.status)}</dd></dl>${actions}</aside>`;
 }
 
 function bookingDetailPanel(selected, services) {
@@ -2250,7 +2373,7 @@ function bookingSalesColor(name) {
 }
 function bookingPill(booking, span) {
   const saleName = booking.salesName || booking.createdBy || "Chưa gán sale";
-  return `<button class="booking-pill ${booking.tone || bookingStatusTone(booking.status)}" style="--span:${span};--sale-color:${bookingSalesColor(saleName)}" ${can("booking_edit") ? `data-modal="booking:${booking.id}"` : ""}><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><span class="booking-pill-sale"><i></i>${saleName}</span><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`;
+  return `<button class="booking-pill ${booking.tone || bookingStatusTone(booking.status)}" style="--span:${span};--sale-color:${bookingSalesColor(saleName)}" ${canEditAssignedBooking(booking) ? `data-modal="booking:${booking.id}"` : ""}><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><span class="booking-pill-sale"><i></i>${saleName}</span><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`;
 }
 function bookingSalesSummaryPanel(bookings, yearMonth) {
   if (!can("finance")) return "";
@@ -2324,6 +2447,92 @@ function bookingReportData(month = todayISO().slice(0, 7), db = getDb()) {
   return { month, bookings, validBookings, totals, saleRows, hotelRows, statusRows, cancelled: bookings.length - validBookings.length };
 }
 
+function comboCalculatorData() {
+  const hotels = getDb().hotels || defaultHotelCatalog();
+  const combo = state.comboCalculator;
+  if (!combo.hotelId || !hotels.some((hotel) => hotel.id === combo.hotelId)) combo.hotelId = hotels[0]?.id || "";
+  const hotel = hotels.find((item) => item.id === combo.hotelId);
+  if (!combo.hotelSeeded && hotel) {
+    combo.weekdayPrice = Number(hotel.weekdayPrice || 0);
+    combo.saturdayPrice = Number(hotel.weekendPrice || hotel.weekdayPrice || 0);
+    combo.holidayPrice = Number(hotel.holidayPrice || hotel.weekendPrice || hotel.weekdayPrice || 0);
+    combo.hotelSeeded = true;
+  }
+  combo.people = Math.max(1, Number(combo.people || 1));
+  return { combo, hotels, hotel };
+}
+
+function comboCalculatorTotals(combo = state.comboCalculator) {
+  const people = Math.max(1, Number(combo.people || 1));
+  const roomQty = Math.max(0, Number(combo.roomQty || 0));
+  const ferryTotal = people * Math.max(0, Number(combo.ferryPrice || 0));
+  const bikeTotal = Math.max(0, Number(combo.bikeQty || 0)) * Math.max(0, Number(combo.bikePrice || 0));
+  const otherTotal = Math.max(0, Number(combo.otherQty || 0)) * Math.max(0, Number(combo.otherPrice || 0));
+  const makeColumn = (roomPrice) => {
+    const roomTotal = roomQty * Math.max(0, Number(roomPrice || 0));
+    const total = roomTotal + ferryTotal + bikeTotal + otherTotal;
+    return { roomTotal, ferryTotal, bikeTotal, otherTotal, total, perPerson: Math.round(total / people) };
+  };
+  return {
+    weekday: makeColumn(combo.weekdayPrice),
+    saturday: makeColumn(combo.saturdayPrice),
+    holiday: makeColumn(combo.holidayPrice)
+  };
+}
+
+function comboMoney(value) {
+  return `${Number(value || 0).toLocaleString("vi-VN")} đ`;
+}
+
+function comboCalculatorView() {
+  const { combo, hotels, hotel } = comboCalculatorData();
+  const totals = comboCalculatorTotals(combo);
+  const columns = [["weekday", "Ngày thường"], ["saturday", "Thứ 7"], ["holiday", "Ngày lễ"]];
+  const resultRow = (label, icon, key, strong = false) => `<tr class="${strong ? "combo-total-row" : ""}"><th><span>${icon}</span>${label}</th>${columns.map(([column]) => `<td data-combo-result="${key}-${column}">${comboMoney(totals[column][key])}</td>`).join("")}</tr>`;
+  return `<section class="combo-calculator-page">
+    <div class="combo-heading">
+      <span class="combo-heading-icon">${navIcon("comboCalculator")}</span>
+      <div><h1>Bảng tính gói dịch vụ</h1><p>Tính nhanh combo phòng, vé tàu, xe máy và dịch vụ khác theo từng loại ngày.</p></div>
+    </div>
+
+    <section class="card combo-hotel-card">
+      <label for="combo-hotel">Chọn khách sạn</label>
+      <div class="combo-hotel-select"><span>${navIcon("hotels")}</span><select id="combo-hotel" data-combo-hotel>${hotels.map((item) => `<option value="${item.id}" ${item.id === combo.hotelId ? "selected" : ""}>${item.name}</option>`).join("")}</select></div>
+      ${hotel ? `<small>Giá phòng mặc định được lấy từ cấu hình ${hotel.name}; người dùng vẫn có thể điều chỉnh trực tiếp.</small>` : ""}
+    </section>
+
+    <section class="card combo-info-card">
+      <div class="combo-section-title"><span>◇</span><div><h2>Thông tin combo</h2><p>Vé tàu tự động bằng đúng số người.</p></div></div>
+      <div class="combo-people-row"><span class="combo-item-icon">♟</span><strong>Số người</strong><div class="combo-stepper"><button type="button" data-action="combo-people-dec" aria-label="Giảm số người">−</button><output data-combo-people>${combo.people}</output><button type="button" data-action="combo-people-inc" aria-label="Tăng số người">+</button></div></div>
+      <div class="table-wrap combo-entry-table"><table><thead><tr><th>Hạng mục</th><th>Số lượng</th><th>Đơn giá</th></tr></thead><tbody>
+        <tr><th><span>▰</span>Phòng</th><td><input type="number" min="0" step="1" value="${combo.roomQty}" data-combo-field="roomQty" aria-label="Số lượng phòng"></td><td><span class="combo-rate-note">Giá theo loại ngày bên dưới</span></td></tr>
+        <tr><th><span>▰</span>Vé tàu</th><td><input type="number" value="${combo.people}" data-combo-ferry-qty readonly aria-label="Số lượng vé tàu"><small>Tự động theo số người</small></td><td><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.ferryPrice)}" data-combo-field="ferryPrice" data-combo-money aria-label="Đơn giá vé tàu"><span>đ</span></div></td></tr>
+        <tr><th><span>♞</span>Xe máy</th><td><input type="number" min="0" step="1" value="${combo.bikeQty}" data-combo-field="bikeQty" aria-label="Số lượng xe máy"></td><td><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.bikePrice)}" data-combo-field="bikePrice" data-combo-money aria-label="Đơn giá xe máy"><span>đ</span></div></td></tr>
+        <tr><th><span>✦</span>Dịch vụ khác</th><td><input type="number" min="0" step="1" value="${combo.otherQty}" data-combo-field="otherQty" aria-label="Số lượng dịch vụ khác"></td><td><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.otherPrice)}" data-combo-field="otherPrice" data-combo-money aria-label="Đơn giá dịch vụ khác"><span>đ</span></div></td></tr>
+      </tbody></table></div>
+      <div class="combo-room-prices"><div class="combo-price-title"><span>${navIcon("hotels")}</span><strong>Giá phòng theo ngày</strong></div>
+        <label><span>Ngày thường</span><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.weekdayPrice)}" data-combo-field="weekdayPrice" data-combo-money><b>đ</b></div></label>
+        <label><span>Thứ 7</span><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.saturdayPrice)}" data-combo-field="saturdayPrice" data-combo-money><b>đ</b></div></label>
+        <label class="holiday"><span>Ngày lễ</span><div class="combo-money-field"><input type="text" inputmode="numeric" value="${formatMoneyInput(combo.holidayPrice)}" data-combo-field="holidayPrice" data-combo-money><b>đ</b></div></label>
+      </div>
+    </section>
+
+    <section class="card combo-result-card">
+      <div class="combo-section-title"><span>▦</span><div><h2>Kết quả tự động</h2><p>Cập nhật ngay khi thay đổi số lượng hoặc đơn giá.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th></th>${columns.map(([, label]) => `<th>${label}</th>`).join("")}</tr></thead><tbody>
+        ${resultRow("Tổng tiền phòng", "▰", "roomTotal")}
+        ${resultRow("Tổng vé tàu", "▰", "ferryTotal")}
+        ${resultRow("Tổng xe máy", "♞", "bikeTotal")}
+        ${resultRow("Dịch vụ khác", "✦", "otherTotal")}
+        ${resultRow("Tổng combo", "▣", "total", true)}
+        ${resultRow("Giá mỗi người", "♟", "perPerson", true)}
+      </tbody></table></div>
+      <div class="combo-formula">ⓘ Giá mỗi người = (Phòng + Vé tàu + Xe máy + Dịch vụ khác) ÷ Số người</div>
+    </section>
+    <button class="primary combo-apply-button" data-action="apply-combo-price">✦ Áp dụng giá combo</button>
+  </section>`;
+}
+
 function bookingReportsView() {
   const report = bookingReportData(state.bookingReportMonth);
   const monthLabel = parseISODate(`${report.month}-01`).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
@@ -2382,7 +2591,16 @@ function bookingReportsView() {
       <section class="card"><div class="panel-title"><h3>Theo khách sạn</h3></div><div class="booking-report-list">${report.hotelRows.length ? report.hotelRows.map((row) => `<div><span><strong>${row.hotelName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><span><b>${money(row.revenue)}</b><small>Lãi ${money(row.grossProfit)}</small></span></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
       <section class="card"><div class="panel-title"><h3>Tổng quan tháng</h3></div><div class="booking-report-list"><div><span><strong>Tổng booking</strong><small>Gồm cả booking đã hủy</small></span><b>${report.bookings.length}</b></div><div><span><strong>Tổng số khách</strong><small>Bình quân ${report.validBookings.length ? (report.totals.guests / report.validBookings.length).toFixed(1) : "0"} khách/booking</small></span><b>${report.totals.guests}</b></div><div><span><strong>Tổng chi phí</strong><small>Chi phí đã nhập trong booking</small></span><b>${money(report.totals.cost)}</b></div></div></section>
     </div>
+    ${bookingChangeHistoryReport(report.month)}
   </section>`;
+}
+
+function bookingChangeHistoryReport(month) {
+  const logs = (getDb().bookingChangeLogs || [])
+    .filter((log) => !month || String(log.createdAt || "").slice(0, 7) === month)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, 100);
+  return `<section class="card booking-change-history"><div class="panel-title"><div><h3>Lịch sử chỉnh sửa booking</h3><p>Lưu vết sale/Admin đổi ngày, check-in, thanh toán và xóa booking.</p></div><span class="count">${logs.length} thao tác</span></div><div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Booking</th><th>Sale phụ trách</th><th>Thao tác</th><th>Thay đổi</th><th>Người thực hiện</th></tr></thead><tbody>${logs.length ? logs.map((log) => `<tr><td>${formatDateTime(log.createdAt)}</td><td><strong>${log.bookingCode || log.bookingId}</strong><br><span class="hint">${log.customer || "-"} · Phòng ${log.room || "-"}</span></td><td>${log.salesName || "-"}</td><td>${pill(log.action || "Cập nhật")}</td><td><span class="booking-history-change"><small>Trước: ${log.before || "-"}</small><strong>Sau: ${log.after || "-"}</strong></span></td><td>${log.user || "Hệ thống"}<br><span class="hint">${log.role || ""}</span></td></tr>`).join("") : `<tr><td colspan="6" class="empty">Chưa có lịch sử thay đổi booking trong tháng này.</td></tr>`}</tbody></table></div></section>`;
 }
 function bookingStatusTone(status) { if (status === "\u0110\u00e3 c\u1ecdc") return "blue"; if (status === "\u0110ang \u1edf") return "orange"; if (status === "Tr\u1ea3 ph\u00f2ng") return "purple"; if (status === "\u0110\u00e3 h\u1ee7y") return "red"; return "green"; }
 function bookingServiceIcon(name) { if (name.includes("xe")) return "\u2668"; if (name.includes("Tour")) return "\u25c9"; return "\u25a3"; }
@@ -2391,6 +2609,12 @@ function bookingForm(id) {
   const data = bookingSeedData();
   const db = getDb();
   const booking = (db.hotelBookings || []).find((item) => item.id === id) || {};
+  if (id && !isSuperAdmin()) {
+    return `<div class="form-grid booking-form-grid booking-date-only-form">
+      <div class="field full"><div class="booking-owner-notice"><strong>${booking.group || booking.customer || id}</strong><span>Phòng ${booking.room || "-"} · Sale phụ trách: ${booking.salesName || booking.createdBy || "-"}</span><small>Sale chỉ được đổi ngày đến và ngày đi. Các thông tin khác do Admin quản lý.</small></div></div>
+      ${field("start", "Ngày đến", bookingDateInput(booking.start) || todayISO(), true, "date")}${field("end", "Ngày đi", bookingDateInput(booking.end) || todayISO(1), true, "date")}
+    </div>`;
+  }
   const currentSalesName = booking.salesName || booking.createdBy || state.user?.name || "Chưa gán sale";
   const salesNames = [...new Set([...(db.users || []).filter((user) => user.active !== false).map((user) => user.name), currentSalesName].filter(Boolean))];
   const roomOptions = data.rooms.map((room) => {
@@ -2416,6 +2640,8 @@ function bookingHasConflict(db, data, id = "") {
 }
 function upsertBooking(db, data, id) {
   if (!Array.isArray(db.hotelBookings)) db.hotelBookings = [];
+  const existing = id ? db.hotelBookings.find((item) => item.id === id) : null;
+  if (existing && !isSuperAdmin()) data = { ...existing, start: data.start, end: data.end };
   if (!data.start || !data.end || new Date(data.end) <= new Date(data.start)) {
     showToast("Ng\u00e0y \u0111i ph\u1ea3i sau ng\u00e0y \u0111\u1ebfn.");
     throw new Error("Invalid booking dates");
@@ -2427,7 +2653,7 @@ function upsertBooking(db, data, id) {
   const seed = bookingSeedData();
   const room = seed.rooms.find((item) => item.code === data.room);
   const hotel = seed.hotels.find((item) => item.id === room?.hotelId);
-  const existing = id ? db.hotelBookings.find((item) => item.id === id) : null;
+  const before = existing ? JSON.parse(JSON.stringify(existing)) : null;
   const total = Number(data.total || 0);
   const totalCost = Number(data.totalCost || 0);
   const payload = {
@@ -2446,18 +2672,33 @@ function upsertBooking(db, data, id) {
     updatedAt: nowLocal(),
     createdAt: existing?.createdAt || nowLocal()
   };
-  if (id) Object.assign(db.hotelBookings.find((item) => item.id === id), payload);
-  else db.hotelBookings.push({ id: uid("BK"), ...payload });
+  const salesUser = (db.users || []).find((user) => normalizedIdentity(user.name) === normalizedIdentity(payload.salesName));
+  const keepsExistingSale = existing && normalizedIdentity(existing.salesName) === normalizedIdentity(payload.salesName);
+  payload.salesUserId = (keepsExistingSale ? existing.salesUserId : salesUser?.id) || (!id ? state.user?.id : "") || "";
+  payload.salesEmail = (keepsExistingSale ? existing.salesEmail : salesUser?.email) || (!id ? state.user?.email : "") || "";
+  let saved;
+  if (id) {
+    saved = db.hotelBookings.find((item) => item.id === id);
+    Object.assign(saved, payload);
+  } else {
+    saved = { id: uid("BK"), ...payload };
+    db.hotelBookings.push(saved);
+  }
+  const beforeText = before ? `Ngày ${formatDate(before.start)} - ${formatDate(before.end)}; trạng thái ${before.status}; đã thu ${money(before.paid || 0)}` : "Chưa có booking";
+  const afterText = `Ngày ${formatDate(saved.start)} - ${formatDate(saved.end)}; trạng thái ${saved.status}; đã thu ${money(saved.paid || 0)}`;
+  bookingHistoryEntry(db, saved, before ? (isSuperAdmin() ? "Admin cập nhật booking" : "Sale đổi ngày booking") : "Tạo booking", beforeText, afterText);
+  return saved;
 }
 function hotelsView() {
   const hotels = getDb().hotels || defaultHotelCatalog();
+  const canManageCatalog = can("booking_catalog_manage");
   return `<section class="booking-page hotel-management-page">
-    ${pageHeader("Kh\u00e1ch s\u1ea1n", "Qu\u1ea3n l\u00fd danh s\u00e1ch kh\u00e1ch s\u1ea1n, th\u00f4ng tin li\u00ean h\u1ec7, s\u1ed1 ph\u00f2ng v\u00e0 b\u1ea3ng gi\u00e1 c\u00f3 th\u1ec3 ch\u1ec9nh s\u1eeda.", can("booking_edit") ? `<button class="primary" data-modal="hotel">+ Th\u00eam kh\u00e1ch s\u1ea1n</button>` : "")}
+    ${pageHeader("Kh\u00e1ch s\u1ea1n", "Qu\u1ea3n l\u00fd danh s\u00e1ch kh\u00e1ch s\u1ea1n, th\u00f4ng tin li\u00ean h\u1ec7, s\u1ed1 ph\u00f2ng v\u00e0 b\u1ea3ng gi\u00e1 c\u00f3 th\u1ec3 ch\u1ec9nh s\u1eeda.", canManageCatalog ? `<button class="primary" data-modal="hotel">+ Th\u00eam kh\u00e1ch s\u1ea1n</button>` : "")}
     <div class="booking-simple-grid hotel-card-grid">
-      ${hotels.map((hotel) => `<div class="booking-simple-card hotel-card"><span>${navIcon("hotels")}</span><div><strong>${hotel.name}</strong><small>M\u00e3: ${hotel.code || "-"} \u00b7 ${Number(hotel.rooms || 0)} ph\u00f2ng</small><small>\u0110\u1ecba ch\u1ec9: ${hotel.address || "-"}</small><small>Gi\u00e1 t\u1eeb: ${money(hotel.weekdayPrice)}</small><small>Tr\u1ea1ng th\u00e1i: ${hotel.status || "\u0110ang ho\u1ea1t \u0111\u1ed9ng"}</small><button class="secondary" data-modal="hotel:${hotel.id}">S\u1eeda th\u00f4ng tin / gi\u00e1</button></div></div>`).join("")}
+      ${hotels.map((hotel) => `<div class="booking-simple-card hotel-card"><span>${navIcon("hotels")}</span><div><strong>${hotel.name}</strong><small>M\u00e3: ${hotel.code || "-"} \u00b7 ${Number(hotel.rooms || 0)} ph\u00f2ng</small><small>\u0110\u1ecba ch\u1ec9: ${hotel.address || "-"}</small><small>Gi\u00e1 t\u1eeb: ${money(hotel.weekdayPrice)}</small><small>Tr\u1ea1ng th\u00e1i: ${hotel.status || "\u0110ang ho\u1ea1t \u0111\u1ed9ng"}</small>${canManageCatalog ? `<button class="secondary" data-modal="hotel:${hotel.id}">S\u1eeda th\u00f4ng tin / gi\u00e1</button>` : ""}</div></div>`).join("")}
     </div>
     <div class="table-wrap"><table><thead><tr><th>Kh\u00e1ch s\u1ea1n</th><th>S\u1ed1 ph\u00f2ng</th><th>Ng\u00e0y th\u01b0\u1eddng</th><th>Cu\u1ed1i tu\u1ea7n</th><th>L\u1ec5/T\u1ebft</th><th>Tr\u1ea1ng th\u00e1i</th><th>Thao t\u00e1c</th></tr></thead><tbody>
-      ${hotels.map((hotel) => `<tr><td><strong>${hotel.name}</strong><br><span class="hint">${hotel.phone || ""} \u00b7 ${hotel.manager || ""}</span></td><td>${Number(hotel.rooms || 0)} ph\u00f2ng</td><td>${money(hotel.weekdayPrice)}</td><td>${money(hotel.weekendPrice)}</td><td>${money(hotel.holidayPrice)}</td><td>${pill(hotel.status || "\u0110ang ho\u1ea1t \u0111\u1ed9ng")}</td><td><button class="ghost" data-modal="hotel:${hotel.id}">S\u1eeda</button></td></tr>`).join("")}
+      ${hotels.map((hotel) => `<tr><td><strong>${hotel.name}</strong><br><span class="hint">${hotel.phone || ""} \u00b7 ${hotel.manager || ""}</span></td><td>${Number(hotel.rooms || 0)} ph\u00f2ng</td><td>${money(hotel.weekdayPrice)}</td><td>${money(hotel.weekendPrice)}</td><td>${money(hotel.holidayPrice)}</td><td>${pill(hotel.status || "\u0110ang ho\u1ea1t \u0111\u1ed9ng")}</td><td>${canManageCatalog ? `<button class="ghost" data-modal="hotel:${hotel.id}">S\u1eeda</button>` : "Ch\u1ec9 xem"}</td></tr>`).join("")}
     </tbody></table></div>
   </section>`;
 }
@@ -2502,16 +2743,17 @@ function roomsView() {
   const hotels = db.hotels || defaultHotelCatalog();
   const rooms = db.rooms || defaultRoomCatalog();
   const visibleRooms = rooms.filter((room) => !room.hidden).length;
+  const canManageCatalog = can("booking_catalog_manage");
   return `<section class="booking-page room-management-page">
-    ${pageHeader("Ph\u00f2ng", "Th\u00eam, s\u1eeda, \u1ea9n/hi\u1ec7n ho\u1eb7c x\u00f3a ph\u00f2ng theo t\u1eebng kh\u00e1ch s\u1ea1n.", can("booking_edit") ? `<button class="primary" data-modal="room">+ Th\u00eam ph\u00f2ng</button>` : "")}
+    ${pageHeader("Ph\u00f2ng", "Th\u00eam, s\u1eeda, \u1ea9n/hi\u1ec7n ho\u1eb7c x\u00f3a ph\u00f2ng theo t\u1eebng kh\u00e1ch s\u1ea1n.", canManageCatalog ? `<button class="primary" data-modal="room">+ Th\u00eam ph\u00f2ng</button>` : "")}
     <div class="booking-simple-grid hotel-card-grid">
       ${rooms.map((room) => {
         const hotel = hotels.find((item) => item.id === room.hotelId);
-        return `<div class="booking-simple-card hotel-card ${room.hidden ? "is-hidden" : ""}"><span>${navIcon("rooms")}</span><div><strong>${room.code}</strong><small>Lo\u1ea1i ph\u00f2ng: ${room.name}</small><small>Kh\u00e1ch s\u1ea1n: ${hotel?.name || "-"}</small><small>S\u1ee9c ch\u1ee9a: ${room.capacity || 2} kh\u00e1ch - ${room.hidden ? "\u0110ang \u1ea9n" : "\u0110ang hi\u1ec3n th\u1ecb"}</small><div class="room-actions"><button class="secondary" data-modal="room:${room.id}">S\u1eeda</button><button class="ghost" data-action="toggle-room:${room.id}">${room.hidden ? "Hi\u1ec7n" : "\u1ea8n"}</button><button class="danger" data-action="delete-room:${room.id}">X\u00f3a</button></div></div></div>`;
+        return `<div class="booking-simple-card hotel-card ${room.hidden ? "is-hidden" : ""}"><span>${navIcon("rooms")}</span><div><strong>${room.code}</strong><small>Lo\u1ea1i ph\u00f2ng: ${room.name}</small><small>Kh\u00e1ch s\u1ea1n: ${hotel?.name || "-"}</small><small>S\u1ee9c ch\u1ee9a: ${room.capacity || 2} kh\u00e1ch - ${room.hidden ? "\u0110ang \u1ea9n" : "\u0110ang hi\u1ec3n th\u1ecb"}</small>${canManageCatalog ? `<div class="room-actions"><button class="secondary" data-modal="room:${room.id}">S\u1eeda</button><button class="ghost" data-action="toggle-room:${room.id}">${room.hidden ? "Hi\u1ec7n" : "\u1ea8n"}</button><button class="danger" data-action="delete-room:${room.id}">X\u00f3a</button></div>` : ""}</div></div>`;
       }).join("")}
     </div>
     <div class="table-wrap"><table><thead><tr><th>Ph\u00f2ng</th><th>Lo\u1ea1i ph\u00f2ng</th><th>Kh\u00e1ch s\u1ea1n</th><th>S\u1ee9c ch\u1ee9a</th><th>Tr\u1ea1ng th\u00e1i</th><th>Gi\u00e1 ng\u00e0y th\u01b0\u1eddng</th><th>Thao t\u00e1c</th></tr></thead><tbody>
-      ${rooms.map((room) => { const hotel = hotels.find((item) => item.id === room.hotelId); return `<tr class="${room.hidden ? "muted-row" : ""}"><td><strong>${room.code}</strong></td><td>${room.name}</td><td>${hotel?.name || "-"}</td><td>${room.capacity || 2} kh\u00e1ch</td><td>${pill(room.hidden ? "\u0110ang \u1ea9n" : "\u0110ang hi\u1ec3n th\u1ecb")}</td><td>${Number(room.weekdayPrice || 0) ? money(room.weekdayPrice) : "Theo gi\u00e1 kh\u00e1ch s\u1ea1n"}</td><td><div class="room-actions"><button class="ghost" data-modal="room:${room.id}">S\u1eeda</button><button class="ghost" data-action="toggle-room:${room.id}">${room.hidden ? "Hi\u1ec7n" : "\u1ea8n"}</button><button class="danger" data-action="delete-room:${room.id}">X\u00f3a</button></div></td></tr>`; }).join("")}
+      ${rooms.map((room) => { const hotel = hotels.find((item) => item.id === room.hotelId); return `<tr class="${room.hidden ? "muted-row" : ""}"><td><strong>${room.code}</strong></td><td>${room.name}</td><td>${hotel?.name || "-"}</td><td>${room.capacity || 2} kh\u00e1ch</td><td>${pill(room.hidden ? "\u0110ang \u1ea9n" : "\u0110ang hi\u1ec3n th\u1ecb")}</td><td>${Number(room.weekdayPrice || 0) ? money(room.weekdayPrice) : "Theo gi\u00e1 kh\u00e1ch s\u1ea1n"}</td><td>${canManageCatalog ? `<div class="room-actions"><button class="ghost" data-modal="room:${room.id}">S\u1eeda</button><button class="ghost" data-action="toggle-room:${room.id}">${room.hidden ? "Hi\u1ec7n" : "\u1ea8n"}</button><button class="danger" data-action="delete-room:${room.id}">X\u00f3a</button></div>` : "Ch\u1ec9 xem"}</td></tr>`; }).join("")}
     </tbody></table></div>
     <p class="hint">\u0110ang hi\u1ec3n th\u1ecb ${visibleRooms}/${rooms.length} ph\u00f2ng. Ph\u00f2ng \u0111\u00e3 \u1ea9n s\u1ebd kh\u00f4ng xu\u1ea5t hi\u1ec7n trong form \u0111\u1eb7t ph\u00f2ng v\u00e0 timeline.</p>
   </section>`;
@@ -2551,6 +2793,7 @@ function upsertRoom(db, data, id) {
 }
 
 function toggleRoomVisibility(id) {
+  if (!can("booking_catalog_manage")) return showToast("Bạn không có quyền cập nhật phòng.");
   mutateDb((db) => {
     const room = (db.rooms || []).find((item) => item.id === id);
     if (room) {
@@ -2562,6 +2805,7 @@ function toggleRoomVisibility(id) {
 }
 
 function deleteRoom(id) {
+  if (!can("booking_catalog_manage")) return showToast("Bạn không có quyền xóa phòng.");
   const db = getDb();
   const room = (db.rooms || []).find((item) => item.id === id);
   const hasBooking = (db.hotelBookings || []).some((booking) => booking.room === room?.code && booking.status !== "\u0110\u00e3 h\u1ee7y");
@@ -3303,7 +3547,7 @@ function bookingHistoryPanel(data = bookingSeedData()) {
         <td>${formatDate(booking.start)} → ${formatDate(booking.end)}<br><span class="hint">${booking.guests || 0} khách</span></td>
         <td><strong>${money(booking.total || 0)}</strong><br><span class="hint">Đã thu ${money(booking.paid || 0)}</span></td>
         <td>${pill(booking.status)}</td>
-        <td>${can("booking_edit") ? `<button class="secondary" data-modal="booking:${booking.id}">Chi tiết</button>` : "<span class='hint'>Chỉ xem</span>"}</td>
+        <td>${canEditAssignedBooking(booking) ? `<button class="secondary" data-modal="booking:${booking.id}">${isSuperAdmin() ? "Sửa" : "Đổi ngày"}</button>` : "<span class='hint'>Chỉ xem</span>"}</td>
       </tr>`).join("") || `<tr><td colspan="9" class="empty">Chưa có lịch sử đặt phòng.</td></tr>`}</tbody>
     </table></div>
     ${panelPagination("bookingHistory", paged)}
@@ -4560,7 +4804,7 @@ function modalView() {
   }
   if (type === "return") return returnModal(db.rentals.find((r) => r.id === id));
   if (type === "swapRental") return swapRentalModal(db.rentals.find((r) => r.id === id));
-  if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
+  if (type === "booking" && ((id && !canEditAssignedBooking(db.hotelBookings.find((booking) => booking.id === id))) || (!id && !can("booking_write")))) {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
   }
 
@@ -4568,7 +4812,7 @@ function modalView() {
   return `<div class="modal-backdrop"><form class="modal" id="modal-form" data-form="${type}" data-id="${id || ""}" data-extra="${extra || ""}">
     <header><h3>${id ? "Cập nhật" : "Thêm"} ${titleMap[type] || ""}</h3>${close}</header>
     <div class="modal-body">${modalFields(type, id, extra)}</div>
-    <footer>${type === "booking" && id && can("booking_edit") ? `<button class="danger" type="button" data-action="delete-booking:${id}">X\u00f3a \u0111\u1eb7t ph\u00f2ng</button>` : ""}<button class="ghost" type="button" data-action="close-modal">H\u1ee7y</button><button class="primary" type="submit">L\u01b0u</button></footer>
+    <footer>${type === "booking" && id && isSuperAdmin() ? `<button class="danger" type="button" data-action="delete-booking:${id}">X\u00f3a \u0111\u1eb7t ph\u00f2ng</button>` : ""}<button class="ghost" type="button" data-action="close-modal">H\u1ee7y</button><button class="primary" type="submit">L\u01b0u</button></footer>
   </form></div>`;
 }
 
@@ -4577,7 +4821,7 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (type === "oilChange") return "bike_maintenance";
   if (type === "rental") return "rentals";
   if (type === "swapRental") return can("rentals") ? "rentals" : "rental_return";
-  if (["hotel", "room"].includes(type)) return "booking_edit";
+  if (["hotel", "room"].includes(type)) return "booking_catalog_manage";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
   if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
@@ -4596,6 +4840,7 @@ function modalPermission(type, id, extra, db = getDb()) {
 
 function canUseModal(type, id, extra, db = getDb()) {
   if (type === "ticket") return canReportAssetDamage(id);
+  if (type === "booking" && id) return canEditAssignedBooking((db.hotelBookings || []).find((booking) => booking.id === id));
   const requiredPermission = modalPermission(type, id, extra, db);
   return !requiredPermission || can(requiredPermission);
 }
@@ -5407,6 +5652,64 @@ function selectField(name, label, options, value = "", required = false) {
   }).join("")}</select></div>`;
 }
 
+function refreshComboCalculator() {
+  const combo = state.comboCalculator;
+  combo.people = Math.max(1, Number(combo.people || 1));
+  document.querySelectorAll("[data-combo-people]").forEach((output) => { output.textContent = combo.people; });
+  document.querySelectorAll("[data-combo-ferry-qty]").forEach((input) => { input.value = combo.people; });
+  const totals = comboCalculatorTotals(combo);
+  document.querySelectorAll("[data-combo-result]").forEach((cell) => {
+    const parts = cell.dataset.comboResult.split("-");
+    const column = parts.pop();
+    const key = parts.join("-");
+    cell.textContent = comboMoney(totals[column]?.[key]);
+  });
+}
+
+function bindComboCalculator() {
+  document.querySelector("[data-combo-hotel]")?.addEventListener("change", (event) => {
+    const hotel = (getDb().hotels || defaultHotelCatalog()).find((item) => item.id === event.target.value);
+    state.comboCalculator.hotelId = event.target.value;
+    if (hotel) {
+      state.comboCalculator.weekdayPrice = Number(hotel.weekdayPrice || 0);
+      state.comboCalculator.saturdayPrice = Number(hotel.weekendPrice || hotel.weekdayPrice || 0);
+      state.comboCalculator.holidayPrice = Number(hotel.holidayPrice || hotel.weekendPrice || hotel.weekdayPrice || 0);
+      state.comboCalculator.hotelSeeded = true;
+    }
+    render();
+  });
+  document.querySelectorAll("[data-combo-field]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const raw = input.hasAttribute("data-combo-money") ? input.value.replace(/\D/g, "") : input.value;
+      state.comboCalculator[input.dataset.comboField] = Math.max(0, Number(raw || 0));
+      refreshComboCalculator();
+    });
+    if (input.hasAttribute("data-combo-money")) {
+      input.addEventListener("blur", () => { input.value = formatMoneyInput(input.value); });
+    }
+  });
+  refreshComboCalculator();
+}
+
+async function copyComboSummary() {
+  const { combo, hotel } = comboCalculatorData();
+  const totals = comboCalculatorTotals(combo);
+  const line = (label, column) => `${label}: ${comboMoney(totals[column].total)} (${comboMoney(totals[column].perPerson)}/người)`;
+  const summary = [
+    `BẢNG GIÁ COMBO - ${hotel?.name || "Khách sạn"}`,
+    `Số người: ${combo.people} | Vé tàu: ${combo.people} vé | Phòng: ${combo.roomQty} | Xe máy: ${combo.bikeQty}`,
+    line("Ngày thường", "weekday"),
+    line("Thứ 7", "saturday"),
+    line("Ngày lễ", "holiday")
+  ].join("\n");
+  try {
+    await navigator.clipboard.writeText(summary);
+    showToast("Đã sao chép bảng giá combo.");
+  } catch (error) {
+    showToast("Đã tính xong giá combo. Trình duyệt không cho phép sao chép tự động.");
+  }
+}
+
 function bindApp() {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
     state.view = button.dataset.view;
@@ -5569,6 +5872,7 @@ function bindApp() {
   document.querySelector("input[name='employeePhoto']")?.addEventListener("change", previewEmployeePhoto);
   document.querySelector("input[name='applicantPhoto']")?.addEventListener("change", previewApplicantPhoto);
   document.querySelector("[data-import-json]")?.addEventListener("change", importJsonToMysql);
+  bindComboCalculator();
   bindLocalizedInputs();
 }
 
@@ -5590,6 +5894,15 @@ function handleRecipeImagePreviewClick(event) {
 
 function handleAction(event) {
   const action = event.currentTarget.dataset.action;
+  if (action === "combo-people-dec") {
+    state.comboCalculator.people = Math.max(1, Number(state.comboCalculator.people || 1) - 1);
+    refreshComboCalculator();
+  }
+  if (action === "combo-people-inc") {
+    state.comboCalculator.people = Math.max(1, Number(state.comboCalculator.people || 1) + 1);
+    refreshComboCalculator();
+  }
+  if (action === "apply-combo-price") copyComboSummary();
   if (action === "toggle-nav") {
     state.mobileNav = !state.mobileNav;
     render();
@@ -5655,6 +5968,8 @@ function handleAction(event) {
   if (action?.startsWith("mark-equipment-maintained:")) markEquipmentMaintained(action.split(":")[1]);
   if (action?.startsWith("handover:")) handoverRental(action.split(":")[1]);
   if (action?.startsWith("cancel-rental:")) cancelRental(action.split(":")[1]);
+  if (action?.startsWith("checkin-booking:")) checkInBooking(action.split(":")[1]);
+  if (action?.startsWith("pay-booking:")) payBooking(action.split(":")[1]);
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
@@ -5781,7 +6096,7 @@ function deleteKitchenItem(type, id) {
 
 
 function deleteBooking(id) {
-  if (!can("booking_edit")) {
+  if (!isSuperAdmin()) {
     showToast("T\u00e0i kho\u1ea3n n\u00e0y kh\u00f4ng c\u00f3 quy\u1ec1n x\u00f3a/s\u1eeda \u0111\u1eb7t ph\u00f2ng.");
     return;
   }
@@ -5793,6 +6108,7 @@ function deleteBooking(id) {
   const useRemoteDelete = apiState.enabled && Boolean(state.user);
   mutateDb((db) => {
     const booking = (db.hotelBookings || []).find((item) => item.id === id);
+    bookingHistoryEntry(db, booking || selected, "Admin xóa booking", `Phòng ${booking?.room || selected.room}; ${formatDate(booking?.start || selected.start)} - ${formatDate(booking?.end || selected.end)}`, "Đã xóa");
     db.hotelBookings = (db.hotelBookings || []).filter((item) => item.id !== id);
     db.settings = db.settings || {};
     db.settings.deletedSeedBookings = Array.isArray(db.settings.deletedSeedBookings) ? db.settings.deletedSeedBookings : [];
@@ -5804,6 +6120,79 @@ function deleteBooking(id) {
   }, "X\u00f3a \u0111\u1eb7t ph\u00f2ng", { skipRemote: useRemoteDelete });
   if (useRemoteDelete) syncDeletedBooking(id);
   else showToast("\u0110\u00e3 x\u00f3a \u0111\u1eb7t ph\u00f2ng.");
+}
+
+function editableHotelBooking(id) {
+  return (getDb().hotelBookings || []).find((booking) => booking.id === id);
+}
+
+function checkInBooking(id) {
+  const booking = editableHotelBooking(id);
+  if (!canOperateAssignedBooking(booking, "booking_checkin")) {
+    showToast("Tài khoản này chưa được cấp quyền check-in khách.");
+    return;
+  }
+  if (!booking) {
+    showToast("Không tìm thấy booking thực để check-in.");
+    return;
+  }
+  if (booking.status === "Đã hủy") {
+    showToast("Booking đã hủy nên không thể check-in.");
+    return;
+  }
+  if (["Đang ở", "Trả phòng"].includes(booking.status)) {
+    showToast("Booking này đã được check-in.");
+    return;
+  }
+  mutateDb((db) => {
+    const row = db.hotelBookings.find((item) => item.id === id);
+    const before = row.status;
+    row.status = "Đang ở";
+    row.tone = bookingStatusTone(row.status);
+    row.checkInAt = nowLocal();
+    row.checkInBy = state.user?.name || "";
+    row.updatedAt = nowLocal();
+    row.updatedBy = state.user?.name || "";
+    bookingHistoryEntry(db, row, "Check-in booking", before, `Đang ở · ${row.checkInBy}`);
+    return { record: `${row.id} · Phòng ${row.room}`, before, after: `Đang ở · ${row.checkInBy}` };
+  }, "Check-in đặt phòng");
+  showToast(`Đã check-in phòng ${booking.room} cho ${booking.customer || booking.group}.`);
+}
+
+function payBooking(id) {
+  const booking = editableHotelBooking(id);
+  if (!canOperateAssignedBooking(booking, "booking_payment")) {
+    showToast("Tài khoản này chưa được cấp quyền thanh toán đặt phòng.");
+    return;
+  }
+  if (!booking) {
+    showToast("Không tìm thấy booking thực để thanh toán.");
+    return;
+  }
+  if (booking.status === "Đã hủy") {
+    showToast("Booking đã hủy nên không thể thanh toán.");
+    return;
+  }
+  const total = Number(booking.total || 0);
+  const paid = Number(booking.paid || 0);
+  if (paid >= total) {
+    showToast("Booking này đã thanh toán đủ.");
+    return;
+  }
+  const remaining = Math.max(0, total - paid);
+  if (!confirm(`Xác nhận thu thêm ${money(remaining)} và hoàn tất thanh toán booking phòng ${booking.room}?`)) return;
+  mutateDb((db) => {
+    const row = db.hotelBookings.find((item) => item.id === id);
+    const before = `Đã thu ${money(row.paid || 0)}`;
+    row.paid = Number(row.total || 0);
+    row.paidAt = nowLocal();
+    row.paidBy = state.user?.name || "";
+    row.updatedAt = nowLocal();
+    row.updatedBy = state.user?.name || "";
+    bookingHistoryEntry(db, row, "Thanh toán booking", before, `Đã thanh toán đủ ${money(row.paid)} · ${row.paidBy}`);
+    return { record: `${row.id} · Phòng ${row.room}`, before, after: `Đã thanh toán đủ · ${row.paidBy}` };
+  }, "Thanh toán đặt phòng");
+  showToast(`Đã ghi nhận thanh toán đủ ${money(total)} cho phòng ${booking.room}.`);
 }
 
 function deleteBike(id) {
@@ -5852,7 +6241,7 @@ async function saveModal(event) {
     showToast("Tài khoản này không có quyền lưu thay đổi trong nhóm nghiệp vụ này.");
     return;
   }
-  if (type === "booking" && ((id && !can("booking_edit")) || (!id && !can("booking_write")))) {
+  if (type === "booking" && ((id && !canEditAssignedBooking((getDb().hotelBookings || []).find((booking) => booking.id === id))) || (!id && !can("booking_write")))) {
     showToast("T\u00e0i kho\u1ea3n n\u00e0y kh\u00f4ng c\u00f3 quy\u1ec1n ghi/s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.");
     return;
   }
