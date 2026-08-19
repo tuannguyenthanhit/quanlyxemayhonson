@@ -74,6 +74,7 @@ const menu = [
   ["hotels", "Kh\u00e1ch s\u1ea1n", "booking_view"],
   ["rooms", "Ph\u00f2ng", "booking_view"],
   ["comboCalculator", "Bảng tính gói dịch vụ", "booking_view"],
+  ["marketingData", "Dữ liệu Marketing", "booking_view"],
   ["bookingReports", "Báo cáo đặt phòng", "reports"],
   ["motorbikes", "Xe m\u00e1y", "bike_view"],
   ["bikeTypes", "Lo\u1ea1i xe", "bike_view"],
@@ -101,7 +102,7 @@ const menu = [
 
 const menuTree = [
   { key: "dashboard" },
-  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }, { key: "comboCalculator" }, { key: "bookingReports" }] },
+  { key: "bookingTimeline", children: [{ key: "hotels" }, { key: "rooms" }, { key: "comboCalculator" }, { key: "marketingData" }, { key: "bookingReports" }] },
   { key: "motorbikes", children: [{ key: "bikeTypes" }, { key: "rentals" }, { key: "calendar" }, { key: "bikeMaintenance" }] },
   { key: "equipment", children: [{ key: "equipmentTypes" }, { key: "equipmentMaintenance" }] },
   { key: "kitchen", children: [{ key: "dishes" }, { key: "kitchenRecipes" }, { key: "sauces" }, { key: "menuPrices" }] },
@@ -122,6 +123,7 @@ const menuMeta = {
   hotels: { icon: "\u25a5", color: "blue", desc: "Danh s\u00e1ch kh\u00e1ch s\u1ea1n v\u00e0 s\u1ed1 ph\u00f2ng" },
   rooms: { icon: "\u25a4", color: "mint", desc: "Qu\u1ea3n l\u00fd ph\u00f2ng, lo\u1ea1i ph\u00f2ng v\u00e0 s\u1ee9c ch\u1ee9a" },
   comboCalculator: { icon: "#", color: "teal", desc: "Tính nhanh giá phòng, vé tàu, xe máy và dịch vụ khác" },
+  marketingData: { icon: "▣", color: "purple", desc: "Video, hình ảnh và thư mục Google Drive dùng cho Marketing" },
   bookingReports: { icon: "\u25a5", color: "gold", desc: "Doanh số, lãi gộp, booking và hiệu quả từng sale" },
   motorbikes: { icon: "\u2668", color: "mint", desc: "Danh s\u00e1ch v\u00e0 qu\u1ea3n l\u00fd xe m\u00e1y" },
   bikeTypes: { icon: "\u2261", color: "mint", desc: "C\u1ea5u h\u00ecnh lo\u1ea1i xe v\u00e0 l\u1ecbch b\u1ea3o tr\u00ec" },
@@ -153,6 +155,7 @@ const navSvgIcons = {
   hotels: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V6l7-3 7 3v14" /><path d="M9 20v-5h6v5" /><path d="M9 8h.01" /><path d="M12 8h.01" /><path d="M15 8h.01" /><path d="M9 12h.01" /><path d="M12 12h.01" /><path d="M15 12h.01" /></svg>`,
   rooms: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12" /><path d="M4 14h16" /><path d="M7 14v-3h5v3" /><path d="M14 14v-3h3" /></svg>`,
   comboCalculator: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8" /><path d="M8 11h2" /><path d="M14 11h2" /><path d="M8 15h2" /><path d="M14 15h2" /><path d="M8 18h8" /></svg>`,
+  marketingData: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m7 15 3-3 2 2 3-4 3 5" /><circle cx="8" cy="9" r="1" /><path d="M9 3h6" /></svg>`,
   bookingReports: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 16v-4" /><path d="M12 16V8" /><path d="M16 16v-6" /><path d="M7 19h10" /></svg>`,
   motorbikes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16a3 3 0 1 0 0 .1" /><path d="M19 16a3 3 0 1 0 0 .1" /><path d="M7 16h4l3-5h2l3 5" /><path d="M10 9h3" /><path d="M14 7h3" /><path d="M16 7l2-2" /></svg>`,
   bikeTypes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h14l-1.7-5.2A3 3 0 0 0 14.5 9h-5A3 3 0 0 0 6.7 10.8L5 16Z" /><path d="M7 16v2" /><path d="M17 16v2" /><path d="M7.5 13h9" /></svg>`,
@@ -236,6 +239,7 @@ const state = {
     holidayPrice: 0,
     hotelSeeded: false
   },
+  marketingFilter: "all",
   reportMonth: todayISO().slice(0, 7),
   auditFilters: {
     query: "",
@@ -508,6 +512,7 @@ function emptyDb() {
     auditLogs: [],
     bookingChangeLogs: [],
     hotelBookings: [],
+    marketingAssets: [],
     settings: { currency: "VNĐ", timezone: "Asia/Ho_Chi_Minh", dateFormat: "DD/MM/YYYY", seeded: false, deletedSeedBookings: [], bookingPermissionsMigrated: true, kitchenPermissionsMigrated: true }
   };
 }
@@ -801,6 +806,10 @@ function migrateDb(db) {
   });
   if (!Array.isArray(db.hotelBookings)) {
     db.hotelBookings = [];
+    changed = true;
+  }
+  if (!Array.isArray(db.marketingAssets)) {
+    db.marketingAssets = [];
     changed = true;
   }
   if (!Array.isArray(db.bookingChangeLogs)) {
@@ -1525,6 +1534,7 @@ function viewContent() {
     hotels: hotelsView,
     rooms: roomsView,
     comboCalculator: comboCalculatorView,
+    marketingData: marketingDataView,
     bookingReports: bookingReportsView,
     motorbikes: motorbikesView,
     bikeTypes: bikeTypesView,
@@ -2482,6 +2492,113 @@ function comboCalculatorTotals(combo = state.comboCalculator) {
 
 function comboMoney(value) {
   return `${Number(value || 0).toLocaleString("vi-VN")} đ`;
+}
+
+const MARKETING_ASSET_TYPES = ["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"];
+
+function normalizeMarketingUrl(value = "") {
+  const raw = String(value || "").trim();
+  const iframeSource = raw.match(/<iframe[^>]+src=["']([^"']+)["']/i)?.[1];
+  const source = (iframeSource || raw).replaceAll("&amp;", "&").trim();
+  if (!source) return "";
+  try {
+    const parsed = new URL(source);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function driveLinkInfo(value = "") {
+  const source = normalizeMarketingUrl(value);
+  if (!source) return { source: "", preview: "", download: "", isFolder: false, provider: "Liên kết" };
+  const folderId = source.match(/drive\.google\.com\/drive\/folders\/([^/?#]+)/i)?.[1];
+  const fileId = source.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([^/?#]+)/i)?.[1]
+    || new URL(source).searchParams.get("id");
+  if (folderId) {
+    return {
+      source,
+      preview: `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}#grid`,
+      download: "",
+      isFolder: true,
+      provider: "Google Drive"
+    };
+  }
+  if (fileId && /(?:drive|docs)\.google\.com/i.test(source)) {
+    const isDocument = /docs\.google\.com\/document/i.test(source);
+    const isSheet = /docs\.google\.com\/spreadsheets/i.test(source);
+    const isPresentation = /docs\.google\.com\/presentation/i.test(source);
+    const preview = isDocument
+      ? `https://docs.google.com/document/d/${encodeURIComponent(fileId)}/preview`
+      : isSheet
+        ? `https://docs.google.com/spreadsheets/d/${encodeURIComponent(fileId)}/preview`
+        : isPresentation
+          ? `https://docs.google.com/presentation/d/${encodeURIComponent(fileId)}/preview`
+          : `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+    return {
+      source,
+      preview,
+      download: `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
+      isFolder: false,
+      provider: "Google Drive"
+    };
+  }
+  return { source, preview: source, download: source, isFolder: false, provider: new URL(source).hostname };
+}
+
+function marketingDataView() {
+  const db = getDb();
+  const rows = [...(db.marketingAssets || [])]
+    .filter((item) => state.marketingFilter === "all" || item.type === state.marketingFilter)
+    .filter((item) => {
+      const query = state.query.trim().toLocaleLowerCase("vi");
+      return !query || [item.title, item.type, item.category, item.description, item.url]
+        .some((value) => String(value || "").toLocaleLowerCase("vi").includes(query));
+    })
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  const counts = Object.fromEntries(MARKETING_ASSET_TYPES.map((type) => [type, (db.marketingAssets || []).filter((item) => item.type === type).length]));
+  const action = can("booking_write") ? `<button class="primary" data-modal="marketingAsset">+ Thêm dữ liệu</button>` : "";
+  return `<section class="marketing-data-page">
+    ${pageHeader("Dữ liệu Marketing", "Quản lý video, hình ảnh, tài liệu và thư mục chia sẻ trên Google Drive.", action)}
+    <div class="marketing-kpis">
+      <article><span class="marketing-kpi-icon is-all">▣</span><small>Tổng dữ liệu</small><strong>${(db.marketingAssets || []).length}</strong></article>
+      <article><span class="marketing-kpi-icon is-video">▶</span><small>Video</small><strong>${counts.Video || 0}</strong></article>
+      <article><span class="marketing-kpi-icon is-image">▧</span><small>Hình ảnh</small><strong>${counts["Hình ảnh"] || 0}</strong></article>
+      <article><span class="marketing-kpi-icon is-folder">▰</span><small>Thư mục ảnh</small><strong>${counts["Thư mục hình ảnh"] || 0}</strong></article>
+    </div>
+    <div class="card marketing-toolbar">
+      <input type="search" placeholder="Tìm tên, nhóm chiến dịch, mô tả..." value="${escapeHtmlAttribute(state.query)}" data-filter="query">
+      <select data-marketing-filter aria-label="Lọc loại dữ liệu"><option value="all">Tất cả loại dữ liệu</option>${MARKETING_ASSET_TYPES.map((type) => `<option value="${type}" ${state.marketingFilter === type ? "selected" : ""}>${type}</option>`).join("")}</select>
+      <p>Liên kết Drive cần bật quyền <strong>Bất kỳ ai có đường liên kết đều có thể xem</strong>.</p>
+    </div>
+    <div class="marketing-list">${rows.map(marketingAssetRow).join("") || `<div class="empty card">Chưa có dữ liệu Marketing phù hợp.</div>`}</div>
+  </section>`;
+}
+
+function marketingAssetRow(item) {
+  const link = driveLinkInfo(item.url);
+  const typeClass = item.type === "Video" ? "video" : item.type === "Hình ảnh" ? "image" : item.type === "Thư mục hình ảnh" ? "folder" : "document";
+  const icon = item.type === "Video" ? "▶" : item.type === "Hình ảnh" ? "▧" : item.type === "Thư mục hình ảnh" ? "▰" : "▤";
+  return `<article class="marketing-row">
+    <div class="marketing-type-icon is-${typeClass}">${icon}</div>
+    <div class="marketing-row-main"><div><span class="marketing-type-pill is-${typeClass}">${escapeHtmlAttribute(item.type || "Tài liệu khác")}</span>${item.category ? `<span class="marketing-category">${escapeHtmlAttribute(item.category)}</span>` : ""}</div><h3>${escapeHtmlAttribute(item.title || "Dữ liệu Marketing")}</h3><p>${escapeHtmlAttribute(item.description || "Chưa có mô tả.")}</p><small>${link.provider} · Cập nhật ${formatDateTime(item.updatedAt || item.createdAt)}</small></div>
+    <div class="marketing-row-actions">
+      <button class="primary" data-modal="marketingPreview:${item.id}">Xem trực tiếp</button>
+      <a class="secondary" href="${escapeHtmlAttribute(link.source)}" target="_blank" rel="noopener noreferrer">${link.isFolder ? "Mở thư mục" : "Mở Drive"}</a>
+      ${link.download && !link.isFolder ? `<a class="secondary" href="${escapeHtmlAttribute(link.download)}" target="_blank" rel="noopener noreferrer">Tải xuống</a>` : ""}
+      ${can("booking_write") ? `<button class="secondary" data-modal="marketingAsset:${item.id}">Sửa</button><button class="danger" data-action="delete-marketing:${item.id}">Xóa</button>` : ""}
+    </div>
+  </article>`;
+}
+
+function marketingPreviewModal(item) {
+  if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy dữ liệu</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
+  const link = driveLinkInfo(item.url);
+  return `<div class="modal-backdrop"><div class="modal marketing-preview-modal">
+    <header><div><h3>${escapeHtmlAttribute(item.title || "Dữ liệu Marketing")}</h3><small>${escapeHtmlAttribute(item.type || "")}${item.category ? ` · ${escapeHtmlAttribute(item.category)}` : ""}</small></div><button class="ghost" data-action="close-modal">Đóng</button></header>
+    <div class="modal-body"><div class="marketing-preview-frame">${link.preview ? `<iframe src="${escapeHtmlAttribute(link.preview)}" title="${escapeHtmlAttribute(item.title || "Xem dữ liệu Marketing")}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen></iframe>` : `<p class="empty">Liên kết không hợp lệ.</p>`}</div><p class="marketing-preview-note">Nếu nội dung không hiển thị, hãy kiểm tra quyền chia sẻ Google Drive hoặc mở liên kết gốc.</p></div>
+    <footer><a class="secondary" href="${escapeHtmlAttribute(link.source)}" target="_blank" rel="noopener noreferrer">Mở liên kết gốc</a>${link.download && !link.isFolder ? `<a class="primary" href="${escapeHtmlAttribute(link.download)}" target="_blank" rel="noopener noreferrer">Tải xuống</a>` : ""}</footer>
+  </div></div>`;
 }
 
 function comboCalculatorView() {
@@ -3878,7 +3995,7 @@ function compactRecipeRow(item, db) {
   const image = (item.images || []).find(Boolean);
   return `<article class="recipe-compact-row">
     <div class="recipe-compact-image">${image ? `<img src="${image}" alt="${item.name || dish?.name || "Món ăn"}" onerror="this.closest('.recipe-compact-image')?.classList.add('image-load-error')">` : `<span>Chưa có ảnh</span>`}</div>
-    <div class="recipe-compact-main"><h4>${item.name || dish?.name || "Công thức"}</h4><p>${dish ? `${dish.code} · ${dish.name}` : recipeCategory(item, db)}</p></div>
+    <div class="recipe-compact-main"><h4>${item.name || dish?.name || "Công thức"}</h4><p>${dish ? `${dish.code} · ${dish.name}` : recipeCategory(item, db)}</p>${normalizeVideoReference(item.videoUrl) ? `<small class="recipe-video-badge">Có video tham khảo</small>` : ""}</div>
     <div class="recipe-compact-meta"><span><small>Khẩu phần</small><b>${item.yield || "-"}</b></span><span><small>Thời gian</small><b>${item.cookTime || "-"}</b></span></div>
     <div class="recipe-compact-actions"><button class="primary" data-modal="kitchenRecipeDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="kitchenRecipe:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:kitchenRecipe:${item.id}">Xóa</button>` : ""}</div>
   </article>`;
@@ -3899,6 +4016,71 @@ function renderRecipeGallery(item) {
   </div>`;
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function normalizeVideoReference(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const iframeSource = raw.match(/<iframe[^>]+src=["']([^"']+)["']/i)?.[1];
+  const candidate = String(iframeSource || raw).trim();
+  try {
+    const url = new URL(candidate);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function recipeVideoEmbedUrl(value) {
+  const normalized = normalizeVideoReference(value);
+  if (!normalized) return "";
+  const url = new URL(normalized);
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (host === "youtu.be") {
+    const id = url.pathname.split("/").filter(Boolean)[0];
+    return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : "";
+  }
+  if (["youtube.com", "m.youtube.com", "youtube-nocookie.com"].includes(host)) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const id = url.searchParams.get("v") || (["embed", "shorts", "live"].includes(parts[0]) ? parts[1] : "");
+    return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : "";
+  }
+  if (host === "drive.google.com") {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const fileIndex = parts.indexOf("d");
+    const id = fileIndex >= 0 ? parts[fileIndex + 1] : url.searchParams.get("id");
+    return id ? `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview` : "";
+  }
+  if (["vimeo.com", "player.vimeo.com"].includes(host)) {
+    const id = url.pathname.split("/").filter(Boolean).find((part) => /^\d+$/.test(part));
+    return id ? `https://player.vimeo.com/video/${id}` : "";
+  }
+  return "";
+}
+
+function renderRecipeVideo(item) {
+  const source = normalizeVideoReference(item.videoUrl);
+  if (!source) return "";
+  const title = escapeHtmlAttribute(item.name || "Video hướng dẫn công thức");
+  const embedUrl = recipeVideoEmbedUrl(source);
+  const isDirectVideo = /\.(mp4|webm|ogg)(?:$|[?#])/i.test(source);
+  const player = embedUrl
+    ? `<iframe src="${escapeHtmlAttribute(embedUrl)}" title="${title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`
+    : isDirectVideo
+      ? `<video src="${escapeHtmlAttribute(source)}" controls preload="metadata" playsinline></video>`
+      : `<div class="recipe-video-link"><span>Nguồn này không hỗ trợ phát trực tiếp trong website.</span></div>`;
+  return `<section class="recipe-section recipe-video-section">
+    <div class="recipe-video-heading"><div><h4>Video tham khảo</h4><small>YouTube, Google Drive, Vimeo hoặc video trực tiếp</small></div><a class="secondary" href="${escapeHtmlAttribute(source)}" target="_blank" rel="noopener noreferrer">Mở liên kết gốc</a></div>
+    <div class="recipe-video-player">${player}</div>
+  </section>`;
+}
+
 function kitchenRecipeDetailModal(item, db = getDb()) {
   if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy công thức</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
   const dish = db.dishes.find((dishItem) => dishItem.id === item.dishId);
@@ -3913,19 +4095,20 @@ function kitchenRecipeDetailModal(item, db = getDb()) {
       ${item.qualityStandard ? `<div class="recipe-callout success"><strong>Tiêu chuẩn thành phẩm</strong><span>${item.qualityStandard}</span></div>` : ""}
       ${item.presentation ? `<div class="recipe-callout"><strong>Trình bày / phục vụ</strong><span>${item.presentation}</span></div>` : ""}
       ${item.tips || item.note ? `<div class="recipe-callout warning"><strong>Lưu ý cho bếp</strong><span>${item.tips || item.note}</span></div>` : ""}
+      ${renderRecipeVideo(item)}
     </div>
     <footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="kitchenRecipe:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer>
   </div></div>`;
 }
 
 function saucesView() {
-  const rows = filterRows(getDb().sauces, ["name", "appliesTo", "ingredients", "steps", "storage", "note"]);
+  const rows = filterRows(getDb().sauces, ["name", "appliesTo", "ingredients", "steps", "storage", "note", "videoUrl"]);
   return `<section class="kitchen-page">
     ${pageHeader("Công thức nước chấm", "Danh sách pha chế gọn để bếp tìm nhanh; mở chi tiết khi cần xem định lượng và từng bước.", can("kitchen_manage") ? `<button class="primary" data-modal="sauce">+ Thêm nước chấm</button>` : "")}
     ${filters([])}
     <div class="recipe-group"><header><div><h3>Danh sách nước chấm</h3><small>${rows.length} công thức</small></div></header><div class="recipe-compact-list">${rows.map((item) => {
       const image = (item.images || []).find(Boolean);
-      return `<article class="recipe-compact-row sauce-compact-row"><div class="recipe-compact-image ${image ? "" : "sauce-compact-icon"}">${image ? `<img src="${image}" alt="${item.name}" onerror="this.closest('.recipe-compact-image')?.classList.add('image-load-error')">` : "◉"}</div><div class="recipe-compact-main"><h4>${item.name}</h4><p>Dùng kèm: ${item.appliesTo || "Chưa ghi"}</p><p class="sauce-ingredient-preview"><strong>Nguyên liệu:</strong> ${recipeTextPreview(item.ingredients)}</p></div><div class="recipe-compact-meta"><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><div class="recipe-compact-actions"><button class="primary" data-modal="sauceDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:sauce:${item.id}">Xóa</button>` : ""}</div></article>`;
+      return `<article class="recipe-compact-row sauce-compact-row"><div class="recipe-compact-image ${image ? "" : "sauce-compact-icon"}">${image ? `<img src="${image}" alt="${item.name}" onerror="this.closest('.recipe-compact-image')?.classList.add('image-load-error')">` : "◉"}</div><div class="recipe-compact-main"><h4>${item.name}</h4><p>Dùng kèm: ${item.appliesTo || "Chưa ghi"}</p><p class="sauce-ingredient-preview"><strong>Nguyên liệu:</strong> ${recipeTextPreview(item.ingredients)}</p>${normalizeVideoReference(item.videoUrl) ? `<small class="recipe-video-badge">Có video tham khảo</small>` : ""}</div><div class="recipe-compact-meta"><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><div class="recipe-compact-actions"><button class="primary" data-modal="sauceDetail:${item.id}">Xem công thức</button>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa</button><button class="danger" data-action="delete-kitchen:sauce:${item.id}">Xóa</button>` : ""}</div></article>`;
     }).join("") || `<div class="empty">Chưa có công thức nước chấm.</div>`}</div></div>
   </section>`;
 }
@@ -3939,7 +4122,7 @@ function recipeTextPreview(value, limit = 2) {
 
 function sauceDetailModal(item) {
   if (!item) return `<div class="modal-backdrop"><div class="modal"><header><h3>Không tìm thấy công thức</h3><button class="ghost" data-action="close-modal">Đóng</button></header></div></div>`;
-  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal"><header><div><small>Công thức nước chấm</small><h3>${item.name}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body recipe-detail-body">${(item.images || []).length ? renderRecipeGallery(item) : ""}<div class="recipe-detail-summary"><span><small>Món dùng kèm</small><b>${item.appliesTo || "Chưa ghi"}</b></span><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section><section class="recipe-section"><h4>Cách pha</h4>${formatRecipeSteps(item.steps)}</section><div class="recipe-callout"><strong>Bảo quản</strong><span>${item.storage || "Chưa ghi"}</span></div>${item.note ? `<div class="recipe-callout warning"><strong>Lưu ý</strong><span>${item.note}</span></div>` : ""}</div><footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer></div></div>`;
+  return `<div class="modal-backdrop"><div class="modal recipe-detail-modal"><header><div><small>Công thức nước chấm</small><h3>${item.name}</h3></div><button class="ghost" data-action="close-modal">Đóng</button></header><div class="modal-body recipe-detail-body">${(item.images || []).length ? renderRecipeGallery(item) : ""}<div class="recipe-detail-summary"><span><small>Món dùng kèm</small><b>${item.appliesTo || "Chưa ghi"}</b></span><span><small>Định lượng</small><b>${item.yield || "-"}</b></span><span><small>Dùng trong</small><b>${item.shelfLife || "-"}</b></span></div><section class="recipe-section"><h4>Nguyên liệu định lượng</h4><div class="recipe-lines">${formatRecipeText(item.ingredients)}</div></section><section class="recipe-section"><h4>Cách pha</h4>${formatRecipeSteps(item.steps)}</section><div class="recipe-callout"><strong>Bảo quản</strong><span>${item.storage || "Chưa ghi"}</span></div>${item.note ? `<div class="recipe-callout warning"><strong>Lưu ý</strong><span>${item.note}</span></div>` : ""}${renderRecipeVideo(item)}</div><footer>${can("kitchen_manage") ? `<button class="secondary" data-modal="sauce:${item.id}">Sửa công thức</button>` : ""}<button class="primary" data-action="close-modal">Đã xem</button></footer></div></div>`;
 }
 
 function menuPricesView() {
@@ -4797,6 +4980,7 @@ function modalView() {
   if (type === "bikeKm") return bikeKmModal(db.motorbikes.find((b) => b.id === id));
   if (type === "oilChange") return oilChangeModal(id ? db.motorbikes.find((b) => b.id === id) : null);
   if (type === "equipmentHistory") return equipmentHistoryModal(db.equipment.find((item) => item.id === id));
+  if (type === "marketingPreview") return marketingPreviewModal((db.marketingAssets || []).find((item) => item.id === id));
   if (type === "kitchenRecipeDetail") return kitchenRecipeDetailModal(db.kitchenRecipes.find((item) => item.id === id), db);
   if (type === "sauceDetail") return sauceDetailModal(db.sauces.find((item) => item.id === id));
   if (type === "return" && !can("rental_return")) {
@@ -4808,7 +4992,7 @@ function modalView() {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
   }
 
-  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", dish: "món ăn", kitchenCategory: "nhóm món", kitchenRecipe: "công thức chế biến", sauce: "công thức nước chấm", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
+  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", marketingAsset: "dữ liệu Marketing", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", dish: "món ăn", kitchenCategory: "nhóm món", kitchenRecipe: "công thức chế biến", sauce: "công thức nước chấm", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
   return `<div class="modal-backdrop"><form class="modal" id="modal-form" data-form="${type}" data-id="${id || ""}" data-extra="${extra || ""}">
     <header><h3>${id ? "Cập nhật" : "Thêm"} ${titleMap[type] || ""}</h3>${close}</header>
     <div class="modal-body">${modalFields(type, id, extra)}</div>
@@ -4823,6 +5007,8 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (type === "swapRental") return can("rentals") ? "rentals" : "rental_return";
   if (["hotel", "room"].includes(type)) return "booking_catalog_manage";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
+  if (type === "marketingAsset") return "booking_write";
+  if (type === "marketingPreview") return "booking_view";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
   if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
   if (type === "kitchenRecipeDetail") return "kitchen_view";
@@ -4849,6 +5035,7 @@ function modalFields(type, id, extra) {
   if (type === "hotel") return hotelForm(id);
   if (type === "room") return roomForm(id);
   if (type === "booking") return bookingForm(id);
+  if (type === "marketingAsset") return marketingAssetForm(id);
   if (type === "bike") return bikeForm(id);
   if (type === "bikeType") return bikeTypeForm(id);
   if (type === "rental") return rentalForm(id);
@@ -4866,6 +5053,22 @@ function modalFields(type, id, extra) {
   if (type === "attendanceShift") return attendanceShiftForm(id);
   if (type === "user") return userForm(id);
   return "";
+}
+
+function marketingAssetForm(id) {
+  const item = (getDb().marketingAssets || []).find((row) => row.id === id) || {};
+  const textField = (name, label, value = "", required = false, type = "text") => `<div class="field">
+    <label>${label}</label>
+    <input name="${name}" type="${type}" value="${escapeHtmlAttribute(value)}" ${required ? "required" : ""}>
+  </div>`;
+  return `<div class="form-grid marketing-asset-form">
+    ${textField("title", "Tên dữ liệu", item.title, true)}
+    ${selectField("type", "Loại nội dung", MARKETING_ASSET_TYPES, item.type || "Video", true)}
+    ${textField("category", "Nhóm / chiến dịch", item.category || "")}
+    ${textField("url", "Liên kết Google Drive", item.url || "", true, "url")}
+    <div class="field full"><label>Mô tả ngắn</label><textarea name="description" placeholder="Nội dung, mục đích sử dụng hoặc ghi chú cho người xem...">${escapeHtmlAttribute(item.description || "")}</textarea></div>
+    <div class="marketing-drive-help full"><strong>Cách lấy liên kết:</strong><span>Trong Google Drive chọn Chia sẻ → Quyền truy cập chung → Bất kỳ ai có đường liên kết → Sao chép đường liên kết.</span><span>Với thư mục ảnh, chọn loại “Thư mục hình ảnh”. Nút tải xuống chỉ áp dụng cho từng tệp.</span></div>
+  </div>`;
 }
 
 function bikeForm(id) {
@@ -5081,6 +5284,7 @@ function kitchenRecipeForm(id) {
     <div class="field full"><label>Tiêu chuẩn thành phẩm</label><textarea name="qualityStandard" rows="3" placeholder="Màu sắc, mùi vị, độ chín và nhiệt độ phục vụ...">${item.qualityStandard || ""}</textarea></div>
     <div class="field full"><label>Trình bày và phục vụ</label><textarea name="presentation" rows="3" placeholder="Loại đĩa/chén, cách trang trí, món ăn kèm...">${item.presentation || ""}</textarea></div>
     <div class="field full"><label>Lưu ý quan trọng cho bếp</label><textarea name="tips" rows="3" placeholder="Điểm dễ sai, dị ứng, cách bảo quản...">${item.tips || item.note || ""}</textarea></div>
+    <div class="field full"><label>Video tham khảo</label><input name="videoUrl" type="text" inputmode="url" value="${escapeHtmlAttribute(normalizeVideoReference(item.videoUrl))}" placeholder="Dán link YouTube, Google Drive, Vimeo, MP4 hoặc mã nhúng iframe"><small>Google Drive cần bật quyền “Bất kỳ ai có liên kết đều có thể xem”. Có thể dán cả đoạn mã &lt;iframe&gt;.</small></div>
     <div class="field full">
       <label>Ảnh minh họa món ăn (tối đa ${RECIPE_IMAGE_LIMIT} ảnh, ảnh đầu tiên là ảnh đại diện)</label>
       <input name="recipeImages" type="file" accept="image/*" multiple>
@@ -5116,6 +5320,7 @@ function sauceForm(id) {
     ${selectField("status", "Trạng thái", ["Đang dùng", "Tạm ngừng", "Ngừng dùng"], item.status || "Đang dùng")}
     <div class="field full"><label>Nguyên liệu và định lượng</label><textarea name="ingredients" rows="6" required placeholder="Mỗi nguyên liệu một dòng">${item.ingredients || ""}</textarea></div>
     <div class="field full"><label>Cách pha</label><textarea name="steps" rows="7" required placeholder="Mỗi bước một dòng">${item.steps || ""}</textarea></div>
+    <div class="field full"><label>Video tham khảo</label><input name="videoUrl" type="text" inputmode="url" value="${escapeHtmlAttribute(normalizeVideoReference(item.videoUrl))}" placeholder="Dán link YouTube, Google Drive, Vimeo, MP4 hoặc mã nhúng iframe"><small>Google Drive cần bật quyền “Bất kỳ ai có liên kết đều có thể xem”. Có thể dán cả đoạn mã &lt;iframe&gt;.</small></div>
     <div class="field full">
       <label>Ảnh minh họa nước chấm (tối đa ${SAUCE_IMAGE_LIMIT} ảnh, ảnh đầu tiên là ảnh đại diện)</label>
       <input name="recipeImages" type="file" accept="image/*" multiple>
@@ -5763,6 +5968,10 @@ function bindApp() {
     state.bookingReportMonth = event.target.value || todayISO().slice(0, 7);
     render();
   }));
+  document.querySelectorAll("[data-marketing-filter]").forEach((input) => input.addEventListener("change", (event) => {
+    state.marketingFilter = event.target.value || "all";
+    render();
+  }));
   document.querySelectorAll("[data-oil-history-month]").forEach((input) => input.addEventListener("change", (event) => {
     oilHistoryFilters().month = event.target.value || todayISO().slice(0, 7);
     state.panelPages.oilChangeHistory = 1;
@@ -5971,6 +6180,7 @@ function handleAction(event) {
   if (action?.startsWith("checkin-booking:")) checkInBooking(action.split(":")[1]);
   if (action?.startsWith("pay-booking:")) payBooking(action.split(":")[1]);
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
+  if (action?.startsWith("delete-marketing:")) deleteMarketingAsset(action.split(":")[1]);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
   if (action?.startsWith("delete-kitchen:")) {
@@ -6006,6 +6216,21 @@ function handleAction(event) {
   if (action === "export-attendance-xls") exportAttendanceExcel();
   if (action === "print-attendance-pdf") printAttendancePdf();
   if (action === "print") window.print();
+}
+
+function deleteMarketingAsset(id) {
+  if (!can("booking_write")) {
+    showToast("Tài khoản này không có quyền xóa dữ liệu Marketing.");
+    return;
+  }
+  const item = (getDb().marketingAssets || []).find((row) => row.id === id);
+  if (!item) return;
+  if (!confirm(`Xóa “${item.title}” khỏi Dữ liệu Marketing?\nTệp gốc trên Google Drive sẽ không bị xóa.`)) return;
+  mutateDb((db) => {
+    db.marketingAssets = (db.marketingAssets || []).filter((row) => row.id !== id);
+    return { record: item.title, before: item.url, after: "Đã xóa liên kết Marketing" };
+  }, "Xóa dữ liệu Marketing");
+  showToast("Đã xóa liên kết khỏi danh sách. Tệp gốc trên Drive vẫn được giữ nguyên.");
 }
 
 function reapplyFormerEmployee(id) {
@@ -6251,12 +6476,21 @@ async function saveModal(event) {
     delete data.bikeImages;
   }
   if (type === "kitchenRecipe") {
+    data.videoUrl = normalizeVideoReference(data.videoUrl);
     data.images = await normalizeRecipeImages(state.recipeImageDraft?.images || []);
     delete data.recipeImages;
   }
   if (type === "sauce") {
+    data.videoUrl = normalizeVideoReference(data.videoUrl);
     data.images = (await normalizeRecipeImages(state.recipeImageDraft?.images || [])).slice(0, SAUCE_IMAGE_LIMIT);
     delete data.recipeImages;
+  }
+  if (type === "marketingAsset") {
+    data.url = normalizeMarketingUrl(data.url);
+    if (!data.url) {
+      showToast("Liên kết không hợp lệ. Hãy nhập đường dẫn bắt đầu bằng https://.");
+      return;
+    }
   }
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
@@ -6305,6 +6539,7 @@ async function saveModal(event) {
     if (type === "bikeType") upsertBikeType(db, data, id);
     if (type === "rental") upsertRental(db, data, id);
     if (type === "booking") upsertBooking(db, data, id);
+    if (type === "marketingAsset") upsertMarketingAsset(db, data, id);
     if (type === "ticket" || type === "ticketEdit") savedTicket = upsertTicket(db, data, type === "ticketEdit" ? id : "", extra);
     if (type === "equipment") upsertEquipment(db, data, id);
     if (type === "equipmentType") upsertEquipmentType(db, data, id);
@@ -6332,6 +6567,21 @@ async function saveModal(event) {
   if (deletedRecipeImages.length) {
     deleteUploadedImages(deletedRecipeImages);
   }
+}
+
+function upsertMarketingAsset(db, data, id) {
+  db.marketingAssets = db.marketingAssets || [];
+  const payload = {
+    title: String(data.title || "").trim(),
+    type: MARKETING_ASSET_TYPES.includes(data.type) ? data.type : "Tài liệu khác",
+    category: String(data.category || "").trim(),
+    url: normalizeMarketingUrl(data.url),
+    description: String(data.description || "").trim(),
+    updatedAt: nowLocal(),
+    updatedBy: state.user?.name || ""
+  };
+  if (id) Object.assign(db.marketingAssets.find((item) => item.id === id), payload);
+  else db.marketingAssets.unshift({ id: uid("MKT"), createdAt: nowLocal(), createdBy: state.user?.name || "", ...payload });
 }
 
 function upsertBike(db, data, id) {
