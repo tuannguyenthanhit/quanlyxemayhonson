@@ -2485,6 +2485,20 @@ tbody tr:focus-within .row-number span {
 .marketing-row-actions a { text-decoration: none; }
 .marketing-drive-help { display: grid; gap: 5px; padding: 12px; border: 1px solid rgba(45, 212, 191, .28); border-radius: 8px; color: #c7e9ef; background: rgba(20, 184, 166, .08); }
 .modal.marketing-preview-modal { width: min(1120px, calc(100vw - 28px)); }
+.modal.combo-summary-modal { width: min(680px, calc(100vw - 28px)); }
+.combo-summary-modal header > div { display: grid; gap: 4px; }
+.combo-summary-modal header h3 { margin: 0; }
+.combo-summary-modal textarea {
+  width: 100%;
+  min-height: 410px;
+  resize: vertical;
+  border: 1px solid rgba(126, 210, 236, .3);
+  border-radius: 8px;
+  padding: 18px;
+  color: #ffffff;
+  background: #071d31;
+  font: 700 15px/1.65 system-ui, sans-serif;
+}
 .marketing-preview-modal header small { display: block; margin-top: 3px; color: #9fc5d8; }
 .marketing-preview-frame { min-height: 65vh; overflow: hidden; border: 1px solid rgba(103, 232, 249, .25); border-radius: 8px; background: #fff; }
 .marketing-preview-frame iframe { display: block; width: 100%; height: 65vh; border: 0; background: #fff; }
@@ -4747,6 +4761,17 @@ table td,
 .booking-pill:hover {
   filter: brightness(1.18);
   transform: translateY(-1px);
+}
+
+.booking-pill.selected {
+  z-index: 3;
+  filter: brightness(1.2);
+  box-shadow: 0 0 0 2px #ffffff, 0 8px 22px rgba(0, 0, 0, .38);
+}
+
+.booking-pill:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .today-line {
@@ -7691,6 +7716,8 @@ button.oil-alert-trigger.active {
 .combo-result-card td { text-align: right; font-variant-numeric: tabular-nums; }
 .combo-total-row th,
 .combo-total-row td { color: #5eead4; font-size: 15px; font-weight: 800; }
+.combo-fee-row th,
+.combo-fee-row td { color: #fbbf24; font-weight: 800; background: rgba(245, 158, 11, .06); }
 .combo-total-row:last-child th,
 .combo-total-row:last-child td { color: #fbbf24; background: rgba(245, 158, 11, .08); }
 .combo-formula { margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(56, 189, 248, .3); border-radius: 8px; color: #dbeafe; background: rgba(14, 116, 144, .1); }

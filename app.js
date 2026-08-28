@@ -222,16 +222,17 @@ const state = {
     hotel: "all",
     period: "month",
     month: todayISO().slice(0, 7),
-    date: todayISO()
+    date: todayISO(),
+    selectedBookingId: null
   },
   bookingReportMonth: todayISO().slice(0, 7),
   comboCalculator: {
     hotelId: "",
     people: 1,
     roomQty: 1,
-    ferryPrice: 0,
-    bikeQty: 0,
-    bikePrice: 0,
+    ferryPrice: 400000,
+    bikeQty: 1,
+    bikePrice: 200000,
     otherQty: 0,
     otherPrice: 0,
     weekdayPrice: 0,
@@ -2297,7 +2298,7 @@ function bookingTimelineView() {
   const monthLabel = parseISODate(`${yearMonth}-01`).toLocaleDateString("vi-VN", { month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
   const visibleRoomCodes = new Set(data.rooms.filter((room) => filters.hotel === "all" || room.hotelId === filters.hotel).map((room) => room.code));
   const visibleBookings = data.bookings.filter((booking) => visibleRoomCodes.has(booking.room) && bookingVisibleSpan(booking, days));
-  const selected = data.bookings.find((booking) => booking.start.slice(0, 7) === yearMonth) || data.bookings[0];
+  const selected = data.bookings.find((booking) => booking.id === filters.selectedBookingId) || null;
   const todayPosition = bookingTodayLineLeft(days);
   const boardStyle = `--booking-days:${days.length};--booking-min:${bookingGridWidth(days)}px`;
   return `
@@ -2322,7 +2323,7 @@ function bookingTimelineView() {
 }
 
 function bookingDetailPanelLegacy(selected, services) {
-  if (!selected) return `<aside class="booking-detail"><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><p class="empty">Ch\u01b0a c\u00f3 \u0111\u1eb7t ph\u00f2ng.</p></aside>`;
+  if (!selected) return `<aside class="booking-detail"><h3>CHI TI\u1ebeT \u0110\u1eb6T PH\u00d2NG</h3><p class="empty">Ch\u1ecdn m\u1ed9t booking tr\u00ean timeline \u0111\u1ec3 xem \u0111\u1ea7y \u0111\u1ee7 th\u00f4ng tin.</p></aside>`;
   const cancelled = selected.status === "Đã hủy";
   const checkedIn = selected.status === "Đang ở" || selected.status === "Trả phòng";
   const paidInFull = Number(selected.paid || 0) >= Number(selected.total || 0);
@@ -2383,7 +2384,8 @@ function bookingSalesColor(name) {
 }
 function bookingPill(booking, span) {
   const saleName = booking.salesName || booking.createdBy || "Chưa gán sale";
-  return `<button class="booking-pill ${booking.tone || bookingStatusTone(booking.status)}" style="--span:${span};--sale-color:${bookingSalesColor(saleName)}" ${canEditAssignedBooking(booking) ? `data-modal="booking:${booking.id}"` : ""}><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><span class="booking-pill-sale"><i></i>${saleName}</span><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`;
+  const selected = bookingFilterState().selectedBookingId === booking.id;
+  return `<button type="button" class="booking-pill ${booking.tone || bookingStatusTone(booking.status)} ${selected ? "selected" : ""}" style="--span:${span};--sale-color:${bookingSalesColor(saleName)}" data-booking-select="${booking.id}" aria-pressed="${selected}"><strong>${booking.group} - ${booking.guests} kh\u00e1ch</strong><span class="booking-pill-sale"><i></i>${saleName}</span><small>${formatDate(booking.start)} - ${formatDate(booking.end)}</small><em>${bookingSmallInfo(booking)}</em></button>`;
 }
 function bookingSalesSummaryPanel(bookings, yearMonth) {
   if (!can("finance")) return "";
@@ -2481,7 +2483,9 @@ function comboCalculatorTotals(combo = state.comboCalculator) {
   const makeColumn = (roomPrice) => {
     const roomTotal = roomQty * Math.max(0, Number(roomPrice || 0));
     const total = roomTotal + ferryTotal + bikeTotal + otherTotal;
-    return { roomTotal, ferryTotal, bikeTotal, otherTotal, total, perPerson: Math.round(total / people) };
+    const serviceFee = Math.round(total * 0.1);
+    const finalTotal = total + serviceFee;
+    return { roomTotal, ferryTotal, bikeTotal, otherTotal, total, serviceFee, finalTotal, perPerson: Math.round(finalTotal / people) };
   };
   return {
     weekday: makeColumn(combo.weekdayPrice),
@@ -2605,7 +2609,7 @@ function comboCalculatorView() {
   const { combo, hotels, hotel } = comboCalculatorData();
   const totals = comboCalculatorTotals(combo);
   const columns = [["weekday", "Ngày thường"], ["saturday", "Thứ 7"], ["holiday", "Ngày lễ"]];
-  const resultRow = (label, icon, key, strong = false) => `<tr class="${strong ? "combo-total-row" : ""}"><th><span>${icon}</span>${label}</th>${columns.map(([column]) => `<td data-combo-result="${key}-${column}">${comboMoney(totals[column][key])}</td>`).join("")}</tr>`;
+  const resultRow = (label, icon, key, strong = false, rowClass = "") => `<tr class="${strong ? "combo-total-row" : ""} ${rowClass}"><th><span>${icon}</span>${label}</th>${columns.map(([column]) => `<td data-combo-result="${key}-${column}">${comboMoney(totals[column][key])}</td>`).join("")}</tr>`;
   return `<section class="combo-calculator-page">
     <div class="combo-heading">
       <span class="combo-heading-icon">${navIcon("comboCalculator")}</span>
@@ -2642,9 +2646,11 @@ function comboCalculatorView() {
         ${resultRow("Tổng xe máy", "♞", "bikeTotal")}
         ${resultRow("Dịch vụ khác", "✦", "otherTotal")}
         ${resultRow("Tổng combo", "▣", "total", true)}
+        ${resultRow("Chi phí 10%", "+", "serviceFee", false, "combo-fee-row")}
+        ${resultRow("Tổng sau chi phí", "=", "finalTotal", true)}
         ${resultRow("Giá mỗi người", "♟", "perPerson", true)}
       </tbody></table></div>
-      <div class="combo-formula">ⓘ Giá mỗi người = (Phòng + Vé tàu + Xe máy + Dịch vụ khác) ÷ Số người</div>
+      <div class="combo-formula">ⓘ Giá mỗi người = (Tổng combo + Chi phí 10%) ÷ Số người</div>
     </section>
     <button class="primary combo-apply-button" data-action="apply-combo-price">✦ Áp dụng giá combo</button>
   </section>`;
@@ -4981,6 +4987,7 @@ function modalView() {
   if (type === "oilChange") return oilChangeModal(id ? db.motorbikes.find((b) => b.id === id) : null);
   if (type === "equipmentHistory") return equipmentHistoryModal(db.equipment.find((item) => item.id === id));
   if (type === "marketingPreview") return marketingPreviewModal((db.marketingAssets || []).find((item) => item.id === id));
+  if (type === "comboSummary") return comboSummaryModal();
   if (type === "kitchenRecipeDetail") return kitchenRecipeDetailModal(db.kitchenRecipes.find((item) => item.id === id), db);
   if (type === "sauceDetail") return sauceDetailModal(db.sauces.find((item) => item.id === id));
   if (type === "return" && !can("rental_return")) {
@@ -5009,6 +5016,7 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (type === "marketingAsset") return "booking_write";
   if (type === "marketingPreview") return "booking_view";
+  if (type === "comboSummary") return "booking_view";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
   if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
   if (type === "kitchenRecipeDetail") return "kitchen_view";
@@ -5896,22 +5904,49 @@ function bindComboCalculator() {
   refreshComboCalculator();
 }
 
-async function copyComboSummary() {
+function comboSummaryText() {
   const { combo, hotel } = comboCalculatorData();
   const totals = comboCalculatorTotals(combo);
-  const line = (label, column) => `${label}: ${comboMoney(totals[column].total)} (${comboMoney(totals[column].perPerson)}/người)`;
-  const summary = [
+  const priceLine = (label, column) => `- ${label}: ${comboMoney(totals[column].perPerson)}/người`;
+  return [
     `BẢNG GIÁ COMBO - ${hotel?.name || "Khách sạn"}`,
-    `Số người: ${combo.people} | Vé tàu: ${combo.people} vé | Phòng: ${combo.roomQty} | Xe máy: ${combo.bikeQty}`,
-    line("Ngày thường", "weekday"),
-    line("Thứ 7", "saturday"),
-    line("Ngày lễ", "holiday")
+    `Số người: ${combo.people} người`,
+    "",
+    "DỊCH VỤ BAO GỒM",
+    `- Vé tàu khứ hồi: ${combo.people} vé`,
+    `- Phòng: ${combo.roomQty} phòng`,
+    `- Xe máy: ${combo.bikeQty} chiếc`,
+    "- Đưa đón: 2 chiều",
+    "",
+    "GIÁ COMBO MỖI NGƯỜI",
+    priceLine("Ngày thường", "weekday"),
+    priceLine("Thứ 7", "saturday"),
+    priceLine("Ngày lễ", "holiday")
   ].join("\n");
+}
+
+function comboSummaryModal() {
+  const summary = comboSummaryText();
+  return `<div class="modal-backdrop"><div class="modal combo-summary-modal">
+    <header><div><h3>Nội dung báo giá combo</h3><small>Kiểm tra nội dung trước khi gửi cho khách.</small></div><button class="ghost" data-action="close-modal">Đóng</button></header>
+    <div class="modal-body"><textarea readonly data-combo-summary aria-label="Nội dung báo giá combo">${escapeHtmlAttribute(summary)}</textarea></div>
+    <footer><button class="ghost" type="button" data-action="close-modal">Đóng</button><button class="primary" type="button" data-action="copy-combo-summary">Sao chép nội dung</button></footer>
+  </div></div>`;
+}
+
+function copyComboSummary() {
+  state.modal = "comboSummary";
+  render();
+}
+
+async function copyComboSummaryToClipboard() {
+  const summary = comboSummaryText();
   try {
     await navigator.clipboard.writeText(summary);
-    showToast("Đã sao chép bảng giá combo.");
+    showToast("Đã sao chép nội dung báo giá combo.");
   } catch (error) {
-    showToast("Đã tính xong giá combo. Trình duyệt không cho phép sao chép tự động.");
+    document.querySelector("[data-combo-summary]")?.select();
+    showToast("Trình duyệt chưa cho phép sao chép tự động. Nội dung đã được chọn để sao chép.");
   }
 }
 
@@ -6005,6 +6040,25 @@ function bindApp() {
   }));
   document.querySelectorAll("[data-booking-period]").forEach((button) => button.addEventListener("click", (event) => {
     bookingFilterState().period = event.currentTarget.dataset.bookingPeriod || "month";
+    render();
+  }));
+  document.querySelectorAll("[data-booking-select]").forEach((button) => button.addEventListener("click", (event) => {
+    const board = event.currentTarget.closest(".booking-board");
+    const scrollLeft = board?.scrollLeft || 0;
+    const scrollTop = board?.scrollTop || 0;
+    bookingFilterState().selectedBookingId = event.currentTarget.dataset.bookingSelect;
+    render();
+    const nextBoard = document.querySelector(".booking-board");
+    if (nextBoard) {
+      nextBoard.scrollLeft = scrollLeft;
+      nextBoard.scrollTop = scrollTop;
+    }
+    if (window.innerWidth <= 1200) {
+      document.querySelector(".booking-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }));
+  document.querySelectorAll(".booking-close").forEach((button) => button.addEventListener("click", () => {
+    bookingFilterState().selectedBookingId = null;
     render();
   }));
   document.querySelectorAll("[data-bike-filter]").forEach((input) => input.addEventListener("change", (event) => {
@@ -6112,6 +6166,7 @@ function handleAction(event) {
     refreshComboCalculator();
   }
   if (action === "apply-combo-price") copyComboSummary();
+  if (action === "copy-combo-summary") copyComboSummaryToClipboard();
   if (action === "toggle-nav") {
     state.mobileNav = !state.mobileNav;
     render();
