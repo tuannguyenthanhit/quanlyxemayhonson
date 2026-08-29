@@ -2359,7 +2359,7 @@ function bookingDetailPanelLegacy(selected, services) {
     ${canCheckIn ? `<button class="ghost" type="button" data-action="checkin-booking:${selected.id}" ${checkedIn || cancelled ? "disabled" : ""}>${checkedIn ? "Đã check-in" : "Check-in"}</button>` : ""}
     ${isSuperAdmin() ? `<button class="danger" type="button" data-action="delete-booking:${selected.id}">Hủy/xóa đặt phòng</button>` : ""}
   </div>` : `<p class="hint">Booking do <strong>${selected.salesName || selected.createdBy || "sale khác"}</strong> phụ trách. Tài khoản này chỉ được xem.</p>`;
-  return `<aside class="booking-detail"><button class="booking-close">×</button><div class="booking-print-brand"><strong>COCO BAY HÒN SƠN</strong><span>PHIẾU XÁC NHẬN ĐẶT PHÒNG</span><small>Ngày in: ${formatDateTime(new Date())}</small></div><h3>CHI TIẾT ĐẶT PHÒNG</h3><div class="booking-print-controls"><label>Khổ giấy<select data-booking-print-style aria-label="Chọn khổ giấy in"><option value="a4">A4</option><option value="k80">K80 - Máy in nhiệt</option></select></label><button class="secondary" type="button" data-action="print-booking:${selected.id}">In phiếu</button></div><div class="booking-detail-title"><span>◎</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>Mã đặt phòng</dt><dd>#${selected.id}</dd><dt>Khách sạn</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Phòng</dt><dd>${selected.room}</dd><dt>Ngày đến</dt><dd>${formatDate(selected.start)}</dd><dt>Ngày đi</dt><dd>${formatDate(selected.end)}</dd><dt>Số lượng khách</dt><dd>${selected.guests} người</dd><dt>Người liên hệ</dt><dd>${selected.customer}</dd><dt>SĐT</dt><dd>${selected.phone}</dd><dt>Ghi chú dịch vụ</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi chú khác</dt><dd>${selected.notes || "-"}</dd></dl><h4>DỊCH VỤ ĐÃ ĐẶT</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TOÁN</h4><dl class="booking-pay"><dt>Tổng tiền</dt><dd>${money(selected.total)}</dd><dt>Đã cọc/đã thu</dt><dd>${money(selected.paid)}</dd><dt>Còn lại</dt><dd>${money(Math.max(0, Number(selected.total || 0) - Number(selected.paid || 0)))}</dd><dt>Trạng thái</dt><dd>${pill(selected.status)}</dd></dl>${actions}</aside>`;
+  return `<aside class="booking-detail"><button class="booking-close">×</button><div class="booking-print-brand"><strong>COCO BAY HÒN SƠN</strong><span>PHIẾU XÁC NHẬN ĐẶT PHÒNG</span><small>Ngày in: ${formatDateTime(new Date())}</small></div><h3>CHI TIẾT ĐẶT PHÒNG</h3><div class="booking-print-controls"><label>Khổ giấy<select data-booking-print-style aria-label="Chọn khổ giấy in"><option value="a4">A4</option><option value="k80">K80 - Dọc 80 mm</option></select></label><button class="secondary" type="button" data-action="print-booking:${selected.id}">In phiếu</button></div><div class="booking-detail-title"><span>◎</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>Mã đặt phòng</dt><dd>#${selected.id}</dd><dt>Khách sạn</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Phòng</dt><dd>${selected.room}</dd><dt>Ngày đến</dt><dd>${formatDate(selected.start)}</dd><dt>Ngày đi</dt><dd>${formatDate(selected.end)}</dd><dt>Số lượng khách</dt><dd>${selected.guests} người</dd><dt>Người liên hệ</dt><dd>${selected.customer}</dd><dt>SĐT</dt><dd>${selected.phone}</dd><dt>Ghi chú dịch vụ</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi chú khác</dt><dd>${selected.notes || "-"}</dd></dl><h4>DỊCH VỤ ĐÃ ĐẶT</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TOÁN</h4><dl class="booking-pay"><dt>Tổng tiền</dt><dd>${money(selected.total)}</dd><dt>Đã cọc/đã thu</dt><dd>${money(selected.paid)}</dd><dt>Còn lại</dt><dd>${money(Math.max(0, Number(selected.total || 0) - Number(selected.paid || 0)))}</dd><dt>Trạng thái</dt><dd>${pill(selected.status)}</dd></dl>${actions}</aside>`;
 }
 
 function bookingDetailPanel(selected, services) {
@@ -6003,18 +6003,28 @@ function printBookingDetail(bookingId) {
   const printStyle = detail.querySelector("[data-booking-print-style]")?.value || "a4";
   const pageStyle = document.createElement("style");
   pageStyle.id = "booking-print-page-style";
-  pageStyle.textContent = printStyle === "k80" ? "@page { size: 80mm auto; margin: 5mm; }" : "@page { size: A4 portrait; margin: 12mm; }";
+  pageStyle.textContent = printStyle === "k80"
+    ? "@page { size: 80mm 297mm; margin: 3mm 4mm; } @media print { html { width: 80mm !important; min-width: 80mm !important; max-width: 80mm !important; margin: 0 !important; padding: 0 !important; } }"
+    : "@page { size: A4 portrait; margin: 12mm; }";
   document.getElementById(pageStyle.id)?.remove();
   document.head.appendChild(pageStyle);
   document.body.classList.add("booking-printing", `booking-print-${printStyle}`);
   const previousTitle = document.title;
   document.title = `Phieu-dat-phong-${bookingId}`;
-  requestAnimationFrame(() => {
-    window.print();
+  let cleanedUp = false;
+  const cleanupPrintMode = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
     document.body.classList.remove("booking-printing", "booking-print-a4", "booking-print-k80");
     pageStyle.remove();
     document.title = previousTitle;
+    window.removeEventListener("afterprint", cleanupPrintMode);
+  };
+  window.addEventListener("afterprint", cleanupPrintMode, { once: true });
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => window.print());
   });
+  window.setTimeout(cleanupPrintMode, 120000);
 }
 
 function bindApp() {
@@ -6346,7 +6356,7 @@ function handleAction(event) {
   if (action === "print") window.print();
 }
 
-function deleteMarketingAsset(id) {
+async function deleteMarketingAsset(id) {
   if (!can("marketing_manage")) {
     showToast("Tài khoản này không có quyền xóa dữ liệu Marketing.");
     return;
@@ -6354,6 +6364,21 @@ function deleteMarketingAsset(id) {
   const item = (getDb().marketingAssets || []).find((row) => row.id === id);
   if (!item) return;
   if (!confirm(`Xóa “${item.title}” khỏi Dữ liệu Marketing?\nTệp gốc trên Google Drive sẽ không bị xóa.`)) return;
+  if (apiState.enabled) {
+    try {
+      await settlePendingRemoteSave();
+      const payload = await apiRequest(`/marketing-assets/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!applyRemoteDbPayload(payload)) throw new Error("Máy chủ chưa trả lại dữ liệu sau khi xóa.");
+      window.clearTimeout(apiState.saveTimer);
+      apiState.pendingDb = null;
+      render();
+      showToast("Đã xóa liên kết khỏi MySQL. Tệp gốc trên Drive vẫn được giữ nguyên.");
+    } catch (error) {
+      apiState.lastError = error.message;
+      showToast(`Chưa xóa được dữ liệu trên MySQL: ${error.message}`);
+    }
+    return;
+  }
   mutateDb((db) => {
     db.marketingAssets = (db.marketingAssets || []).filter((row) => row.id !== id);
     return { record: item.title, before: item.url, after: "Đã xóa liên kết Marketing" };
@@ -6619,6 +6644,10 @@ async function saveModal(event) {
       showToast("Liên kết không hợp lệ. Hãy nhập đường dẫn bắt đầu bằng https://.");
       return;
     }
+    if (apiState.enabled) {
+      await saveMarketingAssetRemote(form, data, id);
+      return;
+    }
   }
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
@@ -6710,6 +6739,67 @@ function upsertMarketingAsset(db, data, id) {
   };
   if (id) Object.assign(db.marketingAssets.find((item) => item.id === id), payload);
   else db.marketingAssets.unshift({ id: uid("MKT"), createdAt: nowLocal(), createdBy: state.user?.name || "", ...payload });
+}
+
+function applyRemoteDbPayload(payload) {
+  if (!payload?.db) return false;
+  apiState.remoteDb = payload.db;
+  migrateDb(apiState.remoteDb);
+  if (Number.isInteger(Number(payload.version))) apiState.version = Number(payload.version);
+  const currentUser = (payload.db.users || []).find((user) => user.id === state.user?.id && user.active);
+  if (currentUser) state.user = { ...currentUser };
+  apiState.lastError = "";
+  return true;
+}
+
+async function settlePendingRemoteSave() {
+  window.clearTimeout(apiState.saveTimer);
+  if (apiState.pendingDb && !apiState.saving) await flushRemoteSave();
+  const deadline = Date.now() + 10000;
+  while (apiState.saving && Date.now() < deadline) {
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+  if (apiState.saving || apiState.pendingDb) {
+    throw new Error(apiState.lastError || "Dữ liệu trước đó chưa đồng bộ xong. Vui lòng thử lại.");
+  }
+}
+
+async function saveMarketingAssetRemote(form, data, id) {
+  const submitButton = form.querySelector("button[type='submit']");
+  const originalText = submitButton?.textContent || "Lưu";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Đang lưu MySQL...";
+  }
+  try {
+    await settlePendingRemoteSave();
+    let payload = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        payload = await apiRequest(`/marketing-assets${id ? `/${encodeURIComponent(id)}` : ""}`, {
+          method: id ? "PUT" : "POST",
+          body: JSON.stringify(data)
+        });
+        break;
+      } catch (error) {
+        if (error.status !== 409 || attempt > 0) throw error;
+      }
+    }
+    if (!applyRemoteDbPayload(payload)) throw new Error("Máy chủ chưa trả lại dữ liệu vừa lưu.");
+    window.clearTimeout(apiState.saveTimer);
+    apiState.pendingDb = null;
+    state.modal = null;
+    render();
+    showToast("Đã ghi dữ liệu Marketing vào MySQL dùng chung.");
+  } catch (error) {
+    apiState.lastError = error.message;
+    showToast(`Chưa lưu được vào MySQL: ${error.message}`);
+  } finally {
+    if (submitButton?.isConnected) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
+    }
+  }
 }
 
 function upsertBike(db, data, id) {

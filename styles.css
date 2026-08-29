@@ -4990,12 +4990,45 @@ table td,
   body.booking-printing .booking-detail-title > span,
   body.booking-printing .booking-sale-badge,
   body.booking-printing .booking-service { border: 1px solid #bbb !important; color: #111 !important; background: #fff !important; box-shadow: none !important; }
-  body.booking-print-k80 .booking-detail { font-size: 10.5px !important; }
-  body.booking-print-k80 .booking-print-brand strong { font-size: 16px; }
-  body.booking-print-k80 .booking-detail dl { grid-template-columns: 31mm 1fr; gap: 6px 5px; font-size: 10.5px; }
-  body.booking-print-k80 .booking-detail-title > span { width: 38px; height: 38px; }
-  body.booking-print-k80 .booking-sale-badge { padding: 7px; margin-bottom: 10px; }
-  body.booking-print-k80 .booking-detail h4 { margin-top: 12px; margin-bottom: 8px; }
+  body.booking-print-k80,
+  body.booking-print-k80 #app,
+  body.booking-print-k80 .app-shell,
+  body.booking-print-k80 .main,
+  body.booking-print-k80 .content,
+  body.booking-print-k80 .booking-page,
+  body.booking-print-k80 .booking-layout,
+  body.booking-print-k80 .booking-detail {
+    width: 72mm !important;
+    min-width: 72mm !important;
+    max-width: 72mm !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.booking-print-k80 { margin: 0 !important; padding: 0 !important; font-size: 11px !important; }
+  body.booking-print-k80 .booking-detail { font-size: 11px !important; line-height: 1.35; }
+  body.booking-print-k80 .booking-print-brand { gap: 2px; margin: 0 0 8px; padding: 0 0 7px; border-bottom-width: 1px; }
+  body.booking-print-k80 .booking-print-brand strong { font-size: 15px; line-height: 1.2; }
+  body.booking-print-k80 .booking-print-brand span { font-size: 11px; }
+  body.booking-print-k80 .booking-print-brand small { font-size: 8.5px; }
+  body.booking-print-k80 .booking-detail h3 { margin: 0 0 7px; font-size: 12px; text-align: center; }
+  body.booking-print-k80 .booking-detail h4 { margin: 10px 0 6px; padding-top: 5px; border-top: 1px dashed #777; font-size: 10.5px; }
+  body.booking-print-k80 .booking-detail-title { gap: 7px; margin-bottom: 8px; }
+  body.booking-print-k80 .booking-detail-title > span { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 4px; font-size: 16px; }
+  body.booking-print-k80 .booking-detail-title strong { overflow-wrap: anywhere; }
+  body.booking-print-k80 .booking-detail .pill { padding: 2px 5px; font-size: 8px; }
+  body.booking-print-k80 .booking-sale-badge { gap: 6px; margin-bottom: 8px; padding: 5px 7px; border-radius: 3px; }
+  body.booking-print-k80 .booking-sale-badge > i { width: 7px; height: 7px; flex-basis: 7px; }
+  body.booking-print-k80 .booking-sale-badge small { font-size: 8.5px; }
+  body.booking-print-k80 .booking-detail dl { grid-template-columns: 25mm minmax(0, 1fr); gap: 4px 4mm; font-size: 10px; }
+  body.booking-print-k80 .booking-detail dt { overflow-wrap: anywhere; }
+  body.booking-print-k80 .booking-detail dd { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+  body.booking-print-k80 .booking-services { gap: 4px; }
+  body.booking-print-k80 .booking-service { grid-template-columns: 7mm minmax(0, 1fr) auto; gap: 5px; padding: 5px; border-radius: 3px; break-inside: avoid; }
+  body.booking-print-k80 .booking-service span { width: 6mm; height: 6mm; border-radius: 2px; }
+  body.booking-print-k80 .booking-service strong { font-size: 9.5px; }
+  body.booking-print-k80 .booking-service small,
+  body.booking-print-k80 .booking-service em { font-size: 8.5px; }
+  body.booking-print-k80 .booking-pay { padding-bottom: 6mm; }
 }
 
 .booking-simple-grid {

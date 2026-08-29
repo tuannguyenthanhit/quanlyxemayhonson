@@ -236,6 +236,41 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+const marketingAssetTypes = new Set(["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"]);
+
+function normalizeMarketingAssetUrl(value = "") {
+  const raw = String(value || "").trim();
+  const iframeSource = raw.match(/<iframe[^>]+src=["']([^"']+)["']/i)?.[1];
+  const source = (iframeSource || raw).replaceAll("&amp;", "&").trim();
+  try {
+    const parsed = new URL(source);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function marketingAssetPayload(body, user, existing = {}) {
+  const title = String(body.title || "").trim();
+  const url = normalizeMarketingAssetUrl(body.url);
+  if (!title || !url) {
+    const error = new Error("Tên dữ liệu và liên kết hợp lệ là bắt buộc.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const now = new Date().toISOString();
+  return {
+    ...existing,
+    title,
+    type: marketingAssetTypes.has(body.type) ? body.type : "Tài liệu khác",
+    category: String(body.category || "").trim(),
+    url,
+    description: String(body.description || "").trim(),
+    updatedAt: now,
+    updatedBy: user.name || ""
+  };
+}
+
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
@@ -551,6 +586,74 @@ async function handleApi(req, res, urlPath) {
   if (urlPath === "/api/data" && req.method === "GET") {
     const record = await readDbRecord();
     sendJson(res, 200, { ok: true, db: record.db, version: record.version, updatedAt: record.updatedAt });
+    return true;
+  }
+
+  const marketingAssetRoute = urlPath.match(/^\/api\/marketing-assets(?:\/([^/]+))?$/);
+  if (marketingAssetRoute && ["POST", "PUT", "DELETE"].includes(req.method)) {
+    try {
+      const record = await readDbRecord();
+      const db = record.db;
+      const user = (db.users || []).find((item) => item.id === session.userId && item.active);
+      const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
+      if (!user || (user.role !== "admin" && !userPermissions.includes("marketing_manage"))) {
+        sendJson(res, 403, { ok: false, message: "Tài khoản này chỉ được xem, không có quyền thay đổi dữ liệu Marketing dùng chung." });
+        return true;
+      }
+      db.marketingAssets = Array.isArray(db.marketingAssets) ? db.marketingAssets : [];
+      db.auditLogs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
+      const id = marketingAssetRoute[1] ? decodeURIComponent(marketingAssetRoute[1]) : "";
+      let asset = null;
+      let action = "";
+      let before = "";
+
+      if (req.method === "POST") {
+        if (id) {
+          sendJson(res, 400, { ok: false, message: "Đường dẫn thêm dữ liệu không hợp lệ." });
+          return true;
+        }
+        const body = await readBody(req);
+        asset = marketingAssetPayload(body, user);
+        asset.id = `MKT-${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`.toUpperCase();
+        asset.createdAt = asset.updatedAt;
+        asset.createdBy = user.name || "";
+        db.marketingAssets.unshift(asset);
+        action = "Thêm dữ liệu Marketing";
+      } else {
+        const index = db.marketingAssets.findIndex((item) => item.id === id);
+        if (index < 0) {
+          sendJson(res, 404, { ok: false, message: "Không tìm thấy dữ liệu Marketing." });
+          return true;
+        }
+        const existing = db.marketingAssets[index];
+        before = `${existing.title || ""} · ${existing.url || ""}`;
+        if (req.method === "PUT") {
+          const body = await readBody(req);
+          asset = marketingAssetPayload(body, user, existing);
+          db.marketingAssets[index] = asset;
+          action = "Cập nhật dữ liệu Marketing";
+        } else {
+          asset = existing;
+          db.marketingAssets.splice(index, 1);
+          action = "Xóa dữ liệu Marketing";
+        }
+      }
+
+      db.auditLogs.unshift({
+        id: `LOG-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        user: user.name,
+        role: user.role,
+        action,
+        record: asset.title || asset.id,
+        before,
+        after: req.method === "DELETE" ? "Đã xóa liên kết Marketing" : `${asset.title} · ${asset.url}`,
+        createdAt: new Date().toISOString()
+      });
+      const saved = await writeDb(db, record.version);
+      sendJson(res, 200, { ok: true, asset, db, version: saved.version, updatedAt: saved.updatedAt });
+    } catch (error) {
+      sendJson(res, error.statusCode || 500, { ok: false, message: error.message });
+    }
     return true;
   }
 
