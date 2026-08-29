@@ -268,7 +268,8 @@ const VI_MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "
 const MONEY_FIELD_NAMES = new Set([
   "total", "paid", "weekdayPrice", "weekendPrice", "holidayPrice", "price",
   "surcharge", "discount", "deposit", "estimatedCost", "actualCost", "salary",
-  "expectedSalary", "oilCost", "totalCost", "grossProfit"
+  "expectedSalary", "oilCost", "totalCost", "grossProfit", "roomCost", "ferryCost",
+  "bikeCost", "otherCost"
 ]);
 let activeDatePicker = null;
 let datePickerDocumentBound = false;
@@ -2345,7 +2346,8 @@ function bookingDetailPanel(selected, services) {
   const saleName = selected.salesName || selected.createdBy || "Chưa gán sale";
   const grossProfit = Number(selected.grossProfit ?? (Number(selected.total || 0) - Number(selected.totalCost || 0)));
   const saleBadge = `<div class="booking-sale-badge" style="--sale-color:${bookingSalesColor(saleName)}"><i></i><span><small>Sale phụ trách</small><strong>${saleName}</strong></span></div>`;
-  const financeRows = can("finance") ? `<dt>Tổng chi phí</dt><dd>${money(selected.totalCost)}</dd><dt>Lãi gộp</dt><dd class="booking-gross-profit">${money(grossProfit)}</dd>` : "";
+  const costs = bookingCostBreakdown(selected);
+  const financeRows = can("finance") ? `<dt>Chi phí phòng</dt><dd>${money(costs.roomCost)}</dd><dt>Chi phí vé tàu</dt><dd>${money(costs.ferryCost)}</dd><dt>Chi phí xe máy</dt><dd>${money(costs.bikeCost)}</dd><dt>Chi phí khác</dt><dd>${money(costs.otherCost)}</dd><dt>Tổng chi phí</dt><dd>${money(selected.totalCost)}</dd><dt>Lãi gộp</dt><dd class="booking-gross-profit">${money(grossProfit)}</dd>` : "";
   return html
     .replace("<dl>", `${saleBadge}<dl>`)
     .replace('<dl class="booking-pay">', `<dl class="booking-pay">${financeRows}`);
@@ -2728,6 +2730,14 @@ function bookingChangeHistoryReport(month) {
 function bookingStatusTone(status) { if (status === "\u0110\u00e3 c\u1ecdc") return "blue"; if (status === "\u0110ang \u1edf") return "orange"; if (status === "Tr\u1ea3 ph\u00f2ng") return "purple"; if (status === "\u0110\u00e3 h\u1ee7y") return "red"; return "green"; }
 function bookingServiceIcon(name) { if (name.includes("xe")) return "\u2668"; if (name.includes("Tour")) return "\u25c9"; return "\u25a3"; }
 function bookingDateInput(value) { return value ? String(value).slice(0, 10) : ""; }
+function bookingCostBreakdown(booking = {}) {
+  const keys = ["roomCost", "ferryCost", "bikeCost", "otherCost"];
+  const hasBreakdown = keys.some((key) => booking[key] !== undefined && booking[key] !== null && booking[key] !== "");
+  if (!hasBreakdown) {
+    return { roomCost: 0, ferryCost: 0, bikeCost: 0, otherCost: Number(booking.totalCost || 0) };
+  }
+  return Object.fromEntries(keys.map((key) => [key, Math.max(0, Number(booking[key] || 0))]));
+}
 function bookingForm(id) {
   const data = bookingSeedData();
   const db = getDb();
@@ -2744,6 +2754,8 @@ function bookingForm(id) {
     const hotel = data.hotels.find((item) => item.id === room.hotelId);
     return [room.code, `${hotel?.name || ""} \u00b7 ${room.code} - ${room.name}`];
   });
+  const costs = bookingCostBreakdown(booking);
+  const totalCost = Object.values(costs).reduce((sum, value) => sum + value, 0);
   return `<div class="form-grid booking-form-grid">
     ${field("group", "T\u00ean nh\u00f3m/kh\u00e1ch", booking.group || "", true)}${field("customer", "Ng\u01b0\u1eddi li\u00ean h\u1ec7", booking.customer || "", true)}
     ${field("phone", "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i", booking.phone || "", true)}${field("guests", "S\u1ed1 kh\u00e1ch", booking.guests || 2, true, "number")}
@@ -2751,7 +2763,9 @@ function bookingForm(id) {
     ${selectField("salesName", "Nh\u00e2n vi\u00ean sale ph\u1ee5 tr\u00e1ch", salesNames, currentSalesName, true)}
     ${field("start", "Ng\u00e0y \u0111\u1ebfn", bookingDateInput(booking.start) || todayISO(), true, "date")}${field("end", "Ng\u00e0y \u0111i", bookingDateInput(booking.end) || todayISO(1), true, "date")}
     ${field("total", "T\u1ed5ng ti\u1ec1n", booking.total || 0, false, "number")}${field("paid", "\u0110\u00e3 c\u1ecdc / \u0111\u00e3 thu", booking.paid || 0, false, "number")}
-    ${field("totalCost", "T\u1ed5ng chi ph\u00ed booking", booking.totalCost || 0, false, "number")}<div class="field booking-profit-field"><label>L\u00e3i g\u1ed9p d\u1ef1 ki\u1ebfn</label><output data-booking-profit-preview>${money(Number(booking.total || 0) - Number(booking.totalCost || 0))}</output><span class="hint">T\u1ed5ng ti\u1ec1n tr\u1eeb t\u1ed5ng chi ph\u00ed</span></div>
+    ${field("roomCost", "Chi ph\u00ed ph\u00f2ng", costs.roomCost, false, "number")}${field("ferryCost", "Chi ph\u00ed v\u00e9 t\u00e0u", costs.ferryCost, false, "number")}
+    ${field("bikeCost", "Chi ph\u00ed xe m\u00e1y", costs.bikeCost, false, "number")}${field("otherCost", "Chi ph\u00ed kh\u00e1c", costs.otherCost, false, "number")}
+    <div class="field booking-cost-total"><label>T\u1ed5ng chi ph\u00ed booking</label><output data-booking-cost-total>${money(totalCost)}</output><input type="hidden" name="totalCost" value="${totalCost}" data-booking-cost-value><span class="hint">T\u1ef1 \u0111\u1ed9ng c\u1ed9ng c\u00e1c chi ph\u00ed tr\u00ean</span></div><div class="field booking-profit-field"><label>L\u00e3i g\u1ed9p d\u1ef1 ki\u1ebfn</label><output data-booking-profit-preview>${money(Number(booking.total || 0) - totalCost)}</output><span class="hint">T\u1ed5ng ti\u1ec1n tr\u1eeb t\u1ed5ng chi ph\u00ed</span></div>
     <div class="field full"><label>Ghi ch\u00fa d\u1ecbch v\u1ee5</label><textarea name="serviceNote" placeholder="V\u00ed d\u1ee5: Thu\u00ea xe m\u00e1y 2 xe, \u0103n s\u00e1ng, ph\u1ee5 thu...">${booking.serviceNote || ""}</textarea></div>
     <div class="field full"><label>Ghi ch\u00fa</label><textarea name="notes">${booking.notes || ""}</textarea></div>
   </div>`;
@@ -2778,7 +2792,8 @@ function upsertBooking(db, data, id) {
   const hotel = seed.hotels.find((item) => item.id === room?.hotelId);
   const before = existing ? JSON.parse(JSON.stringify(existing)) : null;
   const total = Number(data.total || 0);
-  const totalCost = Number(data.totalCost || 0);
+  const costs = bookingCostBreakdown(data);
+  const totalCost = Object.values(costs).reduce((sum, value) => sum + value, 0);
   const payload = {
     ...data,
     hotelId: room?.hotelId || "",
@@ -2787,6 +2802,7 @@ function upsertBooking(db, data, id) {
     salesName: data.salesName || existing?.salesName || state.user?.name || "Chưa gán sale",
     total,
     paid: +data.paid,
+    ...costs,
     totalCost,
     grossProfit: total - totalCost,
     tone: bookingStatusTone(data.status),
@@ -5988,10 +6004,15 @@ function bindApp() {
   const bookingFormElement = document.querySelector("#modal-form[data-form='booking']");
   const updateBookingProfit = () => {
     const amount = (name) => Number(String(bookingFormElement?.querySelector(`[name='${name}']`)?.value || "0").replace(/[^\d-]/g, ""));
+    const totalCost = ["roomCost", "ferryCost", "bikeCost", "otherCost"].reduce((sum, name) => sum + Math.max(0, amount(name)), 0);
+    const totalCostInput = bookingFormElement?.querySelector("[data-booking-cost-value]");
+    const totalCostOutput = bookingFormElement?.querySelector("[data-booking-cost-total]");
     const output = bookingFormElement?.querySelector("[data-booking-profit-preview]");
-    if (output) output.textContent = money(amount("total") - amount("totalCost"));
+    if (totalCostInput) totalCostInput.value = String(totalCost);
+    if (totalCostOutput) totalCostOutput.textContent = money(totalCost);
+    if (output) output.textContent = money(amount("total") - totalCost);
   };
-  bookingFormElement?.querySelectorAll("input[name='total'], input[name='totalCost']").forEach((input) => input.addEventListener("input", updateBookingProfit));
+  bookingFormElement?.querySelectorAll("input[name='total'], input[name='roomCost'], input[name='ferryCost'], input[name='bikeCost'], input[name='otherCost']").forEach((input) => input.addEventListener("input", updateBookingProfit));
   document.querySelectorAll("[data-bike-status]").forEach((select) => select.addEventListener("change", (event) => {
     setBikeStatus(event.target.dataset.bikeStatus, event.target.value);
   }));

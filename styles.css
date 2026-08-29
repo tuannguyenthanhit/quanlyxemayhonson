@@ -4909,7 +4909,8 @@ table td,
 
 .booking-pay dd:nth-last-of-type(2) { color: #ff6b78; }
 .booking-gross-profit { color: #45e08f !important; font-weight: 950; }
-.booking-profit-field output {
+.booking-profit-field output,
+.booking-cost-total output {
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -4920,6 +4921,10 @@ table td,
   background: rgba(69, 224, 143, .08);
   font-size: 17px;
   font-weight: 950;
+}
+.booking-cost-total output {
+  color: #61a7ff;
+  background: rgba(97, 167, 255, .08);
 }
 .booking-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
 .booking-actions button { min-height: 38px; justify-content: center; }
