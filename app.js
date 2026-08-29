@@ -25,15 +25,16 @@ const roles = {
 };
 
 const permissions = {
-  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
-  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
-  receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_checkin", "booking_payment"],
+  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "marketing_view", "marketing_manage", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
+  manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "marketing_view", "marketing_manage", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
+  receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_checkin", "booking_payment", "marketing_view"],
   technician: ["bike_view", "bike_maintenance", "damage", "photos", "equipment_view", "equipment_maintenance", "costs"]
 };
 
 const permissionGroups = [
   ["motorbikes", "Xe máy", "Quản lý đội xe, thuê/trả xe và sửa chữa xe"],
   ["booking", "Lịch đặt phòng", "Timeline, khách sạn, phòng và phiếu đặt phòng"],
+  ["marketing", "Dữ liệu Marketing", "Kho video, hình ảnh và tài liệu dùng chung cho đội sales"],
   ["equipment", "Thiết bị khách sạn", "Danh mục thiết bị và sửa chữa/bảo trì thiết bị"],
   ["kitchen", "Đầu bếp & chế biến", "Món ăn, công thức, nước chấm và bảng giá"],
   ["hr", "Quản lý nhân sự", "Hồ sơ nhân viên, ứng viên và chấm công"],
@@ -54,6 +55,8 @@ const permissionCatalog = [
   ["booking_catalog_manage", "Quản lý khách sạn/phòng", "Thêm, sửa, ẩn và xóa danh mục khách sạn/phòng", "booking"],
   ["booking_checkin", "Check-in khách", "Xác nhận khách đã nhận phòng và ghi nhận người thao tác", "booking"],
   ["booking_payment", "Thanh toán đặt phòng", "Ghi nhận booking đã thanh toán đủ tổng tiền", "booking"],
+  ["marketing_view", "Xem dữ liệu Marketing", "Xem trực tiếp, mở Drive và tải nội dung Marketing dùng chung", "marketing"],
+  ["marketing_manage", "Quản lý dữ liệu Marketing", "Thêm, sửa và xóa liên kết trong kho Marketing dùng chung", "marketing"],
   ["equipment_view", "Xem thiết bị", "Xem danh sách, tình trạng và lịch bảo trì thiết bị", "equipment"],
   ["equipment_manage", "Quản lý thiết bị", "Thêm, sửa thiết bị và loại thiết bị", "equipment"],
   ["equipment_maintenance", "Sửa chữa thiết bị", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì thiết bị", "equipment"],
@@ -74,7 +77,7 @@ const menu = [
   ["hotels", "Kh\u00e1ch s\u1ea1n", "booking_view"],
   ["rooms", "Ph\u00f2ng", "booking_view"],
   ["comboCalculator", "Bảng tính gói dịch vụ", "booking_view"],
-  ["marketingData", "Dữ liệu Marketing", "booking_view"],
+  ["marketingData", "Dữ liệu Marketing", "marketing_view"],
   ["bookingReports", "Báo cáo đặt phòng", "reports"],
   ["motorbikes", "Xe m\u00e1y", "bike_view"],
   ["bikeTypes", "Lo\u1ea1i xe", "bike_view"],
@@ -640,6 +643,10 @@ async function flushRemoteSave() {
       apiState.pendingDb = null;
       await refreshRemoteDb({ force: true });
       showToast("Dữ liệu đã được cập nhật từ thiết bị khác. Hệ thống vừa tải lại bản mới từ MySQL.");
+    } else if (error.status === 403) {
+      apiState.pendingDb = null;
+      await refreshRemoteDb({ force: true });
+      showToast(error.message || "Tài khoản này không có quyền thay đổi dữ liệu dùng chung.");
     } else {
       apiState.pendingDb = db;
       showToast(`Chưa đồng bộ được dữ liệu lên MySQL.${error.status === 413 ? " Dữ liệu hình ảnh đang quá lớn." : ""} Hệ thống sẽ thử lại.`);
@@ -978,6 +985,21 @@ function migrateDb(db) {
       if (state.user?.id === user.id) state.user = { ...state.user, permissions: [...user.permissions] };
     });
     db.settings = { ...(db.settings || {}), kitchenPermissionsMigrated: true };
+    changed = true;
+  }
+  if (!db.settings?.marketingPermissionsMigrated) {
+    db.users?.forEach((user) => {
+      const current = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      if (current.has("booking_view") || ["admin", "manager", "receptionist"].includes(user.role)) {
+        current.add("marketing_view");
+      }
+      if (["admin", "manager"].includes(user.role)) current.add("marketing_manage");
+      const nextPermissions = [...current];
+      if (nextPermissions.length !== (user.permissions || []).length) changed = true;
+      user.permissions = nextPermissions;
+      if (state.user?.id === user.id) state.user = { ...state.user, permissions: nextPermissions };
+    });
+    db.settings = { ...(db.settings || {}), marketingPermissionsMigrated: true };
     changed = true;
   }
   db.settings = db.settings || {};
@@ -2443,12 +2465,18 @@ function bookingReportData(month = todayISO().slice(0, 7), db = getDb()) {
     const room = rooms.find((item) => item.code === booking.room);
     const hotel = hotels.find((item) => item.id === (booking.hotelId || room?.hotelId));
     const hotelName = booking.hotelName || hotel?.name || "Chưa xác định";
-    if (!rows[hotelName]) rows[hotelName] = { hotelName, bookings: 0, guests: 0, revenue: 0, grossProfit: 0 };
+    if (!rows[hotelName]) rows[hotelName] = { hotelName, bookings: 0, guests: 0, revenue: 0, roomCost: 0, ferryCost: 0, bikeCost: 0, otherCost: 0, totalCost: 0, grossProfit: 0 };
     const revenue = Number(booking.total || 0);
     const cost = Number(booking.totalCost || 0);
+    const breakdown = bookingCostBreakdown(booking);
     rows[hotelName].bookings += 1;
     rows[hotelName].guests += Number(booking.guests || 0);
     rows[hotelName].revenue += revenue;
+    rows[hotelName].roomCost += breakdown.roomCost;
+    rows[hotelName].ferryCost += breakdown.ferryCost;
+    rows[hotelName].bikeCost += breakdown.bikeCost;
+    rows[hotelName].otherCost += breakdown.otherCost;
+    rows[hotelName].totalCost += cost;
     rows[hotelName].grossProfit += Number(booking.grossProfit ?? (revenue - cost));
     return rows;
   }, {})).sort((a, b) => b.revenue - a.revenue);
@@ -2563,9 +2591,9 @@ function marketingDataView() {
     })
     .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
   const counts = Object.fromEntries(MARKETING_ASSET_TYPES.map((type) => [type, (db.marketingAssets || []).filter((item) => item.type === type).length]));
-  const action = can("booking_write") ? `<button class="primary" data-modal="marketingAsset">+ Thêm dữ liệu</button>` : "";
+  const action = can("marketing_manage") ? `<button class="primary" data-modal="marketingAsset">+ Thêm dữ liệu</button>` : "";
   return `<section class="marketing-data-page">
-    ${pageHeader("Dữ liệu Marketing", "Quản lý video, hình ảnh, tài liệu và thư mục chia sẻ trên Google Drive.", action)}
+    ${pageHeader("Dữ liệu Marketing", "Kho dữ liệu dùng chung cho đội sales: video, hình ảnh, tài liệu và thư mục Google Drive.", action)}
     <div class="marketing-kpis">
       <article><span class="marketing-kpi-icon is-all">▣</span><small>Tổng dữ liệu</small><strong>${(db.marketingAssets || []).length}</strong></article>
       <article><span class="marketing-kpi-icon is-video">▶</span><small>Video</small><strong>${counts.Video || 0}</strong></article>
@@ -2575,7 +2603,7 @@ function marketingDataView() {
     <div class="card marketing-toolbar">
       <input type="search" placeholder="Tìm tên, nhóm chiến dịch, mô tả..." value="${escapeHtmlAttribute(state.query)}" data-filter="query">
       <select data-marketing-filter aria-label="Lọc loại dữ liệu"><option value="all">Tất cả loại dữ liệu</option>${MARKETING_ASSET_TYPES.map((type) => `<option value="${type}" ${state.marketingFilter === type ? "selected" : ""}>${type}</option>`).join("")}</select>
-      <p>Liên kết Drive cần bật quyền <strong>Bất kỳ ai có đường liên kết đều có thể xem</strong>.</p>
+      <p><strong>Dữ liệu dùng chung.</strong> Liên kết Drive cần bật quyền <strong>Bất kỳ ai có đường liên kết đều có thể xem</strong>.</p>
     </div>
     <div class="marketing-list">${rows.map(marketingAssetRow).join("") || `<div class="empty card">Chưa có dữ liệu Marketing phù hợp.</div>`}</div>
   </section>`;
@@ -2592,7 +2620,7 @@ function marketingAssetRow(item) {
       <button class="primary" data-modal="marketingPreview:${item.id}">Xem trực tiếp</button>
       <a class="secondary" href="${escapeHtmlAttribute(link.source)}" target="_blank" rel="noopener noreferrer">${link.isFolder ? "Mở thư mục" : "Mở Drive"}</a>
       ${link.download && !link.isFolder ? `<a class="secondary" href="${escapeHtmlAttribute(link.download)}" target="_blank" rel="noopener noreferrer">Tải xuống</a>` : ""}
-      ${can("booking_write") ? `<button class="secondary" data-modal="marketingAsset:${item.id}">Sửa</button><button class="danger" data-action="delete-marketing:${item.id}">Xóa</button>` : ""}
+      ${can("marketing_manage") ? `<button class="secondary" data-modal="marketingAsset:${item.id}">Sửa</button><button class="danger" data-action="delete-marketing:${item.id}">Xóa</button>` : ""}
     </div>
   </article>`;
 }
@@ -2707,13 +2735,13 @@ function bookingReportsView() {
     </div>
     <div class="booking-report-visuals">
       <section class="card booking-revenue-chart"><div class="panel-title"><h3>Doanh số & thu</h3></div><div class="chart-legend"><span class="is-revenue">Doanh số</span><span class="is-paid">Đã thu</span></div><svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Biểu đồ doanh số và số tiền đã thu trong ${monthLabel}"><defs><linearGradient id="bookingRevenueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#31d4a0" stop-opacity=".35"/><stop offset="1" stop-color="#31d4a0" stop-opacity="0"/></linearGradient></defs><line x1="${chartLeft}" y1="${chartTop}" x2="${chartLeft}" y2="${chartHeight - chartBottom}"/><line class="chart-grid" x1="${chartLeft}" y1="${chartTop}" x2="${chartWidth - 10}" y2="${chartTop}"/><line class="chart-grid" x1="${chartLeft}" y1="${chartY(chartMax / 2)}" x2="${chartWidth - 10}" y2="${chartY(chartMax / 2)}"/><line x1="${chartLeft}" y1="${chartHeight - chartBottom}" x2="${chartWidth - 10}" y2="${chartHeight - chartBottom}"/><text class="axis-value" x="${chartLeft - 10}" y="${chartTop + 5}" text-anchor="end">${money(chartMax)}</text><text class="axis-value" x="${chartLeft - 10}" y="${chartY(chartMax / 2) + 5}" text-anchor="end">${money(chartMax / 2)}</text><text class="axis-value" x="${chartLeft - 10}" y="${chartHeight - chartBottom + 5}" text-anchor="end">0</text><polygon points="${revenueArea}" fill="url(#bookingRevenueFill)"/><polyline class="revenue-line" points="${revenuePoints}"/><polyline class="paid-line" points="${paidPoints}"/><circle class="revenue-point" cx="${chartX(daysInMonth - 1)}" cy="${chartY(report.totals.revenue)}" r="4"/><circle class="paid-point" cx="${chartX(daysInMonth - 1)}" cy="${chartY(report.totals.paid)}" r="4"/><text x="${chartWidth - 14}" y="${Math.max(22, chartY(report.totals.revenue) - 10)}" text-anchor="end" class="revenue-value">${money(report.totals.revenue)}</text><text x="${chartWidth - 14}" y="${Math.min(chartHeight - chartBottom - 8, chartY(report.totals.paid) + 23)}" text-anchor="end" class="paid-value">${money(report.totals.paid)}</text><text class="month-value" x="${chartWidth / 2}" y="${chartHeight - 9}" text-anchor="middle">${monthLabel}</text></svg></section>
-      <section class="card booking-status-chart"><div class="panel-title"><h3>Doanh số theo khách sạn</h3></div><div class="booking-status-content"><div class="booking-donut" style="--booking-donut:${hotelStops || "#28465c 0 100%"}"><span><small>Tổng doanh số</small><strong>${report.hotelRows.length}</strong><em>khách sạn</em></span></div><div class="booking-status-legend">${report.hotelRows.length ? report.hotelRows.map((row, index) => `<div><i style="--status-color:${chartColors[index % chartColors.length]}"></i><span><b>${row.hotelName}</b><small>${row.bookings} booking · ${row.guests} khách</small></span><strong>${money(row.revenue)}</strong></div>`).join("") : `<p class="empty">Chưa có doanh số khách sạn trong tháng.</p>`}</div></div></section>
+      <section class="card booking-status-chart"><div class="panel-title"><div><h3>Doanh số theo khách sạn</h3><p>Doanh số bán ra và các chi phí cấu thành theo từng khách sạn.</p></div></div><div class="booking-status-content"><div class="booking-donut" style="--booking-donut:${hotelStops || "#28465c 0 100%"}"><span><small>Tổng doanh số</small><strong>${report.hotelRows.length}</strong><em>khách sạn</em></span></div><div class="booking-status-legend">${report.hotelRows.length ? report.hotelRows.map((row, index) => `<div class="booking-hotel-report-row"><i style="--status-color:${chartColors[index % chartColors.length]}"></i><span><b>${row.hotelName}</b><small>${row.bookings} booking · ${row.guests} khách</small></span><strong>${money(row.revenue)}</strong><div class="booking-hotel-costs"><small><span>Khách sạn/phòng</span><b>${money(row.roomCost)}</b></small><small><span>Vé tàu</span><b>${money(row.ferryCost)}</b></small><small><span>Xe máy</span><b>${money(row.bikeCost)}</b></small><small><span>Chi phí khác</span><b>${money(row.otherCost)}</b></small><small class="is-total"><span>Tổng chi phí</span><b>${money(row.totalCost)}</b></small><small class="is-profit"><span>Lãi gộp</span><b>${money(row.grossProfit)}</b></small></div></div>`).join("") : `<p class="empty">Chưa có doanh số khách sạn trong tháng.</p>`}</div></div></section>
     </div>
     <div class="booking-report-highlight"><i>♛</i><span><small>Sale có lãi gộp cao nhất</small><strong>${topSale?.salesName || "Chưa gán sale"}</strong></span><b>${topSale ? money(topSale.grossProfit) : money(0)}</b></div>
     <section class="card booking-sale-chart"><div class="panel-title"><div><h3>Doanh số từng sale</h3><p>So sánh doanh số, tiền đã thu và lãi gộp của từng người phụ trách booking.</p></div><span class="count">${report.saleRows.length} sale</span></div><div class="booking-sale-chart-legend"><span class="is-total">Doanh số</span><span class="is-collected">Đã thu</span><span class="is-profit">Lãi gộp</span></div><div class="booking-sale-bars">${report.saleRows.length ? report.saleRows.map((row, index) => `<article><div class="booking-sale-bar-name"><i style="--sale-color:${bookingSalesColor(row.salesName)}"></i><span><strong>${row.salesName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><b>${money(row.revenue)}</b></div><div class="booking-sale-bar-track" title="Doanh số ${money(row.revenue)}"><span class="is-total" style="width:${(row.revenue / maxSaleRevenue * 100).toFixed(2)}%"></span></div><div class="booking-sale-bar-track is-thin" title="Đã thu ${money(row.paid)}"><span class="is-collected" style="width:${(row.paid / maxSaleRevenue * 100).toFixed(2)}%"></span></div><div class="booking-sale-bar-track is-thin" title="Lãi gộp ${money(row.grossProfit)}"><span class="is-profit" style="width:${(Math.max(0, row.grossProfit) / maxSaleRevenue * 100).toFixed(2)}%"></span></div></article>`).join("") : `<p class="empty">Chưa có doanh số theo sale trong tháng này.</p>`}</div></section>
     <div class="booking-report-grid">
       <section class="card booking-report-sale"><div class="panel-title"><div><h3>Hiệu quả từng sale</h3><p>Doanh số, chi phí và lãi gộp theo người phụ trách booking.</p></div></div><div class="table-wrap"><table><thead><tr><th>Sale</th><th>Booking</th><th>Khách</th><th>Doanh số</th><th>Đã thu</th><th>Còn thu</th><th>Chi phí</th><th>Lãi gộp</th><th>Biên lãi</th></tr></thead><tbody>${report.saleRows.length ? report.saleRows.map((row, index) => `<tr><td><span class="booking-sales-name" style="--sale-color:${bookingSalesColor(row.salesName)}"><i></i><span><strong>${row.salesName}</strong><small>Hạng ${index + 1}</small></span></span></td><td>${row.bookings}</td><td>${row.guests}</td><td>${money(row.revenue)}</td><td>${money(row.paid)}</td><td>${money(row.receivable)}</td><td>${money(row.cost)}</td><td class="booking-gross-profit">${money(row.grossProfit)}</td><td>${row.margin.toFixed(1)}%</td></tr>`).join("") : `<tr><td colspan="9" class="empty">Chưa có booking trong tháng này.</td></tr>`}</tbody></table></div></section>
-      <section class="card"><div class="panel-title"><h3>Theo khách sạn</h3></div><div class="booking-report-list">${report.hotelRows.length ? report.hotelRows.map((row) => `<div><span><strong>${row.hotelName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><span><b>${money(row.revenue)}</b><small>Lãi ${money(row.grossProfit)}</small></span></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
+      <section class="card"><div class="panel-title"><h3>Theo khách sạn</h3></div><div class="booking-report-list booking-hotel-summary-list">${report.hotelRows.length ? report.hotelRows.map((row) => `<div><span><strong>${row.hotelName}</strong><small>${row.bookings} booking · ${row.guests} khách</small></span><span><b>Doanh số ${money(row.revenue)}</b><small>Phòng ${money(row.roomCost)} · Vé tàu ${money(row.ferryCost)}</small><small>Xe máy ${money(row.bikeCost)} · Khác ${money(row.otherCost)}</small><small>Tổng chi phí ${money(row.totalCost)} · Lãi ${money(row.grossProfit)}</small></span></div>`).join("") : `<p class="empty">Chưa có dữ liệu.</p>`}</div></section>
       <section class="card"><div class="panel-title"><h3>Tổng quan tháng</h3></div><div class="booking-report-list"><div><span><strong>Tổng booking</strong><small>Gồm cả booking đã hủy</small></span><b>${report.bookings.length}</b></div><div><span><strong>Tổng số khách</strong><small>Bình quân ${report.validBookings.length ? (report.totals.guests / report.validBookings.length).toFixed(1) : "0"} khách/booking</small></span><b>${report.totals.guests}</b></div><div><span><strong>Tổng chi phí</strong><small>Chi phí đã nhập trong booking</small></span><b>${money(report.totals.cost)}</b></div></div></section>
     </div>
     ${bookingChangeHistoryReport(report.month)}
@@ -5030,8 +5058,8 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (type === "swapRental") return can("rentals") ? "rentals" : "rental_return";
   if (["hotel", "room"].includes(type)) return "booking_catalog_manage";
   if (type === "booking") return id ? "booking_edit" : "booking_write";
-  if (type === "marketingAsset") return "booking_write";
-  if (type === "marketingPreview") return "booking_view";
+  if (type === "marketingAsset") return "marketing_manage";
+  if (type === "marketingPreview") return "marketing_view";
   if (type === "comboSummary") return "booking_view";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
   if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
@@ -5089,7 +5117,7 @@ function marketingAssetForm(id) {
     ${textField("title", "Tên dữ liệu", item.title, true)}
     ${selectField("type", "Loại nội dung", MARKETING_ASSET_TYPES, item.type || "Video", true)}
     ${textField("category", "Nhóm / chiến dịch", item.category || "")}
-    ${textField("url", "Liên kết Google Drive", item.url || "", true, "url")}
+    ${textField("url", "Liên kết Google Drive", item.url || "", true, "text")}
     <div class="field full"><label>Mô tả ngắn</label><textarea name="description" placeholder="Nội dung, mục đích sử dụng hoặc ghi chú cho người xem...">${escapeHtmlAttribute(item.description || "")}</textarea></div>
     <div class="marketing-drive-help full"><strong>Cách lấy liên kết:</strong><span>Trong Google Drive chọn Chia sẻ → Quyền truy cập chung → Bất kỳ ai có đường liên kết → Sao chép đường liên kết.</span><span>Với thư mục ảnh, chọn loại “Thư mục hình ảnh”. Nút tải xuống chỉ áp dụng cho từng tệp.</span></div>
   </div>`;
@@ -6319,7 +6347,7 @@ function handleAction(event) {
 }
 
 function deleteMarketingAsset(id) {
-  if (!can("booking_write")) {
+  if (!can("marketing_manage")) {
     showToast("Tài khoản này không có quyền xóa dữ liệu Marketing.");
     return;
   }
@@ -7661,7 +7689,7 @@ function exportBookingReportExcel() {
     <h1>BÁO CÁO ĐẶT PHÒNG COCO BAY - THÁNG ${report.month}</h1><p>Ngày xuất: ${formatDateTime(new Date())}</p>
     <h2>Tổng quan</h2>${excelTable(["Tổng booking", "Booking hợp lệ", "Đã hủy", "Tổng khách", "Tổng doanh số", "Đã thu", "Còn phải thu", "Tổng chi phí", "Lãi gộp", "Biên lãi (%)"], [[report.bookings.length, report.validBookings.length, report.cancelled, report.totals.guests, report.totals.revenue, report.totals.paid, report.totals.receivable, report.totals.cost, report.totals.grossProfit, report.totals.margin.toFixed(1)]], "kpi")}
     <h2>Hiệu quả từng sale</h2>${excelTable(["Sale", "Booking", "Khách", "Doanh số", "Đã thu", "Còn phải thu", "Chi phí", "Lãi gộp", "Biên lãi (%)"], report.saleRows.map((row) => [row.salesName, row.bookings, row.guests, row.revenue, row.paid, row.receivable, row.cost, row.grossProfit, row.margin.toFixed(1)]))}
-    <h2>Theo khách sạn</h2>${excelTable(["Khách sạn", "Booking", "Khách", "Doanh số", "Lãi gộp"], report.hotelRows.map((row) => [row.hotelName, row.bookings, row.guests, row.revenue, row.grossProfit]))}
+    <h2>Theo khách sạn</h2>${excelTable(["Khách sạn", "Booking", "Khách", "Doanh số", "Chi phí khách sạn/phòng", "Chi phí vé tàu", "Chi phí xe máy", "Chi phí khác", "Tổng chi phí", "Lãi gộp"], report.hotelRows.map((row) => [row.hotelName, row.bookings, row.guests, row.revenue, row.roomCost, row.ferryCost, row.bikeCost, row.otherCost, row.totalCost, row.grossProfit]))}
     <h2>Chi tiết booking</h2>${excelTable(["Mã booking", "Nhóm khách", "Người liên hệ", "Điện thoại", "Phòng", "Sale", "Ngày đến", "Ngày đi", "Số khách", "Trạng thái", "Tổng tiền", "Đã thu", "Chi phí", "Lãi gộp"], detailRows)}
   </body></html>`;
   downloadBlob(new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), `bao-cao-dat-phong-${report.month}.xls`);

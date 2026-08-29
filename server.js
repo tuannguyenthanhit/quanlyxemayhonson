@@ -60,7 +60,7 @@ function defaultDb() {
       email: process.env.ADMIN_EMAIL || "admin@cocobay.vn",
       password: process.env.ADMIN_PASSWORD || "123456",
       role: "admin",
-      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit", "kitchen_view", "kitchen_manage"],
+      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit", "marketing_view", "marketing_manage", "kitchen_view", "kitchen_manage"],
       active: true,
       lastLoginAt: ""
     }],
@@ -73,6 +73,7 @@ function defaultDb() {
     hotels: [],
     rooms: [],
     hotelBookings: [],
+    marketingAssets: [],
     recoveryRequests: [],
     hrEmployees: [],
     jobApplicants: [],
@@ -595,6 +596,20 @@ async function handleApi(req, res, urlPath) {
       const body = await readBody(req);
       if (!body || typeof body.db !== "object") {
         sendJson(res, 400, { ok: false, message: "Dữ liệu không hợp lệ." });
+        return true;
+      }
+      const currentRecord = await readDbRecord();
+      const currentUser = (currentRecord.db.users || []).find((item) => item.id === session.userId && item.active);
+      if (!currentUser) {
+        sendJson(res, 401, { ok: false, message: "Phiên đăng nhập không hợp lệ." });
+        return true;
+      }
+      const currentMarketingAssets = Array.isArray(currentRecord.db.marketingAssets) ? currentRecord.db.marketingAssets : [];
+      const nextMarketingAssets = Array.isArray(body.db.marketingAssets) ? body.db.marketingAssets : [];
+      const marketingChanged = JSON.stringify(currentMarketingAssets) !== JSON.stringify(nextMarketingAssets);
+      const userPermissions = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+      if (marketingChanged && currentUser.role !== "admin" && !userPermissions.includes("marketing_manage")) {
+        sendJson(res, 403, { ok: false, message: "Tài khoản này chỉ được xem, không có quyền thay đổi dữ liệu Marketing dùng chung." });
         return true;
       }
       const baseVersion = Number(body.baseVersion);

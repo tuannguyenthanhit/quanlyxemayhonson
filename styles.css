@@ -5119,6 +5119,9 @@ table td,
 .booking-revenue-chart svg .revenue-point { fill: #31d4a0; stroke: #d8fff3; stroke-width: 2; }
 .booking-revenue-chart svg .paid-point { fill: #4a9cff; stroke: #e0efff; stroke-width: 2; }
 .booking-status-content { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 14px; min-height: 235px; }
+.booking-status-chart .booking-status-content { grid-template-columns: 1fr; gap: 10px; }
+.booking-status-chart .booking-donut { width: 106px; height: 106px; }
+.booking-status-chart .booking-donut::before { width: 64px; height: 64px; }
 .booking-donut {
   display: grid;
   place-items: center;
@@ -5141,6 +5144,27 @@ table td,
 .booking-status-legend b { color: #f5fbff; }
 .booking-status-legend small { color: #8da9bb; }
 .booking-status-legend > div > strong { grid-column: 2; color: #fff; font-size: 14px; }
+.booking-hotel-report-row { padding: 8px 0; border-bottom: 1px solid rgba(126, 176, 198, .16); }
+.booking-hotel-report-row:last-child { border-bottom: 0; }
+.booking-hotel-costs {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px 12px;
+  padding-top: 6px;
+}
+.booking-status-legend .booking-hotel-costs small {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #9bb5c6;
+}
+.booking-status-legend .booking-hotel-costs small b { color: #dcecf5; white-space: nowrap; }
+.booking-status-legend .booking-hotel-costs .is-total { padding-top: 5px; border-top: 1px solid rgba(126, 176, 198, .18); }
+.booking-status-legend .booking-hotel-costs .is-profit b { color: #45e08f; }
+.booking-hotel-summary-list > div { align-items: flex-start; }
+.booking-hotel-summary-list > div > span:last-child { max-width: 68%; }
 .booking-report-kpis .report-kpi { min-height: 118px; }
 .booking-report-highlight {
   display: grid;
@@ -5209,6 +5233,9 @@ table td,
   .booking-sales-summary .table-wrap { overflow-x: auto; }
   .booking-sales-summary table { min-width: 650px; }
   .booking-report-heading, .booking-report-heading > div:last-child { align-items: stretch; flex-direction: column; }
+  .booking-hotel-costs { grid-template-columns: 1fr; }
+  .booking-hotel-summary-list > div { align-items: stretch; flex-direction: column; }
+  .booking-hotel-summary-list > div > span:last-child { max-width: none; text-align: left; }
   .booking-report-heading > div:last-child { gap: 8px; padding-top: 0; }
   .booking-report-export { display: grid; grid-template-columns: 1fr 1fr; }
   .booking-report-heading h1 { font-size: 23px; }
