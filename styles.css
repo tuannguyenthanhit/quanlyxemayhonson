@@ -4848,6 +4848,25 @@ table td,
 .booking-detail h4 { margin: 0 0 14px; color: #fff; }
 .booking-detail h4 { margin-top: 20px; font-size: 13px; letter-spacing: .04em; }
 
+.booking-print-brand { display: none; }
+.booking-print-controls {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.booking-print-controls label { flex: 1; display: grid; gap: 5px; color: #b7cce0; font-size: 11px; font-weight: 800; }
+.booking-print-controls select,
+.booking-print-controls button { min-height: 38px; }
+.booking-print-controls select {
+  width: 100%;
+  border: 1px solid #29526a;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #fff;
+  background: #071d31;
+}
+
 .booking-detail-title {
   display: flex;
   gap: 12px;
@@ -4928,6 +4947,56 @@ table td,
 }
 .booking-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
 .booking-actions button { min-height: 38px; justify-content: center; }
+
+@media print {
+  body.booking-printing { color: #111 !important; background: #fff !important; }
+  body.booking-printing .sidebar,
+  body.booking-printing .topbar,
+  body.booking-printing .booking-page > :not(.booking-layout),
+  body.booking-printing .booking-board,
+  body.booking-printing .booking-close,
+  body.booking-printing .booking-print-controls,
+  body.booking-printing .booking-actions,
+  body.booking-printing .toast { display: none !important; }
+  body.booking-printing .main,
+  body.booking-printing .app-shell,
+  body.booking-printing .content,
+  body.booking-printing .booking-page,
+  body.booking-printing .booking-layout { display: block !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: #fff !important; box-shadow: none !important; overflow: visible !important; }
+  body.booking-printing .booking-detail {
+    display: block !important;
+    width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    color: #111 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  body.booking-printing .booking-print-brand { display: grid; gap: 4px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 2px solid #111; text-align: center; }
+  body.booking-printing .booking-print-brand strong { font-size: 20px; }
+  body.booking-printing .booking-print-brand span { font-size: 15px; font-weight: 900; }
+  body.booking-printing .booking-print-brand small,
+  body.booking-printing .booking-detail dt,
+  body.booking-printing .booking-detail small { color: #444 !important; }
+  body.booking-printing .booking-detail h3,
+  body.booking-printing .booking-detail h4,
+  body.booking-printing .booking-detail strong,
+  body.booking-printing .booking-detail dd { color: #111 !important; }
+  body.booking-printing .booking-detail-title > span,
+  body.booking-printing .booking-sale-badge,
+  body.booking-printing .booking-service { border: 1px solid #bbb !important; color: #111 !important; background: #fff !important; box-shadow: none !important; }
+  body.booking-print-k80 .booking-detail { font-size: 10.5px !important; }
+  body.booking-print-k80 .booking-print-brand strong { font-size: 16px; }
+  body.booking-print-k80 .booking-detail dl { grid-template-columns: 31mm 1fr; gap: 6px 5px; font-size: 10.5px; }
+  body.booking-print-k80 .booking-detail-title > span { width: 38px; height: 38px; }
+  body.booking-print-k80 .booking-sale-badge { padding: 7px; margin-bottom: 10px; }
+  body.booking-print-k80 .booking-detail h4 { margin-top: 12px; margin-bottom: 8px; }
+}
 
 .booking-simple-grid {
   display: grid;

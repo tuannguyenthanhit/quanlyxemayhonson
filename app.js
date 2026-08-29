@@ -2337,7 +2337,7 @@ function bookingDetailPanelLegacy(selected, services) {
     ${canCheckIn ? `<button class="ghost" type="button" data-action="checkin-booking:${selected.id}" ${checkedIn || cancelled ? "disabled" : ""}>${checkedIn ? "Đã check-in" : "Check-in"}</button>` : ""}
     ${isSuperAdmin() ? `<button class="danger" type="button" data-action="delete-booking:${selected.id}">Hủy/xóa đặt phòng</button>` : ""}
   </div>` : `<p class="hint">Booking do <strong>${selected.salesName || selected.createdBy || "sale khác"}</strong> phụ trách. Tài khoản này chỉ được xem.</p>`;
-  return `<aside class="booking-detail"><button class="booking-close">×</button><h3>CHI TIẾT ĐẶT PHÒNG</h3><div class="booking-detail-title"><span>◎</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>Mã đặt phòng</dt><dd>#${selected.id}</dd><dt>Khách sạn</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Phòng</dt><dd>${selected.room}</dd><dt>Ngày đến</dt><dd>${formatDate(selected.start)}</dd><dt>Ngày đi</dt><dd>${formatDate(selected.end)}</dd><dt>Số lượng khách</dt><dd>${selected.guests} người</dd><dt>Người liên hệ</dt><dd>${selected.customer}</dd><dt>SĐT</dt><dd>${selected.phone}</dd><dt>Ghi chú dịch vụ</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi chú khác</dt><dd>${selected.notes || "-"}</dd></dl><h4>DỊCH VỤ ĐÃ ĐẶT</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TOÁN</h4><dl class="booking-pay"><dt>Tổng tiền</dt><dd>${money(selected.total)}</dd><dt>Đã cọc/đã thu</dt><dd>${money(selected.paid)}</dd><dt>Còn lại</dt><dd>${money(Math.max(0, Number(selected.total || 0) - Number(selected.paid || 0)))}</dd><dt>Trạng thái</dt><dd>${pill(selected.status)}</dd></dl>${actions}</aside>`;
+  return `<aside class="booking-detail"><button class="booking-close">×</button><div class="booking-print-brand"><strong>COCO BAY HÒN SƠN</strong><span>PHIẾU XÁC NHẬN ĐẶT PHÒNG</span><small>Ngày in: ${formatDateTime(new Date())}</small></div><h3>CHI TIẾT ĐẶT PHÒNG</h3><div class="booking-print-controls"><label>Khổ giấy<select data-booking-print-style aria-label="Chọn khổ giấy in"><option value="a4">A4</option><option value="k80">K80 - Máy in nhiệt</option></select></label><button class="secondary" type="button" data-action="print-booking:${selected.id}">In phiếu</button></div><div class="booking-detail-title"><span>◎</span><div><strong>${selected.group}</strong>${pill(selected.status)}</div></div><dl><dt>Mã đặt phòng</dt><dd>#${selected.id}</dd><dt>Khách sạn</dt><dd>${selected.hotelName || "Coco Bay Resort"}</dd><dt>Phòng</dt><dd>${selected.room}</dd><dt>Ngày đến</dt><dd>${formatDate(selected.start)}</dd><dt>Ngày đi</dt><dd>${formatDate(selected.end)}</dd><dt>Số lượng khách</dt><dd>${selected.guests} người</dd><dt>Người liên hệ</dt><dd>${selected.customer}</dd><dt>SĐT</dt><dd>${selected.phone}</dd><dt>Ghi chú dịch vụ</dt><dd>${selected.serviceNote || "-"}</dd><dt>Ghi chú khác</dt><dd>${selected.notes || "-"}</dd></dl><h4>DỊCH VỤ ĐÃ ĐẶT</h4><div class="booking-services">${services.map((service) => `<div class="booking-service ${service.tone}"><span>${bookingServiceIcon(service.name)}</span><div><strong>${service.name}</strong><small>${service.date}</small></div><em>${service.qty}</em></div>`).join("")}</div><h4>THANH TOÁN</h4><dl class="booking-pay"><dt>Tổng tiền</dt><dd>${money(selected.total)}</dd><dt>Đã cọc/đã thu</dt><dd>${money(selected.paid)}</dd><dt>Còn lại</dt><dd>${money(Math.max(0, Number(selected.total || 0) - Number(selected.paid || 0)))}</dd><dt>Trạng thái</dt><dd>${pill(selected.status)}</dd></dl>${actions}</aside>`;
 }
 
 function bookingDetailPanel(selected, services) {
@@ -5966,6 +5966,29 @@ async function copyComboSummaryToClipboard() {
   }
 }
 
+function printBookingDetail(bookingId) {
+  const detail = document.querySelector(".booking-detail");
+  if (!detail || !bookingId) {
+    showToast("Không tìm thấy chi tiết booking để in.");
+    return;
+  }
+  const printStyle = detail.querySelector("[data-booking-print-style]")?.value || "a4";
+  const pageStyle = document.createElement("style");
+  pageStyle.id = "booking-print-page-style";
+  pageStyle.textContent = printStyle === "k80" ? "@page { size: 80mm auto; margin: 5mm; }" : "@page { size: A4 portrait; margin: 12mm; }";
+  document.getElementById(pageStyle.id)?.remove();
+  document.head.appendChild(pageStyle);
+  document.body.classList.add("booking-printing", `booking-print-${printStyle}`);
+  const previousTitle = document.title;
+  document.title = `Phieu-dat-phong-${bookingId}`;
+  requestAnimationFrame(() => {
+    window.print();
+    document.body.classList.remove("booking-printing", "booking-print-a4", "booking-print-k80");
+    pageStyle.remove();
+    document.title = previousTitle;
+  });
+}
+
 function bindApp() {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
     state.view = button.dataset.view;
@@ -6188,6 +6211,7 @@ function handleAction(event) {
   }
   if (action === "apply-combo-price") copyComboSummary();
   if (action === "copy-combo-summary") copyComboSummaryToClipboard();
+  if (action?.startsWith("print-booking:")) printBookingDetail(action.split(":")[1]);
   if (action === "toggle-nav") {
     state.mobileNav = !state.mobileNav;
     render();
