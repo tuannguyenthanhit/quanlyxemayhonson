@@ -584,19 +584,8 @@ async function apiRequest(path, options = {}) {
 
 async function loadRemoteSession() {
   try {
-    const health = await apiRequest("/health");
-    apiState.enabled = health.mode === "mysql";
-    if (!apiState.enabled) {
-      apiState.lastError = "Website chưa kết nối được MySQL.";
-      return false;
-    }
-  } catch {
-    apiState.enabled = false;
-    apiState.lastError = "Không kết nối được API/MySQL.";
-    return false;
-  }
-  try {
     const payload = await apiRequest("/me");
+    apiState.enabled = true;
     let migrated = false;
     if (payload.db) {
       apiState.remoteDb = payload.db;
@@ -611,7 +600,9 @@ async function loadRemoteSession() {
     if (migrated) queueRemoteSave(apiState.remoteDb);
     return true;
   } catch (error) {
-    if (error.status !== 401) apiState.lastError = error.message;
+    apiState.enabled = error.status === 401;
+    if (error.status === 503) apiState.lastError = "Website chưa kết nối được MySQL.";
+    else if (error.status !== 401) apiState.lastError = error.message || "Không kết nối được API/MySQL.";
     state.user = null;
     localStorage.removeItem(SESSION_KEY);
     return false;

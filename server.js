@@ -95,6 +95,75 @@ function defaultDb() {
   };
 }
 
+function collectEmbeddedImages(value, references = []) {
+  if (!value || typeof value !== "object") return references;
+  Object.entries(value).forEach(([key, child]) => {
+    if (typeof child === "string" && /^data:image\/(png|jpe?g|webp);base64,/i.test(child)) {
+      references.push({ parent: value, key, source: child });
+    } else if (child && typeof child === "object") {
+      collectEmbeddedImages(child, references);
+    }
+  });
+  return references;
+}
+
+async function externalizeEmbeddedDbImages() {
+  if (!pool) return 0;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query("SELECT json_data FROM app_data WHERE id = 1 FOR UPDATE");
+    if (!rows.length) {
+      await connection.commit();
+      return 0;
+    }
+    const db = JSON.parse(rows[0].json_data);
+    const references = collectEmbeddedImages(db);
+    if (!references.length) {
+      await connection.commit();
+      return 0;
+    }
+    const storedByHash = new Map();
+    let migrated = 0;
+    for (const reference of references) {
+      const match = reference.source.match(/^data:image\/(png|jpe?g|webp);base64,([a-z0-9+/=]+)$/i);
+      if (!match) continue;
+      const ext = match[1].toLowerCase().replace("jpeg", "jpg");
+      const buffer = Buffer.from(match[2], "base64");
+      if (!buffer.length || buffer.length > 8 * 1024 * 1024) continue;
+      const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+      const hash = crypto.createHash("sha256").update(buffer).digest("hex");
+      let url = storedByHash.get(hash);
+      if (!url) {
+        const id = hash.slice(0, 32);
+        await connection.query(
+          `INSERT INTO app_uploads (id, folder, mime_type, file_ext, byte_size, file_data)
+           VALUES (?, 'legacy', ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = VALUES(id)`,
+          [id, mimeType, ext, buffer.length, buffer]
+        );
+        url = `/uploads/db/${id}.${ext}`;
+        storedByHash.set(hash, url);
+      }
+      reference.parent[reference.key] = url;
+      migrated += 1;
+    }
+    if (migrated) {
+      await connection.query(
+        "UPDATE app_data SET json_data = ?, data_version = data_version + 1 WHERE id = 1",
+        [JSON.stringify(db)]
+      );
+    }
+    await connection.commit();
+    return migrated;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 async function ensureSchema() {
   if (!pool) return;
   if (!schemaReadyPromise) {
@@ -139,6 +208,12 @@ async function ensureSchema() {
           INDEX idx_app_uploads_created (created_at)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
       `);
+      try {
+        const migratedImages = await externalizeEmbeddedDbImages();
+        if (migratedImages) console.log(`Moved ${migratedImages} embedded images out of app_data JSON.`);
+      } catch (error) {
+        console.error("Could not optimize legacy embedded images:", error.message);
+      }
       await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
       const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
       if (!rows.length) {
@@ -229,11 +304,31 @@ function readBody(req) {
 }
 
 function sendJson(res, status, payload) {
-  res.writeHead(status, {
+  const body = Buffer.from(JSON.stringify(payload));
+  const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store"
-  });
-  res.end(JSON.stringify(payload));
+  };
+  const acceptsGzip = /\bgzip\b/.test(res.req?.headers?.["accept-encoding"] || "");
+  if (acceptsGzip && body.length >= 1024) {
+    zlib.gzip(body, { level: 6 }, (error, compressed) => {
+      if (error) {
+        res.writeHead(status, { ...headers, "Content-Length": body.length });
+        res.end(body);
+        return;
+      }
+      res.writeHead(status, {
+        ...headers,
+        "Content-Encoding": "gzip",
+        "Content-Length": compressed.length,
+        "Vary": "Accept-Encoding"
+      });
+      res.end(compressed);
+    });
+    return;
+  }
+  res.writeHead(status, { ...headers, "Content-Length": body.length });
+  res.end(body);
 }
 
 const marketingAssetTypes = new Set(["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"]);
@@ -446,7 +541,7 @@ function clearSessionCookie(res) {
 
 function staticCacheHeader(filePath) {
   const ext = path.extname(filePath);
-  if (ext === ".html") return "no-store, max-age=0";
+  if (ext === ".html") return "public, max-age=60, stale-while-revalidate=300";
   return "public, max-age=31536000, immutable";
 }
 
