@@ -1277,7 +1277,9 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-if (require.main === module) {
+// Hostinger may load the startup file through its process manager instead of
+// executing it as the main module, so listening must be the default behavior.
+if (process.env.SERVER_DISABLE_LISTEN !== "1") {
   server.listen(port, host, () => {
     console.log(`COCO BAY app running on ${host}:${port} (${pool ? "MySQL mode" : "localStorage mode"})`);
   });
