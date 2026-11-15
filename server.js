@@ -16,11 +16,28 @@ const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 const maxBodyBytes = Number(process.env.MAX_BODY_MB || 120) * 1024 * 1024;
 const sessionDays = Math.max(1, Number(process.env.SESSION_DAYS || 30));
+const accountVaultReadSessionMinutes = Math.max(15, Number(process.env.ACCOUNT_VAULT_READ_SESSION_MINUTES || 480));
+const accountVaultWriteSessionMinutes = Math.max(5, Number(process.env.ACCOUNT_VAULT_WRITE_SESSION_MINUTES || 30));
 const sessions = new Map();
-const accountVaultKeySource = process.env.ACCOUNT_VAULT_KEY || process.env.ADMIN_PASSWORD || process.env.DB_PASSWORD || "";
-const accountVaultKey = accountVaultKeySource
-  ? crypto.createHash("sha256").update(`coco-account-vault:${accountVaultKeySource}`).digest()
-  : null;
+const accountVaultRateLimits = new Map();
+const accountVaultKeySource = String(process.env.ACCOUNT_VAULT_KEY || "");
+const accountVaultLegacySources = [
+  process.env.ACCOUNT_VAULT_LEGACY_KEY,
+  process.env.ADMIN_PASSWORD,
+  process.env.DB_PASSWORD
+].map((value) => String(value || "")).filter(Boolean);
+
+function deriveAccountVaultKey(source) {
+  return crypto.createHash("sha256").update(`coco-account-vault:${source}`).digest();
+}
+
+const accountVaultKey = accountVaultKeySource.length >= 32 ? deriveAccountVaultKey(accountVaultKeySource) : null;
+const accountVaultKeyFingerprint = accountVaultKey
+  ? crypto.createHash("sha256").update(accountVaultKey).digest("hex").slice(0, 16)
+  : "";
+const accountVaultLegacyKeys = [...new Set([accountVaultKeySource, ...accountVaultLegacySources])]
+  .filter(Boolean)
+  .map(deriveAccountVaultKey);
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -223,6 +240,8 @@ async function ensureSchema() {
           recovery_contact VARCHAR(255) NOT NULL DEFAULT '',
           website_url VARCHAR(600) NOT NULL DEFAULT '',
           notes TEXT NOT NULL,
+          private_ciphertext LONGTEXT NULL,
+          key_fingerprint CHAR(16) NOT NULL DEFAULT '',
           created_by VARCHAR(160) NOT NULL DEFAULT '',
           updated_by VARCHAR(160) NOT NULL DEFAULT '',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -231,6 +250,43 @@ async function ensureSchema() {
           INDEX idx_account_vault_updated (updated_at)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
       `);
+      const [vaultPrivateColumns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'app_account_vault' AND COLUMN_NAME = 'private_ciphertext'
+        LIMIT 1
+      `, [dbConfig.database]);
+      if (!vaultPrivateColumns.length) {
+        await pool.query("ALTER TABLE app_account_vault ADD COLUMN private_ciphertext LONGTEXT NULL AFTER notes");
+      }
+      const [vaultKeyColumns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'app_account_vault' AND COLUMN_NAME = 'key_fingerprint'
+        LIMIT 1
+      `, [dbConfig.database]);
+      if (!vaultKeyColumns.length) {
+        await pool.query("ALTER TABLE app_account_vault ADD COLUMN key_fingerprint CHAR(16) NOT NULL DEFAULT '' AFTER private_ciphertext");
+      }
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_account_vault_audit (
+          id CHAR(32) PRIMARY KEY,
+          account_fingerprint CHAR(64) NOT NULL DEFAULT '',
+          user_id VARCHAR(80) NOT NULL,
+          user_name VARCHAR(160) NOT NULL DEFAULT '',
+          action VARCHAR(24) NOT NULL,
+          client_fingerprint CHAR(64) NOT NULL DEFAULT '',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_vault_audit_user (user_id),
+          INDEX idx_vault_audit_created (created_at)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+      `);
+      try {
+        const migratedAccounts = await migrateLegacyAccountVaultRows();
+        if (migratedAccounts) console.log(`Hardened ${migratedAccounts} legacy account vault records.`);
+      } catch (error) {
+        console.error("Could not harden legacy account vault records:", error.message);
+      }
       try {
         const migratedImages = await externalizeEmbeddedDbImages();
         if (migratedImages) console.log(`Moved ${migratedImages} embedded images out of app_data JSON.`);
@@ -238,6 +294,7 @@ async function ensureSchema() {
         console.error("Could not optimize legacy embedded images:", error.message);
       }
       await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
+      await pool.query("DELETE FROM app_account_vault_audit WHERE created_at < DATE_SUB(NOW(), INTERVAL 365 DAY)");
       const [rows] = await pool.query("SELECT id FROM app_data WHERE id = 1 LIMIT 1");
       if (!rows.length) {
         await pool.query("INSERT INTO app_data (id, json_data, data_version) VALUES (1, ?, 1)", [JSON.stringify(defaultDb())]);
@@ -326,11 +383,27 @@ function readBody(req) {
   });
 }
 
+function securityHeaders(req) {
+  const forwardedProto = String(req?.headers?.["x-forwarded-proto"] || "").split(",")[0].trim();
+  const isHttps = forwardedProto === "https" || process.env.NODE_ENV === "production";
+  return {
+    "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src https:; form-action 'self'; upgrade-insecure-requests",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Permissions-Policy": "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    ...(isHttps ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" } : {})
+  };
+}
+
 function sendJson(res, status, payload) {
   const body = Buffer.from(JSON.stringify(payload));
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    ...securityHeaders(res.req)
   };
   const acceptsGzip = /\bgzip\b/.test(res.req?.headers?.["accept-encoding"] || "");
   if (acceptsGzip && body.length >= 1024) {
@@ -355,27 +428,87 @@ function sendJson(res, status, payload) {
 }
 
 const marketingAssetTypes = new Set(["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"]);
-function encryptAccountPassword(value) {
+function requireAccountVaultKey() {
   if (!accountVaultKey) {
-    const error = new Error("Máy chủ chưa có khóa bảo mật ACCOUNT_VAULT_KEY.");
+    const error = new Error("Kho tài khoản đang khóa an toàn. Hãy cấu hình ACCOUNT_VAULT_KEY riêng với ít nhất 32 ký tự.");
     error.statusCode = 503;
     throw error;
   }
+  return accountVaultKey;
+}
+
+function encryptAccountVaultPrivate(value, accountId) {
+  const key = requireAccountVaultKey();
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", accountVaultKey, iv);
-  const encrypted = Buffer.concat([cipher.update(String(value), "utf8"), cipher.final()]);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from(`coco-account-vault:${accountId}:v2`, "utf8"));
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return `v1:${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
+  return `v2:${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
+}
+
+function decryptAccountVaultCiphertext(ciphertext, accountId) {
+  const parts = String(ciphertext || "").split(":");
+  if (parts.length !== 4 || !["v1", "v2"].includes(parts[0])) throw new Error("Dữ liệu kho tài khoản không hợp lệ.");
+  const [version, ivText, tagText, encryptedText] = parts;
+  const keys = version === "v2" ? [requireAccountVaultKey(), ...accountVaultLegacyKeys] : accountVaultLegacyKeys;
+  if (!keys.length) requireAccountVaultKey();
+  for (const key of keys) {
+    try {
+      const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(ivText, "base64"));
+      if (version === "v2") decipher.setAAD(Buffer.from(`coco-account-vault:${accountId}:v2`, "utf8"));
+      decipher.setAuthTag(Buffer.from(tagText, "base64"));
+      const cleartext = Buffer.concat([decipher.update(Buffer.from(encryptedText, "base64")), decipher.final()]).toString("utf8");
+      return version === "v2" ? JSON.parse(cleartext) : cleartext;
+    } catch {
+      // Try the next legacy key without exposing which key failed.
+    }
+  }
+  const error = new Error("Không thể giải mã kho tài khoản bằng khóa hiện tại.");
+  error.statusCode = 503;
+  throw error;
+}
+
+function accountVaultPrivateData(row) {
+  if (row.private_ciphertext) return decryptAccountVaultCiphertext(row.private_ciphertext, row.id);
+  return {
+    accountName: row.account_name || "",
+    loginUsername: row.login_username || "",
+    password: decryptAccountVaultCiphertext(row.password_ciphertext, row.id),
+    recoveryContact: row.recovery_contact || "",
+    websiteUrl: row.website_url || "",
+    notes: row.notes || ""
+  };
+}
+
+async function migrateLegacyAccountVaultRows() {
+  if (!pool || !accountVaultKey) return 0;
+  const [rows] = await pool.query(
+    "SELECT * FROM app_account_vault WHERE private_ciphertext IS NULL OR private_ciphertext = '' OR key_fingerprint <> ?",
+    [accountVaultKeyFingerprint]
+  );
+  let migrated = 0;
+  for (const row of rows) {
+    const privateData = accountVaultPrivateData(row);
+    await pool.query(`
+      UPDATE app_account_vault
+      SET account_name = '', login_username = '', password_ciphertext = '', recovery_contact = '',
+          website_url = '', notes = '', private_ciphertext = ?, key_fingerprint = ?, password_hint = ?
+      WHERE id = ?
+    `, [encryptAccountVaultPrivate(privateData, row.id), accountVaultKeyFingerprint, accountPasswordHint(privateData.password), row.id]);
+    migrated += 1;
+  }
+  return migrated;
 }
 
 function accountPasswordHint(value) {
   const password = String(value || "");
-  const hintLength = password.length >= 4 ? 4 : Math.min(2, password.length);
+  const hintLength = Math.min(2, password.length);
   return hintLength ? password.slice(-hintLength) : "";
 }
 
 function maskedAccountPassword(hint = "") {
-  return `${"•".repeat(8)}${String(hint || "").slice(-4)}`;
+  return `${"•".repeat(10)}${String(hint || "").slice(-2)}`;
 }
 
 function normalizeAccountWebsite(value = "") {
@@ -383,7 +516,7 @@ function normalizeAccountWebsite(value = "") {
   if (!raw) return "";
   try {
     const parsed = new URL(raw);
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+    return parsed.protocol === "https:" ? parsed.href : "";
   } catch {
     return "";
   }
@@ -402,7 +535,7 @@ function accountVaultPayload(body) {
     throw error;
   }
   if (String(body.websiteUrl || "").trim() && !websiteUrl) {
-    const error = new Error("Đường dẫn đăng nhập phải bắt đầu bằng http:// hoặc https://.");
+    const error = new Error("Đường dẫn đăng nhập bảo mật phải bắt đầu bằng https://.");
     error.statusCode = 400;
     throw error;
   }
@@ -418,21 +551,82 @@ function accountVaultPayload(body) {
 }
 
 function accountVaultRow(row) {
+  const privateData = accountVaultPrivateData(row);
   return {
     id: row.id,
     platform: row.platform,
-    accountName: row.account_name,
-    loginUsername: row.login_username,
+    accountName: privateData.accountName,
+    loginUsername: privateData.loginUsername,
     passwordMasked: maskedAccountPassword(row.password_hint),
-    passwordHintLength: String(row.password_hint || "").length,
-    recoveryContact: row.recovery_contact || "",
-    websiteUrl: row.website_url || "",
-    notes: row.notes || "",
+    passwordHintLength: Math.min(2, String(row.password_hint || "").length),
+    recoveryContact: privateData.recoveryContact || "",
+    websiteUrl: privateData.websiteUrl || "",
+    notes: privateData.notes || "",
     createdBy: row.created_by || "",
     updatedBy: row.updated_by || "",
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+function accountVaultClientFingerprint(req) {
+  const address = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  const agent = String(req.headers["user-agent"] || "").slice(0, 300);
+  const pepper = accountVaultKey || crypto.createHash("sha256").update(String(process.env.DB_PASSWORD || "local")).digest();
+  return crypto.createHmac("sha256", pepper).update(`${address}|${agent}`).digest("hex");
+}
+
+function verifyAccountVaultOrigin(req) {
+  const origin = String(req.headers.origin || "");
+  const hostHeader = String(req.headers.host || "");
+  const fetchSite = String(req.headers["sec-fetch-site"] || "");
+  try {
+    return Boolean(origin && hostHeader && new URL(origin).host === hostHeader && (!fetchSite || ["same-origin", "none"].includes(fetchSite)));
+  } catch {
+    return false;
+  }
+}
+
+function checkAccountVaultRateLimit(req, userId, isWrite) {
+  const now = Date.now();
+  const windowMs = 5 * 60 * 1000;
+  const limit = isWrite ? 15 : 60;
+  const key = `${userId}:${accountVaultClientFingerprint(req)}:${isWrite ? "write" : "read"}`;
+  const current = accountVaultRateLimits.get(key);
+  const entry = !current || current.resetAt <= now ? { count: 0, resetAt: now + windowMs } : current;
+  entry.count += 1;
+  accountVaultRateLimits.set(key, entry);
+  if (accountVaultRateLimits.size > 1000) {
+    for (const [itemKey, item] of accountVaultRateLimits) if (item.resetAt <= now) accountVaultRateLimits.delete(itemKey);
+  }
+  if (entry.count > limit) {
+    const error = new Error("Có quá nhiều yêu cầu tới kho tài khoản. Vui lòng thử lại sau ít phút.");
+    error.statusCode = 429;
+    throw error;
+  }
+}
+
+function checkAccountVaultSessionFresh(session, isWrite) {
+  const maxAgeMinutes = isWrite ? accountVaultWriteSessionMinutes : accountVaultReadSessionMinutes;
+  const ageMs = Date.now() - Number(session.createdAt || 0);
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > maxAgeMinutes * 60 * 1000) {
+    const error = new Error(isWrite
+      ? `Phiên bảo mật đã quá ${accountVaultWriteSessionMinutes} phút. Hãy đăng xuất và đăng nhập lại trước khi thay đổi kho tài khoản.`
+      : "Phiên xem kho tài khoản đã hết hạn. Hãy đăng xuất và đăng nhập lại.");
+    error.statusCode = 401;
+    throw error;
+  }
+}
+
+async function writeAccountVaultAudit(req, user, action, accountId = "") {
+  const accountFingerprint = accountId
+    ? crypto.createHash("sha256").update(`vault-record:${accountId}`).digest("hex")
+    : "";
+  await pool.query(`
+    INSERT INTO app_account_vault_audit
+      (id, account_fingerprint, user_id, user_name, action, client_fingerprint)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [crypto.randomBytes(16).toString("hex"), accountFingerprint, user.id, user.name || "", action, accountVaultClientFingerprint(req)]);
 }
 
 function normalizeMarketingAssetUrl(value = "") {
@@ -624,7 +818,7 @@ async function currentSession(req) {
 
 function setSessionCookie(res, token) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${sessionDays * 24 * 60 * 60}`);
+  res.setHeader("Set-Cookie", `coco_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict${secure}; Max-Age=${sessionDays * 24 * 60 * 60}`);
 }
 
 async function destroySession(req) {
@@ -638,7 +832,7 @@ async function destroySession(req) {
 }
 
 function clearSessionCookie(res) {
-  res.setHeader("Set-Cookie", "coco_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+  res.setHeader("Set-Cookie", "coco_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
 }
 
 function staticCacheHeader(filePath) {
@@ -651,7 +845,8 @@ function sendStatic(req, res, filePath, data) {
   const contentType = types[path.extname(filePath)] || "application/octet-stream";
   const headers = {
     "Content-Type": contentType,
-    "Cache-Control": staticCacheHeader(filePath)
+    "Cache-Control": staticCacheHeader(filePath),
+    ...securityHeaders(req)
   };
   if (compressibleTypes.has(contentType) && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
     zlib.gzip(data, (error, gzipped) => {
@@ -792,15 +987,19 @@ async function handleApi(req, res, urlPath) {
         sendJson(res, 403, { ok: false, message: "Tài khoản này chưa được cấp quyền xem kho tài khoản." });
         return true;
       }
+      const isWrite = ["POST", "PUT", "DELETE"].includes(req.method);
+      requireAccountVaultKey();
+      checkAccountVaultSessionFresh(session, isWrite);
+      checkAccountVaultRateLimit(req, user.id, isWrite);
+      if (isWrite && !verifyAccountVaultOrigin(req)) {
+        sendJson(res, 403, { ok: false, message: "Yêu cầu bị chặn do không xác minh được nguồn gửi." });
+        return true;
+      }
 
       const id = accountVaultRoute[1] ? decodeURIComponent(accountVaultRoute[1]) : "";
       if (req.method === "GET" && !id) {
-        const [rows] = await pool.query(`
-          SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
-                 website_url, notes, created_by, updated_by, created_at, updated_at
-          FROM app_account_vault
-          ORDER BY updated_at DESC, account_name ASC
-        `);
+        const [rows] = await pool.query("SELECT * FROM app_account_vault ORDER BY updated_at DESC");
+        await writeAccountVaultAudit(req, user, "LIST");
         sendJson(res, 200, { ok: true, accounts: rows.map(accountVaultRow) });
         return true;
       }
@@ -821,23 +1020,28 @@ async function handleApi(req, res, urlPath) {
         }
         const body = await readBody(req);
         const item = accountVaultPayload(body);
-        if (item.password.length < 6) {
-          sendJson(res, 400, { ok: false, message: "Mật khẩu cần có ít nhất 6 ký tự." });
+        if (item.password.length < 10) {
+          sendJson(res, 400, { ok: false, message: "Mật khẩu cần có ít nhất 10 ký tự để đáp ứng mức bảo mật cao." });
           return true;
         }
         const newId = `ACC-${Date.now().toString(36)}-${crypto.randomBytes(5).toString("hex")}`.toUpperCase();
+        const privateData = {
+          accountName: item.accountName,
+          loginUsername: item.loginUsername,
+          password: item.password,
+          recoveryContact: item.recoveryContact,
+          websiteUrl: item.websiteUrl,
+          notes: item.notes
+        };
         await pool.query(`
           INSERT INTO app_account_vault
             (id, platform, account_name, login_username, password_ciphertext, password_hint,
-             recovery_contact, website_url, notes, created_by, updated_by)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [newId, item.platform, item.accountName, item.loginUsername, encryptAccountPassword(item.password),
-          accountPasswordHint(item.password), item.recoveryContact, item.websiteUrl, item.notes, user.name || "", user.name || ""]);
-        const [rows] = await pool.query(`
-          SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
-                 website_url, notes, created_by, updated_by, created_at, updated_at
-          FROM app_account_vault WHERE id = ? LIMIT 1
-        `, [newId]);
+             recovery_contact, website_url, notes, private_ciphertext, key_fingerprint, created_by, updated_by)
+          VALUES (?, ?, '', '', '', ?, '', '', '', ?, ?, ?, ?)
+        `, [newId, item.platform, accountPasswordHint(item.password), encryptAccountVaultPrivate(privateData, newId),
+          accountVaultKeyFingerprint, user.name || "", user.name || ""]);
+        const [rows] = await pool.query("SELECT * FROM app_account_vault WHERE id = ? LIMIT 1", [newId]);
+        await writeAccountVaultAudit(req, user, "CREATE", newId);
         sendJson(res, 201, { ok: true, account: accountVaultRow(rows[0]) });
         return true;
       }
@@ -849,30 +1053,35 @@ async function handleApi(req, res, urlPath) {
       }
       if (req.method === "DELETE") {
         await pool.query("DELETE FROM app_account_vault WHERE id = ?", [id]);
+        await writeAccountVaultAudit(req, user, "DELETE", id);
         sendJson(res, 200, { ok: true, id });
         return true;
       }
 
       const body = await readBody(req);
       const item = accountVaultPayload(body);
-      if (item.password && item.password.length < 6) {
-        sendJson(res, 400, { ok: false, message: "Mật khẩu mới cần có ít nhất 6 ký tự." });
+      if (item.password && item.password.length < 10) {
+        sendJson(res, 400, { ok: false, message: "Mật khẩu mới cần có ít nhất 10 ký tự để đáp ứng mức bảo mật cao." });
         return true;
       }
-      const passwordCiphertext = item.password ? encryptAccountPassword(item.password) : existingRows[0].password_ciphertext;
-      const passwordHint = item.password ? accountPasswordHint(item.password) : existingRows[0].password_hint;
+      const existingPrivate = accountVaultPrivateData(existingRows[0]);
+      const privateData = {
+        accountName: item.accountName,
+        loginUsername: item.loginUsername,
+        password: item.password || existingPrivate.password,
+        recoveryContact: item.recoveryContact,
+        websiteUrl: item.websiteUrl,
+        notes: item.notes
+      };
+      const passwordHint = item.password ? accountPasswordHint(item.password) : String(existingRows[0].password_hint || "").slice(-2);
       await pool.query(`
         UPDATE app_account_vault
-        SET platform = ?, account_name = ?, login_username = ?, password_ciphertext = ?, password_hint = ?,
-            recovery_contact = ?, website_url = ?, notes = ?, updated_by = ?
+        SET platform = ?, account_name = '', login_username = '', password_ciphertext = '', password_hint = ?,
+            recovery_contact = '', website_url = '', notes = '', private_ciphertext = ?, key_fingerprint = ?, updated_by = ?
         WHERE id = ?
-      `, [item.platform, item.accountName, item.loginUsername, passwordCiphertext, passwordHint,
-        item.recoveryContact, item.websiteUrl, item.notes, user.name || "", id]);
-      const [rows] = await pool.query(`
-        SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
-               website_url, notes, created_by, updated_by, created_at, updated_at
-        FROM app_account_vault WHERE id = ? LIMIT 1
-      `, [id]);
+      `, [item.platform, passwordHint, encryptAccountVaultPrivate(privateData, id), accountVaultKeyFingerprint, user.name || "", id]);
+      const [rows] = await pool.query("SELECT * FROM app_account_vault WHERE id = ? LIMIT 1", [id]);
+      await writeAccountVaultAudit(req, user, "UPDATE", id);
       sendJson(res, 200, { ok: true, account: accountVaultRow(rows[0]) });
     } catch (error) {
       sendJson(res, error.statusCode || 500, { ok: false, message: error.message });
@@ -1068,6 +1277,18 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(port, host, () => {
-  console.log(`COCO BAY app running on ${host}:${port} (${pool ? "MySQL mode" : "localStorage mode"})`);
-});
+if (require.main === module) {
+  server.listen(port, host, () => {
+    console.log(`COCO BAY app running on ${host}:${port} (${pool ? "MySQL mode" : "localStorage mode"})`);
+  });
+}
+
+module.exports = {
+  server,
+  encryptAccountVaultPrivate,
+  decryptAccountVaultCiphertext,
+  accountPasswordHint,
+  maskedAccountPassword,
+  verifyAccountVaultOrigin,
+  checkAccountVaultSessionFresh
+};

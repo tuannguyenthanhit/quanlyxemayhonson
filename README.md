@@ -42,12 +42,18 @@ DB_USER=ten_user_day_du
 DB_PASSWORD=mat_khau_database
 ADMIN_EMAIL=admin@cocobay.vn
 ADMIN_PASSWORD=mat_khau_admin_ban_dau
-ACCOUNT_VAULT_KEY=chuoi_bi_mat_dai_ngau_nhien_va_co_dinh
+ACCOUNT_VAULT_KEY=chuoi_bi_mat_ngau_nhien_toi_thieu_32_ky_tu
+ACCOUNT_VAULT_READ_SESSION_MINUTES=480
+ACCOUNT_VAULT_WRITE_SESSION_MINUTES=30
+# Chỉ dùng khi đổi khóa và cần đọc dữ liệu đã mã hóa bằng khóa cũ:
+# ACCOUNT_VAULT_LEGACY_KEY=khoa_cu
 ```
 
 Khi có đủ `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, backend sẽ tự tạo bảng `app_data` và lưu toàn bộ dữ liệu app trong MySQL.
 
-`ACCOUNT_VAULT_KEY` dùng để mã hóa AES-256-GCM cho mục **Quản lý tài khoản**. Hãy đặt một chuỗi bí mật dài, giữ cố định và không chia sẻ. Nếu chưa khai báo, hệ thống dùng khóa dẫn xuất từ cấu hình máy chủ để lần triển khai đầu vẫn hoạt động.
+`ACCOUNT_VAULT_KEY` dùng để mã hóa xác thực AES-256-GCM cho mục **Quản lý tài khoản**. Khóa phải dài ít nhất 32 ký tự, giữ cố định, không đưa vào Git và nên được sao lưu trong trình quản lý bí mật. Nếu thiếu hoặc quá ngắn, kho tài khoản sẽ khóa an toàn và từ chối đọc/ghi; các phần khác của ứng dụng vẫn hoạt động.
+
+Thông tin riêng tư gồm tên tài khoản, tên đăng nhập, mật khẩu, liên hệ khôi phục, đường dẫn và ghi chú đều nằm trong ciphertext. Hệ thống chỉ giữ nền tảng và tối đa 2 ký tự cuối mật khẩu ở dạng gợi ý. Khi đổi khóa, tạm khai báo khóa cũ bằng `ACCOUNT_VAULT_LEGACY_KEY`, khởi động để chuyển dữ liệu, sau đó xóa biến khóa cũ.
 
 ## Dữ liệu hiện tại
 

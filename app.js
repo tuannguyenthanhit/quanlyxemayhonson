@@ -2654,7 +2654,7 @@ function accountVaultView() {
     <div class="account-vault-summary">
       <article><span>${vault.accounts.length}</span><small>Tổng tài khoản</small></article>
       <article><span>${platforms.length}</span><small>Nền tảng</small></article>
-      <div class="account-vault-security"><strong>Được mã hóa trên máy chủ</strong><small>Chỉ hiển thị tối đa 4 ký tự cuối của mật khẩu.</small></div>
+      <div class="account-vault-security"><strong>Mã hóa bảo mật cao AES-256-GCM</strong><small>Mã hóa toàn bộ thông tin riêng tư; thao tác thay đổi yêu cầu phiên đăng nhập mới.</small></div>
     </div>
     <div class="card account-vault-toolbar">
       <input type="search" value="${escapeHtmlAttribute(vault.query)}" data-account-vault-query placeholder="Tìm nền tảng, tên tài khoản, email..." aria-label="Tìm tài khoản">
@@ -2679,7 +2679,7 @@ function accountVaultRow(item) {
       ${item.recoveryContact ? `<p><strong>Khôi phục:</strong> ${escapeHtmlAttribute(item.recoveryContact)}</p>` : ""}
       ${item.notes ? `<p class="account-vault-notes">${escapeHtmlAttribute(item.notes)}</p>` : ""}
     </div>
-    <div class="account-vault-secret"><small>Gợi ý mật khẩu</small><code>${escapeHtmlAttribute(item.passwordMasked || "••••••••")}</code><span>Không thể xem mật khẩu đầy đủ</span></div>
+    <div class="account-vault-secret"><small>Gợi ý mật khẩu</small><code>${escapeHtmlAttribute(item.passwordMasked || "••••••••••")}</code><span>Không thể xem mật khẩu đầy đủ</span></div>
     <div class="account-vault-actions">${website}${manageActions}</div>
   </article>`;
 }
@@ -5216,11 +5216,11 @@ function accountVaultForm(id) {
     ${textField("customPlatform", "Tên nền tảng khác", isKnownPlatform ? "" : item.platform || "", false, "text", `placeholder="Ví dụ: Zalo, Booking.com"`)}
     ${textField("accountName", "Tên tài khoản / nhãn quản lý", item.accountName || "", true, "text", `placeholder="Ví dụ: Fanpage ECOHOUSE"`)}
     ${textField("loginUsername", "Email hoặc tên đăng nhập", item.loginUsername || "", true, "text", `autocomplete="off"`)}
-    ${textField("password", id ? "Mật khẩu mới (để trống nếu giữ nguyên)" : "Mật khẩu", "", !id, "password", `autocomplete="new-password" minlength="6" placeholder="Ít nhất 6 ký tự"`)}
+    ${textField("password", id ? "Mật khẩu mới (để trống nếu giữ nguyên)" : "Mật khẩu", "", !id, "password", `autocomplete="new-password" minlength="10" placeholder="Ít nhất 10 ký tự"`)}
     ${textField("recoveryContact", "Email / SĐT khôi phục", item.recoveryContact || "", false, "text", `autocomplete="off"`)}
     ${textField("websiteUrl", "Đường dẫn đăng nhập", item.websiteUrl || "", false, "url", `placeholder="https://..."`)}
     <div class="field full"><label>Ghi chú</label><textarea name="notes" maxlength="4000" placeholder="Người phụ trách, mục đích sử dụng, lưu ý xác thực 2 bước...">${escapeHtmlAttribute(item.notes || "")}</textarea></div>
-    <div class="account-vault-form-note full"><strong>Bảo mật mật khẩu</strong><span>Mật khẩu được mã hóa trước khi lưu MySQL. Sau khi lưu, hệ thống chỉ trả về tối đa 4 ký tự cuối để nhận biết và không có chức năng xem lại mật khẩu đầy đủ.</span></div>
+    <div class="account-vault-form-note full"><strong>Bảo mật cấp cao</strong><span>Tên đăng nhập, mật khẩu, liên hệ khôi phục, đường dẫn và ghi chú đều được mã hóa xác thực trước khi lưu MySQL. Chỉ hiện 2 ký tự cuối; thao tác thay đổi yêu cầu đăng nhập lại sau 30 phút.</span></div>
   </div>`;
 }
 
@@ -6945,8 +6945,8 @@ async function saveAccountVaultRemote(form, data, id) {
     showToast("Hãy nhập tên nền tảng khác.");
     return;
   }
-  if (!id && String(data.password || "").length < 6) {
-    showToast("Mật khẩu cần có ít nhất 6 ký tự.");
+  if (!id && String(data.password || "").length < 10) {
+    showToast("Mật khẩu cần có ít nhất 10 ký tự để đáp ứng mức bảo mật cao.");
     return;
   }
   if (submitButton) {
