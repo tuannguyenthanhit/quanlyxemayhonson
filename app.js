@@ -25,7 +25,7 @@ const roles = {
 };
 
 const permissions = {
-  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "marketing_view", "marketing_manage", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
+  admin: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "marketing_view", "marketing_manage", "account_vault_view", "account_vault_manage", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports", "users", "audit", "settings"],
   manager: ["bike_view", "bike_manage", "rentals", "rental_return", "bike_maintenance", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_catalog_manage", "booking_checkin", "booking_payment", "marketing_view", "marketing_manage", "equipment_view", "equipment_manage", "equipment_maintenance", "kitchen_view", "kitchen_manage", "hr", "finance", "costs", "reports"],
   receptionist: ["bike_view", "rentals", "rental_return", "damage", "photos", "booking_view", "booking_write", "booking_edit", "booking_checkin", "booking_payment", "marketing_view"],
   technician: ["bike_view", "bike_maintenance", "damage", "photos", "equipment_view", "equipment_maintenance", "costs"]
@@ -57,6 +57,8 @@ const permissionCatalog = [
   ["booking_payment", "Thanh toán đặt phòng", "Ghi nhận booking đã thanh toán đủ tổng tiền", "booking"],
   ["marketing_view", "Xem dữ liệu Marketing", "Xem trực tiếp, mở Drive và tải nội dung Marketing dùng chung", "marketing"],
   ["marketing_manage", "Quản lý dữ liệu Marketing", "Thêm, sửa và xóa liên kết trong kho Marketing dùng chung", "marketing"],
+  ["account_vault_view", "Xem kho tài khoản", "Xem tên đăng nhập và gợi ý mật khẩu đã che", "system"],
+  ["account_vault_manage", "Quản lý kho tài khoản", "Thêm, sửa và xóa tài khoản nền tảng", "system"],
   ["equipment_view", "Xem thiết bị", "Xem danh sách, tình trạng và lịch bảo trì thiết bị", "equipment"],
   ["equipment_manage", "Quản lý thiết bị", "Thêm, sửa thiết bị và loại thiết bị", "equipment"],
   ["equipment_maintenance", "Sửa chữa thiết bị", "Tạo, sửa và cập nhật phiếu sửa chữa/bảo trì thiết bị", "equipment"],
@@ -99,6 +101,7 @@ const menu = [
   ["notifications", "Th\u00f4ng b\u00e1o", "all"],
   ["hr", "Qu\u1ea3n l\u00fd nh\u00e2n s\u1ef1", "hr"],
   ["users", "Nh\u00e2n vi\u00ean", "users"],
+  ["accountVault", "Quản lý tài khoản", "account_vault_view"],
   ["audit", "Nh\u1eadt k\u00fd ho\u1ea1t \u0111\u1ed9ng", "audit"],
   ["settings", "C\u00e0i \u0111\u1eb7t h\u1ec7 th\u1ed1ng", "settings"]
 ];
@@ -116,6 +119,7 @@ const menuTree = [
   { key: "notifications" },
   { key: "hr" },
   { key: "users" },
+  { key: "accountVault" },
   { key: "audit" },
   { key: "settings" }
 ];
@@ -148,6 +152,7 @@ const menuMeta = {
   notifications: { icon: "\u25cf", color: "pink", desc: "Th\u00f4ng b\u00e1o h\u1ec7 th\u1ed1ng v\u00e0 nh\u1eafc vi\u1ec7c" },
   hr: { icon: "\u25ce", color: "green", desc: "H\u1ed3 s\u01a1 nh\u00e2n s\u1ef1, nh\u00e2n vi\u00ean \u0111ang l\u00e0m v\u00e0 \u1ee9ng vi\u00ean" },
   users: { icon: "\u25ce", color: "green", desc: "Qu\u1ea3n l\u00fd t\u00e0i kho\u1ea3n nh\u00e2n vi\u00ean" },
+  accountVault: { icon: "#", color: "gold", desc: "Lưu tài khoản nền tảng với mật khẩu được mã hóa" },
   audit: { icon: "\u2261", color: "purple", desc: "Nh\u1eadt k\u00fd thao t\u00e1c h\u1ec7 th\u1ed1ng" },
   settings: { icon: "\u2699", color: "orange", desc: "C\u1ea5u h\u00ecnh h\u1ec7 th\u1ed1ng" }
 };
@@ -180,6 +185,7 @@ const navSvgIcons = {
   notifications: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 7-2 7-2 9h16c0-2-2-2-2-9" /><path d="M10 21h4" /></svg>`,
   hr: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19a4 4 0 0 0-8 0" /><circle cx="12" cy="9" r="3" /><path d="M22 19a4 4 0 0 0-5-3.8" /><path d="M17 6.3a3 3 0 0 1 0 5.4" /><path d="M2 19a4 4 0 0 1 5-3.8" /><path d="M7 6.3a3 3 0 0 0 0 5.4" /></svg>`,
   users: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2" /><path d="M9 4V2h6v2" /><circle cx="12" cy="11" r="2" /><path d="M8.5 17a3.5 3.5 0 0 1 7 0" /></svg>`,
+  accountVault: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><circle cx="12" cy="15" r="1" /><path d="M12 16v2" /></svg>`,
   audit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6" /></svg>`,
   settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" /><path d="M12 2v3" /><path d="M12 19v3" /><path d="m4.9 4.9 2.1 2.1" /><path d="m17 17 2.1 2.1" /><path d="M2 12h3" /><path d="M19 12h3" /><path d="m4.9 19.1 2.1-2.1" /><path d="m17 7 2.1-2.1" /></svg>`
 };
@@ -244,6 +250,14 @@ const state = {
     hotelSeeded: false
   },
   marketingFilter: "all",
+  accountVault: {
+    accounts: [],
+    loaded: false,
+    loading: false,
+    error: "",
+    query: "",
+    platform: "all"
+  },
   reportMonth: todayISO().slice(0, 7),
   auditFilters: {
     query: "",
@@ -324,6 +338,7 @@ function can(key) {
   if (state.user.role === "admin") return true;
   if (key === "all") return true;
   const effective = Array.isArray(state.user.permissions) ? state.user.permissions : permissions[state.user.role] || [];
+  if (key === "account_vault_view" && effective.includes("account_vault_manage")) return true;
   return effective.includes(key);
 }
 
@@ -1571,6 +1586,7 @@ function viewContent() {
     notifications: notificationsView,
     hr: hrView,
     users: usersView,
+    accountVault: accountVaultView,
     audit: auditView,
     settings: settingsView
   };
@@ -2520,6 +2536,7 @@ function comboMoney(value) {
 }
 
 const MARKETING_ASSET_TYPES = ["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"];
+const ACCOUNT_VAULT_PLATFORMS = ["YouTube", "TikTok", "Facebook", "Fanpage", "Gmail", "Yahoo Mail", "Khác"];
 
 function normalizeMarketingUrl(value = "") {
   const raw = String(value || "").trim();
@@ -2614,6 +2631,76 @@ function marketingAssetRow(item) {
       ${can("marketing_manage") ? `<button class="secondary" data-modal="marketingAsset:${item.id}">Sửa</button><button class="danger" data-action="delete-marketing:${item.id}">Xóa</button>` : ""}
     </div>
   </article>`;
+}
+
+function accountVaultView() {
+  const vault = state.accountVault;
+  if (!vault.loaded && !vault.loading) queueMicrotask(loadAccountVault);
+  const query = normalizedIdentity(vault.query);
+  const accounts = vault.accounts.filter((item) => {
+    const matchesPlatform = vault.platform === "all" || item.platform === vault.platform;
+    const haystack = normalizedIdentity(`${item.platform} ${item.accountName} ${item.loginUsername} ${item.recoveryContact} ${item.notes}`);
+    return matchesPlatform && (!query || haystack.includes(query));
+  });
+  const platforms = [...new Set(vault.accounts.map((item) => item.platform).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi"));
+  const actions = can("account_vault_manage") ? `<button class="primary" data-modal="accountVault">+ Thêm tài khoản</button>` : "";
+  let content = `<div class="empty card">Chưa có tài khoản nền tảng nào.</div>`;
+  if (vault.loading) content = `<div class="empty card">Đang tải kho tài khoản bảo mật...</div>`;
+  else if (vault.error) content = `<div class="empty card account-vault-error"><strong>Chưa tải được dữ liệu</strong><span>${escapeHtmlAttribute(vault.error)}</span><button class="secondary" data-action="reload-account-vault">Thử lại</button></div>`;
+  else if (accounts.length) content = `<div class="account-vault-list">${accounts.map(accountVaultRow).join("")}</div>`;
+  else if (vault.accounts.length) content = `<div class="empty card">Không tìm thấy tài khoản phù hợp.</div>`;
+  return `<section class="account-vault-page">
+    ${pageHeader("Quản lý tài khoản", "Kho dùng chung cho YouTube, TikTok, Facebook, Fanpage, email và các nền tảng khác. Mật khẩu thật không được gửi về trình duyệt.", actions)}
+    <div class="account-vault-summary">
+      <article><span>${vault.accounts.length}</span><small>Tổng tài khoản</small></article>
+      <article><span>${platforms.length}</span><small>Nền tảng</small></article>
+      <div class="account-vault-security"><strong>Được mã hóa trên máy chủ</strong><small>Chỉ hiển thị tối đa 4 ký tự cuối của mật khẩu.</small></div>
+    </div>
+    <div class="card account-vault-toolbar">
+      <input type="search" value="${escapeHtmlAttribute(vault.query)}" data-account-vault-query placeholder="Tìm nền tảng, tên tài khoản, email..." aria-label="Tìm tài khoản">
+      <select data-account-vault-platform aria-label="Lọc nền tảng"><option value="all">Tất cả nền tảng</option>${platforms.map((platform) => `<option value="${escapeHtmlAttribute(platform)}" ${vault.platform === platform ? "selected" : ""}>${escapeHtmlAttribute(platform)}</option>`).join("")}</select>
+      <button class="ghost" data-action="reload-account-vault">Làm mới</button>
+    </div>
+    ${content}
+  </section>`;
+}
+
+function accountVaultRow(item) {
+  const website = item.websiteUrl ? `<a class="secondary" href="${escapeHtmlAttribute(item.websiteUrl)}" target="_blank" rel="noopener noreferrer">Mở đăng nhập</a>` : "";
+  const manageActions = can("account_vault_manage")
+    ? `<button class="ghost" data-modal="accountVault:${item.id}">Sửa</button><button class="danger" data-action="delete-account-vault:${item.id}">Xóa</button>`
+    : "";
+  return `<article class="account-vault-row">
+    <div class="account-platform-mark">${escapeHtmlAttribute(String(item.platform || "?").slice(0, 2).toUpperCase())}</div>
+    <div class="account-vault-main">
+      <div><span class="account-platform-pill">${escapeHtmlAttribute(item.platform)}</span><small>Cập nhật ${formatDateTime(item.updatedAt)}</small></div>
+      <h3>${escapeHtmlAttribute(item.accountName)}</h3>
+      <p><strong>Tên đăng nhập:</strong> ${escapeHtmlAttribute(item.loginUsername)}</p>
+      ${item.recoveryContact ? `<p><strong>Khôi phục:</strong> ${escapeHtmlAttribute(item.recoveryContact)}</p>` : ""}
+      ${item.notes ? `<p class="account-vault-notes">${escapeHtmlAttribute(item.notes)}</p>` : ""}
+    </div>
+    <div class="account-vault-secret"><small>Gợi ý mật khẩu</small><code>${escapeHtmlAttribute(item.passwordMasked || "••••••••")}</code><span>Không thể xem mật khẩu đầy đủ</span></div>
+    <div class="account-vault-actions">${website}${manageActions}</div>
+  </article>`;
+}
+
+async function loadAccountVault(force = false) {
+  const vault = state.accountVault;
+  if (vault.loading || (vault.loaded && !force)) return;
+  vault.loading = true;
+  vault.error = "";
+  render();
+  try {
+    const payload = await apiRequest("/account-vault");
+    vault.accounts = Array.isArray(payload.accounts) ? payload.accounts : [];
+    vault.loaded = true;
+  } catch (error) {
+    vault.error = error.message || "Không kết nối được máy chủ.";
+  } finally {
+    vault.loaded = true;
+    vault.loading = false;
+    render();
+  }
 }
 
 function marketingPreviewModal(item) {
@@ -5034,7 +5121,7 @@ function modalView() {
     return `<div class="modal-backdrop"><div class="modal"><header><h3>Kh\u00f4ng \u0111\u1ee7 quy\u1ec1n</h3>${close}</header><div class="modal-body"><p class="empty">T\u00e0i kho\u1ea3n n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5p quy\u1ec1n ghi ho\u1eb7c s\u1eeda l\u1ecbch \u0111\u1eb7t ph\u00f2ng.</p></div></div></div>`;
   }
 
-  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", marketingAsset: "dữ liệu Marketing", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", dish: "món ăn", kitchenCategory: "nhóm món", kitchenRecipe: "công thức chế biến", sauce: "công thức nước chấm", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
+  const titleMap = { room: "Ph\u00f2ng", hotel: "Kh\u00e1ch s\u1ea1n", booking: "\u0110\u1eb7t ph\u00f2ng", marketingAsset: "dữ liệu Marketing", accountVault: "tài khoản nền tảng", bike: "Xe máy", bikeType: "Loại xe", rental: "Phiếu thuê", ticket: "Phiếu sửa chữa", ticketEdit: "Cập nhật phiếu", equipment: "Thiết bị", equipmentType: "Loại thiết bị", dish: "món ăn", kitchenCategory: "nhóm món", kitchenRecipe: "công thức chế biến", sauce: "công thức nước chấm", owner: "Chủ xe", hrEmployee: "hồ sơ nhân viên", applicant: "hồ sơ ứng viên", attendanceRecord: "dòng chấm công", attendanceShift: "ca làm việc", user: "Nhân viên" };
   return `<div class="modal-backdrop"><form class="modal" id="modal-form" data-form="${type}" data-id="${id || ""}" data-extra="${extra || ""}">
     <header><h3>${id ? "Cập nhật" : "Thêm"} ${titleMap[type] || ""}</h3>${close}</header>
     <div class="modal-body">${modalFields(type, id, extra)}</div>
@@ -5051,6 +5138,7 @@ function modalPermission(type, id, extra, db = getDb()) {
   if (type === "booking") return id ? "booking_edit" : "booking_write";
   if (type === "marketingAsset") return "marketing_manage";
   if (type === "marketingPreview") return "marketing_view";
+  if (type === "accountVault") return "account_vault_manage";
   if (type === "comboSummary") return "booking_view";
   if (["equipment", "equipmentType"].includes(type)) return "equipment_manage";
   if (["dish", "kitchenCategory", "kitchenRecipe", "sauce"].includes(type)) return "kitchen_manage";
@@ -5079,6 +5167,7 @@ function modalFields(type, id, extra) {
   if (type === "room") return roomForm(id);
   if (type === "booking") return bookingForm(id);
   if (type === "marketingAsset") return marketingAssetForm(id);
+  if (type === "accountVault") return accountVaultForm(id);
   if (type === "bike") return bikeForm(id);
   if (type === "bikeType") return bikeTypeForm(id);
   if (type === "rental") return rentalForm(id);
@@ -5111,6 +5200,27 @@ function marketingAssetForm(id) {
     ${textField("url", "Liên kết Google Drive", item.url || "", true, "text")}
     <div class="field full"><label>Mô tả ngắn</label><textarea name="description" placeholder="Nội dung, mục đích sử dụng hoặc ghi chú cho người xem...">${escapeHtmlAttribute(item.description || "")}</textarea></div>
     <div class="marketing-drive-help full"><strong>Cách lấy liên kết:</strong><span>Trong Google Drive chọn Chia sẻ → Quyền truy cập chung → Bất kỳ ai có đường liên kết → Sao chép đường liên kết.</span><span>Với thư mục ảnh, chọn loại “Thư mục hình ảnh”. Nút tải xuống chỉ áp dụng cho từng tệp.</span></div>
+  </div>`;
+}
+
+function accountVaultForm(id) {
+  const item = state.accountVault.accounts.find((row) => row.id === id) || {};
+  const isKnownPlatform = ACCOUNT_VAULT_PLATFORMS.slice(0, -1).includes(item.platform);
+  const selectedPlatform = item.platform ? (isKnownPlatform ? item.platform : "Khác") : "YouTube";
+  const textField = (name, label, value = "", required = false, type = "text", extra = "") => `<div class="field">
+    <label>${label}</label>
+    <input name="${name}" type="${type}" value="${escapeHtmlAttribute(value)}" ${required ? "required" : ""} ${extra}>
+  </div>`;
+  return `<div class="form-grid account-vault-form">
+    ${selectField("platform", "Nền tảng", ACCOUNT_VAULT_PLATFORMS, selectedPlatform, true)}
+    ${textField("customPlatform", "Tên nền tảng khác", isKnownPlatform ? "" : item.platform || "", false, "text", `placeholder="Ví dụ: Zalo, Booking.com"`)}
+    ${textField("accountName", "Tên tài khoản / nhãn quản lý", item.accountName || "", true, "text", `placeholder="Ví dụ: Fanpage ECOHOUSE"`)}
+    ${textField("loginUsername", "Email hoặc tên đăng nhập", item.loginUsername || "", true, "text", `autocomplete="off"`)}
+    ${textField("password", id ? "Mật khẩu mới (để trống nếu giữ nguyên)" : "Mật khẩu", "", !id, "password", `autocomplete="new-password" minlength="6" placeholder="Ít nhất 6 ký tự"`)}
+    ${textField("recoveryContact", "Email / SĐT khôi phục", item.recoveryContact || "", false, "text", `autocomplete="off"`)}
+    ${textField("websiteUrl", "Đường dẫn đăng nhập", item.websiteUrl || "", false, "url", `placeholder="https://..."`)}
+    <div class="field full"><label>Ghi chú</label><textarea name="notes" maxlength="4000" placeholder="Người phụ trách, mục đích sử dụng, lưu ý xác thực 2 bước...">${escapeHtmlAttribute(item.notes || "")}</textarea></div>
+    <div class="account-vault-form-note full"><strong>Bảo mật mật khẩu</strong><span>Mật khẩu được mã hóa trước khi lưu MySQL. Sau khi lưu, hệ thống chỉ trả về tối đa 4 ký tự cuối để nhận biết và không có chức năng xem lại mật khẩu đầy đủ.</span></div>
   </div>`;
 }
 
@@ -6080,6 +6190,18 @@ function bindApp() {
     state.marketingFilter = event.target.value || "all";
     render();
   }));
+  document.querySelectorAll("[data-account-vault-platform]").forEach((input) => input.addEventListener("change", (event) => {
+    state.accountVault.platform = event.target.value || "all";
+    render();
+  }));
+  document.querySelectorAll("[data-account-vault-query]").forEach((input) => input.addEventListener("input", (event) => {
+    const position = event.target.selectionStart;
+    state.accountVault.query = event.target.value;
+    render();
+    const replacement = document.querySelector("[data-account-vault-query]");
+    replacement?.focus({ preventScroll: true });
+    if (replacement && position !== null) replacement.setSelectionRange(position, position);
+  }));
   document.querySelectorAll("[data-oil-history-month]").forEach((input) => input.addEventListener("change", (event) => {
     oilHistoryFilters().month = event.target.value || todayISO().slice(0, 7);
     state.panelPages.oilChangeHistory = 1;
@@ -6310,6 +6432,8 @@ function handleAction(event) {
   if (action?.startsWith("pay-booking:")) payBooking(action.split(":")[1]);
   if (action?.startsWith("delete-booking:")) deleteBooking(action.split(":")[1]);
   if (action?.startsWith("delete-marketing:")) deleteMarketingAsset(action.split(":")[1]);
+  if (action?.startsWith("delete-account-vault:")) deleteAccountVault(action.split(":")[1]);
+  if (action === "reload-account-vault") loadAccountVault(true);
   if (action?.startsWith("toggle-owner:")) toggleOwnerVisibility(action.split(":")[1]);
   if (action?.startsWith("delete-owner:")) deleteOwner(action.split(":")[1]);
   if (action?.startsWith("delete-kitchen:")) {
@@ -6375,6 +6499,23 @@ async function deleteMarketingAsset(id) {
     return { record: item.title, before: item.url, after: "Đã xóa liên kết Marketing" };
   }, "Xóa dữ liệu Marketing");
   showToast("Đã xóa liên kết khỏi danh sách. Tệp gốc trên Drive vẫn được giữ nguyên.");
+}
+
+async function deleteAccountVault(id) {
+  if (!can("account_vault_manage")) {
+    showToast("Tài khoản này không có quyền xóa tài khoản nền tảng.");
+    return;
+  }
+  const item = state.accountVault.accounts.find((row) => row.id === id);
+  if (!item || !confirm(`Xóa tài khoản “${item.accountName}” trên ${item.platform}?\nThao tác này không thể hoàn tác.`)) return;
+  try {
+    await apiRequest(`/account-vault/${encodeURIComponent(id)}`, { method: "DELETE" });
+    state.accountVault.accounts = state.accountVault.accounts.filter((row) => row.id !== id);
+    render();
+    showToast("Đã xóa tài khoản khỏi kho bảo mật.");
+  } catch (error) {
+    showToast(`Chưa xóa được tài khoản: ${error.message}`);
+  }
 }
 
 function reapplyFormerEmployee(id) {
@@ -6640,6 +6781,10 @@ async function saveModal(event) {
       return;
     }
   }
+  if (type === "accountVault") {
+    await saveAccountVaultRemote(form, data, id);
+    return;
+  }
   if (type === "hrEmployee") {
     data.photo = await readEmployeePhoto(form, id);
     delete data.employeePhoto;
@@ -6785,6 +6930,43 @@ async function saveMarketingAssetRemote(form, data, id) {
   } catch (error) {
     apiState.lastError = error.message;
     showToast(`Chưa lưu được vào MySQL: ${error.message}`);
+  } finally {
+    if (submitButton?.isConnected) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
+    }
+  }
+}
+
+async function saveAccountVaultRemote(form, data, id) {
+  const submitButton = form.querySelector("button[type='submit']");
+  const originalText = submitButton?.textContent || "Lưu";
+  if (data.platform === "Khác" && !String(data.customPlatform || "").trim()) {
+    showToast("Hãy nhập tên nền tảng khác.");
+    return;
+  }
+  if (!id && String(data.password || "").length < 6) {
+    showToast("Mật khẩu cần có ít nhất 6 ký tự.");
+    return;
+  }
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Đang mã hóa và lưu...";
+  }
+  try {
+    const payload = await apiRequest(`/account-vault${id ? `/${encodeURIComponent(id)}` : ""}`, {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(data)
+    });
+    if (!payload.account) throw new Error("Máy chủ chưa trả lại tài khoản vừa lưu.");
+    const index = state.accountVault.accounts.findIndex((item) => item.id === payload.account.id);
+    if (index >= 0) state.accountVault.accounts[index] = payload.account;
+    else state.accountVault.accounts.unshift(payload.account);
+    state.modal = null;
+    render();
+    showToast(id ? "Đã cập nhật tài khoản bảo mật." : "Đã thêm tài khoản vào kho bảo mật.");
+  } catch (error) {
+    showToast(`Chưa lưu được tài khoản: ${error.message}`);
   } finally {
     if (submitButton?.isConnected) {
       submitButton.disabled = false;

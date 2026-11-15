@@ -15,6 +15,57 @@
   --shadow: 0 10px 28px rgba(7, 86, 106, 0.12);
 }
 
+/* Secure platform account vault */
+.account-vault-page { display: grid; gap: 14px; }
+.account-vault-summary { display: grid; grid-template-columns: 180px 180px minmax(280px, 1fr); gap: 12px; }
+.account-vault-summary article,
+.account-vault-security { min-height: 86px; padding: 14px 16px; border: 1px solid rgba(103, 232, 249, .22); border-radius: 8px; background: #0a2940; }
+.account-vault-summary article { display: grid; align-content: center; gap: 3px; }
+.account-vault-summary article span { color: #5eead4; font-size: 26px; font-weight: 900; }
+.account-vault-summary article small,
+.account-vault-security small { color: #a9c9d9; }
+.account-vault-security { display: grid; align-content: center; gap: 5px; border-color: rgba(52, 211, 153, .3); background: rgba(6, 78, 79, .34); }
+.account-vault-security strong { color: #6ee7b7; }
+.account-vault-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) 230px auto; gap: 10px; padding: 12px; }
+.account-vault-toolbar input,
+.account-vault-toolbar select { min-height: 42px; padding: 9px 12px; color: #f8fafc; border: 1px solid rgba(148, 180, 200, .32); border-radius: 7px; background: #071f35; }
+.account-vault-list { display: grid; gap: 8px; }
+.account-vault-row { display: grid; grid-template-columns: 52px minmax(240px, 1fr) minmax(190px, .48fr) auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid rgba(103, 232, 249, .2); border-radius: 8px; background: #0a2940; }
+.account-vault-row:hover { border-color: rgba(45, 212, 191, .62); background: #0d354b; }
+.account-platform-mark { display: grid; place-items: center; width: 48px; height: 48px; color: #fef3c7; border-radius: 8px; background: rgba(245, 158, 11, .18); font-size: 13px; font-weight: 900; }
+.account-vault-main { min-width: 0; }
+.account-vault-main > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.account-vault-main h3 { margin: 7px 0 4px; color: #fff; font-size: 16px; }
+.account-vault-main p { margin: 3px 0; color: #c7dce8; overflow-wrap: anywhere; }
+.account-vault-main small { color: #83abc0; }
+.account-platform-pill { display: inline-flex; padding: 3px 8px; color: #fef3c7; border-radius: 999px; background: rgba(245, 158, 11, .17); font-size: 11px; font-weight: 800; }
+.account-vault-notes { max-width: 720px; color: #9fc5d8 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-vault-secret { display: grid; gap: 5px; padding: 10px 12px; border: 1px solid rgba(148, 180, 200, .22); border-radius: 7px; background: rgba(3, 18, 32, .42); }
+.account-vault-secret small,
+.account-vault-secret span { color: #83abc0; font-size: 11px; }
+.account-vault-secret code { color: #fff; font-family: Consolas, monospace; font-size: 16px; letter-spacing: 1px; }
+.account-vault-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.account-vault-actions a { text-decoration: none; }
+.account-vault-error { display: grid; justify-items: start; gap: 8px; }
+.account-vault-form-note { display: grid; gap: 5px; padding: 12px; color: #c7e9ef; border: 1px solid rgba(52, 211, 153, .3); border-radius: 8px; background: rgba(16, 185, 129, .08); }
+.account-vault-form-note strong { color: #6ee7b7; }
+
+@media (max-width: 1050px) {
+  .account-vault-row { grid-template-columns: 48px minmax(0, 1fr) minmax(180px, .55fr); }
+  .account-vault-actions { grid-column: 2 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 720px) {
+  .account-vault-summary { grid-template-columns: 1fr 1fr; }
+  .account-vault-security { grid-column: 1 / -1; }
+  .account-vault-toolbar { grid-template-columns: 1fr; }
+  .account-vault-row { grid-template-columns: 42px minmax(0, 1fr); padding: 11px; gap: 10px; }
+  .account-platform-mark { width: 42px; height: 42px; }
+  .account-vault-secret,
+  .account-vault-actions { grid-column: 1 / -1; }
+  .account-vault-actions > * { flex: 1 1 calc(50% - 7px); text-align: center; }
+}
+
 * {
   box-sizing: border-box;
 }

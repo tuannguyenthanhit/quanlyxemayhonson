@@ -42,9 +42,12 @@ DB_USER=ten_user_day_du
 DB_PASSWORD=mat_khau_database
 ADMIN_EMAIL=admin@cocobay.vn
 ADMIN_PASSWORD=mat_khau_admin_ban_dau
+ACCOUNT_VAULT_KEY=chuoi_bi_mat_dai_ngau_nhien_va_co_dinh
 ```
 
 Khi có đủ `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, backend sẽ tự tạo bảng `app_data` và lưu toàn bộ dữ liệu app trong MySQL.
+
+`ACCOUNT_VAULT_KEY` dùng để mã hóa AES-256-GCM cho mục **Quản lý tài khoản**. Hãy đặt một chuỗi bí mật dài, giữ cố định và không chia sẻ. Nếu chưa khai báo, hệ thống dùng khóa dẫn xuất từ cấu hình máy chủ để lần triển khai đầu vẫn hoạt động.
 
 ## Dữ liệu hiện tại
 

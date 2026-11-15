@@ -17,6 +17,10 @@ const host = process.env.HOST || "0.0.0.0";
 const maxBodyBytes = Number(process.env.MAX_BODY_MB || 120) * 1024 * 1024;
 const sessionDays = Math.max(1, Number(process.env.SESSION_DAYS || 30));
 const sessions = new Map();
+const accountVaultKeySource = process.env.ACCOUNT_VAULT_KEY || process.env.ADMIN_PASSWORD || process.env.DB_PASSWORD || "";
+const accountVaultKey = accountVaultKeySource
+  ? crypto.createHash("sha256").update(`coco-account-vault:${accountVaultKeySource}`).digest()
+  : null;
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -60,7 +64,7 @@ function defaultDb() {
       email: process.env.ADMIN_EMAIL || "admin@cocobay.vn",
       password: process.env.ADMIN_PASSWORD || "123456",
       role: "admin",
-      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit", "marketing_view", "marketing_manage", "kitchen_view", "kitchen_manage"],
+      permissions: ["finance", "users", "settings", "reports", "audit", "costs", "manage", "hr", "booking_view", "booking_write", "booking_edit", "marketing_view", "marketing_manage", "account_vault_view", "account_vault_manage", "kitchen_view", "kitchen_manage"],
       active: true,
       lastLoginAt: ""
     }],
@@ -208,6 +212,25 @@ async function ensureSchema() {
           INDEX idx_app_uploads_created (created_at)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_account_vault (
+          id VARCHAR(80) PRIMARY KEY,
+          platform VARCHAR(80) NOT NULL,
+          account_name VARCHAR(160) NOT NULL,
+          login_username VARCHAR(255) NOT NULL,
+          password_ciphertext TEXT NOT NULL,
+          password_hint VARCHAR(4) NOT NULL DEFAULT '',
+          recovery_contact VARCHAR(255) NOT NULL DEFAULT '',
+          website_url VARCHAR(600) NOT NULL DEFAULT '',
+          notes TEXT NOT NULL,
+          created_by VARCHAR(160) NOT NULL DEFAULT '',
+          updated_by VARCHAR(160) NOT NULL DEFAULT '',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_account_vault_platform (platform),
+          INDEX idx_account_vault_updated (updated_at)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+      `);
       try {
         const migratedImages = await externalizeEmbeddedDbImages();
         if (migratedImages) console.log(`Moved ${migratedImages} embedded images out of app_data JSON.`);
@@ -332,6 +355,85 @@ function sendJson(res, status, payload) {
 }
 
 const marketingAssetTypes = new Set(["Video", "Hình ảnh", "Thư mục hình ảnh", "Tài liệu khác"]);
+function encryptAccountPassword(value) {
+  if (!accountVaultKey) {
+    const error = new Error("Máy chủ chưa có khóa bảo mật ACCOUNT_VAULT_KEY.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", accountVaultKey, iv);
+  const encrypted = Buffer.concat([cipher.update(String(value), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `v1:${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
+}
+
+function accountPasswordHint(value) {
+  const password = String(value || "");
+  const hintLength = password.length >= 4 ? 4 : Math.min(2, password.length);
+  return hintLength ? password.slice(-hintLength) : "";
+}
+
+function maskedAccountPassword(hint = "") {
+  return `${"•".repeat(8)}${String(hint || "").slice(-4)}`;
+}
+
+function normalizeAccountWebsite(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function accountVaultPayload(body) {
+  const customPlatform = String(body.customPlatform || "").trim();
+  const requestedPlatform = String(body.platform || "").trim();
+  const platform = requestedPlatform === "Khác" ? customPlatform : requestedPlatform;
+  const accountName = String(body.accountName || "").trim();
+  const loginUsername = String(body.loginUsername || "").trim();
+  const websiteUrl = normalizeAccountWebsite(body.websiteUrl);
+  if (!platform || !accountName || !loginUsername) {
+    const error = new Error("Nền tảng, tên tài khoản và email/tên đăng nhập là bắt buộc.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (String(body.websiteUrl || "").trim() && !websiteUrl) {
+    const error = new Error("Đường dẫn đăng nhập phải bắt đầu bằng http:// hoặc https://.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    platform: platform.slice(0, 80),
+    accountName: accountName.slice(0, 160),
+    loginUsername: loginUsername.slice(0, 255),
+    recoveryContact: String(body.recoveryContact || "").trim().slice(0, 255),
+    websiteUrl: websiteUrl.slice(0, 600),
+    notes: String(body.notes || "").trim().slice(0, 4000),
+    password: String(body.password || "")
+  };
+}
+
+function accountVaultRow(row) {
+  return {
+    id: row.id,
+    platform: row.platform,
+    accountName: row.account_name,
+    loginUsername: row.login_username,
+    passwordMasked: maskedAccountPassword(row.password_hint),
+    passwordHintLength: String(row.password_hint || "").length,
+    recoveryContact: row.recovery_contact || "",
+    websiteUrl: row.website_url || "",
+    notes: row.notes || "",
+    createdBy: row.created_by || "",
+    updatedBy: row.updated_by || "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
 function normalizeMarketingAssetUrl(value = "") {
   const raw = String(value || "").trim();
@@ -675,6 +777,106 @@ async function handleApi(req, res, urlPath) {
       return true;
     }
     sendJson(res, 200, { ok: true, user, db, version: record.version, updatedAt: record.updatedAt });
+    return true;
+  }
+
+  const accountVaultRoute = urlPath.match(/^\/api\/account-vault(?:\/([^/]+))?$/);
+  if (accountVaultRoute) {
+    try {
+      const record = await readDbRecord();
+      const user = (record.db.users || []).find((item) => item.id === session.userId && item.active);
+      const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
+      const canView = user && (user.role === "admin" || userPermissions.includes("account_vault_view") || userPermissions.includes("account_vault_manage"));
+      const canManage = user && (user.role === "admin" || userPermissions.includes("account_vault_manage"));
+      if (!canView) {
+        sendJson(res, 403, { ok: false, message: "Tài khoản này chưa được cấp quyền xem kho tài khoản." });
+        return true;
+      }
+
+      const id = accountVaultRoute[1] ? decodeURIComponent(accountVaultRoute[1]) : "";
+      if (req.method === "GET" && !id) {
+        const [rows] = await pool.query(`
+          SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
+                 website_url, notes, created_by, updated_by, created_at, updated_at
+          FROM app_account_vault
+          ORDER BY updated_at DESC, account_name ASC
+        `);
+        sendJson(res, 200, { ok: true, accounts: rows.map(accountVaultRow) });
+        return true;
+      }
+
+      if (!["POST", "PUT", "DELETE"].includes(req.method)) {
+        sendJson(res, 405, { ok: false, message: "Phương thức không được hỗ trợ." });
+        return true;
+      }
+      if (!canManage) {
+        sendJson(res, 403, { ok: false, message: "Tài khoản này chỉ được xem, không có quyền thay đổi kho tài khoản." });
+        return true;
+      }
+
+      if (req.method === "POST") {
+        if (id) {
+          sendJson(res, 400, { ok: false, message: "Đường dẫn thêm tài khoản không hợp lệ." });
+          return true;
+        }
+        const body = await readBody(req);
+        const item = accountVaultPayload(body);
+        if (item.password.length < 6) {
+          sendJson(res, 400, { ok: false, message: "Mật khẩu cần có ít nhất 6 ký tự." });
+          return true;
+        }
+        const newId = `ACC-${Date.now().toString(36)}-${crypto.randomBytes(5).toString("hex")}`.toUpperCase();
+        await pool.query(`
+          INSERT INTO app_account_vault
+            (id, platform, account_name, login_username, password_ciphertext, password_hint,
+             recovery_contact, website_url, notes, created_by, updated_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [newId, item.platform, item.accountName, item.loginUsername, encryptAccountPassword(item.password),
+          accountPasswordHint(item.password), item.recoveryContact, item.websiteUrl, item.notes, user.name || "", user.name || ""]);
+        const [rows] = await pool.query(`
+          SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
+                 website_url, notes, created_by, updated_by, created_at, updated_at
+          FROM app_account_vault WHERE id = ? LIMIT 1
+        `, [newId]);
+        sendJson(res, 201, { ok: true, account: accountVaultRow(rows[0]) });
+        return true;
+      }
+
+      const [existingRows] = await pool.query("SELECT * FROM app_account_vault WHERE id = ? LIMIT 1", [id]);
+      if (!existingRows.length) {
+        sendJson(res, 404, { ok: false, message: "Không tìm thấy tài khoản cần cập nhật." });
+        return true;
+      }
+      if (req.method === "DELETE") {
+        await pool.query("DELETE FROM app_account_vault WHERE id = ?", [id]);
+        sendJson(res, 200, { ok: true, id });
+        return true;
+      }
+
+      const body = await readBody(req);
+      const item = accountVaultPayload(body);
+      if (item.password && item.password.length < 6) {
+        sendJson(res, 400, { ok: false, message: "Mật khẩu mới cần có ít nhất 6 ký tự." });
+        return true;
+      }
+      const passwordCiphertext = item.password ? encryptAccountPassword(item.password) : existingRows[0].password_ciphertext;
+      const passwordHint = item.password ? accountPasswordHint(item.password) : existingRows[0].password_hint;
+      await pool.query(`
+        UPDATE app_account_vault
+        SET platform = ?, account_name = ?, login_username = ?, password_ciphertext = ?, password_hint = ?,
+            recovery_contact = ?, website_url = ?, notes = ?, updated_by = ?
+        WHERE id = ?
+      `, [item.platform, item.accountName, item.loginUsername, passwordCiphertext, passwordHint,
+        item.recoveryContact, item.websiteUrl, item.notes, user.name || "", id]);
+      const [rows] = await pool.query(`
+        SELECT id, platform, account_name, login_username, password_hint, recovery_contact,
+               website_url, notes, created_by, updated_by, created_at, updated_at
+        FROM app_account_vault WHERE id = ? LIMIT 1
+      `, [id]);
+      sendJson(res, 200, { ok: true, account: accountVaultRow(rows[0]) });
+    } catch (error) {
+      sendJson(res, error.statusCode || 500, { ok: false, message: error.message });
+    }
     return true;
   }
 
