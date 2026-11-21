@@ -2175,11 +2175,12 @@ function isOilDateAlert(bike) {
 }
 
 function bikeAvatar(bike) {
-  const images = Array.isArray(bike.images) ? bike.images.filter(Boolean) : [];
+  const images = bikeDisplayImages(bike);
   const image = images[0] || "";
   const alt = `Ảnh đại diện ${bike.code}`;
   if (image) {
-    return `<div class="bike-avatar" tabindex="0"><img src="${image}" alt="${alt}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-avatar-zoom"><img src="${image}" alt="${alt} phóng to"></div></div>`;
+    const safeImage = escapeHtmlAttribute(image);
+    return `<div class="bike-avatar" tabindex="0"><img src="${safeImage}" alt="${alt}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-avatar-zoom"><img src="${safeImage}" alt="${alt} phóng to"></div></div>`;
   }
   return `<div class="bike-avatar placeholder" tabindex="0"><span>${bike.code}</span><div class="bike-avatar-zoom placeholder"><span>${bike.code}<small>Chưa có ảnh</small></span></div></div>`;
 }
@@ -2199,7 +2200,7 @@ function handleManagedImageError(image) {
     fallbacks = [];
   }
   const next = fallbacks.shift();
-  const container = image.closest(".bike-avatar, .bike-photo-hover");
+  const container = image.closest(".bike-avatar, .bike-photo-hover, .image-thumb");
   if (next) {
     image.dataset.imageOriginal = encodeURIComponent(next);
     image.dataset.imageFallbacks = encodeURIComponent(JSON.stringify(fallbacks));
@@ -2211,6 +2212,57 @@ function handleManagedImageError(image) {
     return;
   }
   container?.classList.add("image-load-error");
+}
+
+function normalizeExternalImageUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function googleDriveImageId(value) {
+  const normalized = normalizeExternalImageUrl(value);
+  if (!normalized) return "";
+  try {
+    const url = new URL(normalized);
+    if (!/(^|\.)drive\.google\.com$/i.test(url.hostname)) return "";
+    const pathMatch = url.pathname.match(/\/(?:file\/d|d)\/([a-z0-9_-]{10,})/i);
+    return pathMatch?.[1] || url.searchParams.get("id") || "";
+  } catch {
+    return "";
+  }
+}
+
+function externalImagePreviewUrl(value) {
+  const normalized = normalizeExternalImageUrl(value);
+  if (!normalized) return "";
+  const driveId = googleDriveImageId(normalized);
+  return driveId
+    ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId)}&sz=w1600`
+    : normalized;
+}
+
+function bikeDisplayImages(bike) {
+  const storedLinks = Array.isArray(bike?.imageLinks) ? bike.imageLinks : [];
+  const legacyLink = bike?.imageLink ? [bike.imageLink] : [];
+  const linkedImages = [...new Set([...storedLinks, ...legacyLink]
+    .map(externalImagePreviewUrl)
+    .filter(Boolean))].slice(0, 4);
+  const uploadedImages = Array.isArray(bike?.images) ? bike.images.filter(Boolean) : [];
+  return [...new Set([...linkedImages, ...uploadedImages].filter(Boolean))];
+}
+
+function bikeSourceImageLinks(bike) {
+  const storedLinks = Array.isArray(bike?.imageLinks) ? bike.imageLinks : [];
+  const legacyLink = bike?.imageLink ? [bike.imageLink] : [];
+  return [...new Set([...storedLinks, ...legacyLink]
+    .map(normalizeExternalImageUrl)
+    .filter(Boolean))].slice(0, 4);
 }
 
 function personAvatar(person) {
@@ -3165,20 +3217,34 @@ function motorbikeOwnerSummary(db = getDb()) {
     return { owner, bikes };
   }).sort((a, b) => b.bikes.length - a.bikes.length || a.owner.name.localeCompare(b.owner.name, "vi"));
   const noOwner = db.motorbikes.filter((bike) => !bike.ownerId);
+  const ownerMetrics = (bikes) => {
+    const inUse = bikes.filter((bike) => bike.status === "Đang thuê").length;
+    const stopped = bikes.filter((bike) => bike.status === "Ngừng sử dụng").length;
+    return { total: bikes.length, inUse, stopped, remaining: bikes.length - inUse - stopped };
+  };
+  const metricMarkup = (bikes) => {
+    const metrics = ownerMetrics(bikes);
+    return `<span class="owner-summary-metrics">
+      <span><b>${metrics.total}</b><small>Tổng xe</small></span>
+      <span class="active"><b>${metrics.inUse}</b><small>Đang sử dụng</small></span>
+      <span class="stopped"><b>${metrics.stopped}</b><small>Ngừng sử dụng</small></span>
+      <span class="remaining"><b>${metrics.remaining}</b><small>Còn lại</small></span>
+    </span>`;
+  };
   const content = rows.map(({ owner, bikes }) => `
     <button class="owner-summary-card" type="button" data-bike-filter-owner="${owner.id}">
       <span class="owner-summary-icon">●</span>
       <strong>${owner.name}</strong>
-      <em>${bikes.length} chiếc xe</em>
-      <small>${bikes.map((bike) => bike.code).join(", ") || "Chưa có xe"}</small>
+      ${metricMarkup(bikes)}
+      <small class="owner-summary-codes">${bikes.map((bike) => bike.code).join(", ") || "Chưa có xe"}</small>
     </button>
   `).join("");
   const missing = noOwner.length ? `
     <button class="owner-summary-card warning" type="button" data-bike-filter-owner="missing">
       <span class="owner-summary-icon">!</span>
       <strong>Chưa gắn chủ</strong>
-      <em>${noOwner.length} chiếc xe</em>
-      <small>${noOwner.map((bike) => bike.code).join(", ")}</small>
+      ${metricMarkup(noOwner)}
+      <small class="owner-summary-codes">${noOwner.map((bike) => bike.code).join(", ")}</small>
     </button>
   ` : "";
   return `<div class="owner-summary-panel">
@@ -3202,13 +3268,14 @@ function motorbikeModernRow(bike, db) {
 }
 
 function motorbikePhotoCode(bike) {
-  const images = Array.isArray(bike.images) ? bike.images.filter(Boolean).slice(0, 5) : [];
+  const allImages = bikeDisplayImages(bike);
+  const images = allImages.slice(0, 5);
   const image = images[0] || "";
   const photo = image
-    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${image}" alt="${bike.name}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${image}" alt="${bike.name} ph\u00f3ng to"></div></div>`
+    ? `<div class="bike-photo-hover main" tabindex="0"><img src="${escapeHtmlAttribute(image)}" alt="${bike.name}" data-image-original="${encodeURIComponent(image)}" data-image-fallbacks="${encodeURIComponent(JSON.stringify(images.slice(1)))}" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${escapeHtmlAttribute(image)}" alt="${bike.name} ph\u00f3ng to"></div></div>`
     : `<div class="bike-photo-empty">XE</div>`;
-  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${src}" alt="${bike.name} hình ${index + 2}" data-image-original="${encodeURIComponent(src)}" data-image-fallbacks="%5B%5D" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${src}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
-  const more = Array.isArray(bike.images) && bike.images.length > 5 ? `<em>+${bike.images.length - 5}</em>` : "";
+  const thumbs = images.slice(1).map((src, index) => `<div class="bike-photo-hover thumb" tabindex="0"><img src="${escapeHtmlAttribute(src)}" alt="${bike.name} hình ${index + 2}" data-image-original="${encodeURIComponent(src)}" data-image-fallbacks="%5B%5D" onerror="handleManagedImageError(this)"><div class="bike-photo-zoom"><img src="${escapeHtmlAttribute(src)}" alt="${bike.name} hình ${index + 2} phóng to"></div></div>`).join("");
+  const more = allImages.length > 5 ? `<em>+${allImages.length - 5}</em>` : "";
   return `<div class="bike-photo-code"><div class="bike-photo-stack">${photo}<div class="bike-photo-strip">${thumbs}${more}</div></div><span>${String(bike.code || "").replace(/^[^0-9]*/, "") || bike.code}</span></div>`;
 }
 
@@ -5236,6 +5303,7 @@ function bikeForm(id) {
     .map((owner) => [owner.id, `${owner.name} · ${owner.type}${owner.hidden ? " · Đang ẩn" : ""}`]);
   const typeOptions = (db.bikeTypes || []).map((type) => [type.name, type.name]);
   const selectedType = (db.bikeTypes || []).find((type) => type.name === (b.type || typeOptions[0]?.[0]));
+  const imageLinks = bikeSourceImageLinks(b);
   return `<div class="form-grid">
     ${field("code", "Mã xe", b.code, true)}${field("plate", "Biển số", b.plate, true)}
     ${field("name", "Tên xe", b.name, true)}${selectField("type", "Loại xe", typeOptions.length ? typeOptions : ["Tay ga", "Xe số", "Xe điện"], b.type || selectedType?.name)}
@@ -5252,6 +5320,13 @@ function bikeForm(id) {
     ${field("lastMaintenanceKm", "Km lần bảo trì gần nhất", b.lastMaintenanceKm ?? Math.max(0, Number(b.odometer || 0) - 2500), false, "number")}
     ${field("maintenanceIntervalKm", "Nhắc bảo trì mỗi bao nhiêu km", b.maintenanceIntervalKm || selectedType?.maintenanceIntervalKm || 3000, false, "number")}
     ${field("lastMaintenance", "Bảo trì gần nhất", b.lastMaintenance || todayISO(), false, "date")}${field("nextMaintenance", "Bảo trì tiếp theo", b.nextMaintenance || todayISO(30), false, "date")}
+    <div class="field full bike-image-link-field">
+      <label>4 link ảnh Google Drive hoặc link ảnh trực tiếp</label>
+      <div class="bike-image-link-grid">
+        ${Array.from({ length: 4 }, (_, index) => `<label class="bike-image-link-item"><span>Ảnh ${index + 1}${index === 0 ? " · Ảnh đại diện" : ""}</span><input name="imageLink${index + 1}" type="url" value="${escapeHtmlAttribute(imageLinks[index] || "")}" placeholder="https://drive.google.com/file/d/.../view"></label>`).join("")}
+      </div>
+      <span class="hint">Google Drive: đặt quyền “Bất kỳ ai có đường liên kết” cho từng tệp. Bốn ảnh này sẽ hiển thị trước ở danh sách xe; ảnh tải lên được dùng làm dự phòng.</span>
+    </div>
     <div class="field full">
       <label>Hình ảnh xe và giấy tờ (tối đa ${BIKE_IMAGE_LIMIT} hình, hình đầu tiên là ảnh đại diện)</label>
       <input name="bikeImages" type="file" accept="image/*" multiple>
@@ -5695,6 +5770,13 @@ function detailBikeModal(b) {
   const costs = tickets.reduce((s, t) => s + ticketCost(t), 0);
   const completedCost = tickets.filter((t) => t.status === "Hoàn thành").reduce((s, t) => s + ticketCost(t), 0);
   const pendingCost = costs - completedCost;
+  const displayImages = bikeDisplayImages(b);
+  const imageSourceLinks = bikeSourceImageLinks(b);
+  const imageGallery = displayImages.map((src, index) => `<div class="image-thumb bike-detail-image" tabindex="0">
+    <img src="${escapeHtmlAttribute(src)}" alt="Hình xe ${index + 1}" data-image-original="${encodeURIComponent(src)}" data-image-fallbacks="%5B%5D" onerror="handleManagedImageError(this)">
+    <div class="image-thumb-zoom"><img src="${escapeHtmlAttribute(src)}" alt="Hình xe ${index + 1} phóng to"></div>
+    <strong class="image-error-label">Không tải được ảnh</strong>
+  </div>`).join("");
   return `<div class="modal-backdrop"><div class="modal">
     <header><h3>${b.code} · ${b.name}</h3><button class="ghost" data-action="close-modal">Đóng</button></header>
     <div class="modal-body grid">
@@ -5707,7 +5789,8 @@ function detailBikeModal(b) {
           <p><strong>Bảo trì:</strong> ${maintenanceKmHint(b)}<br><span class="hint">Lần gần nhất ${Number(b.lastMaintenanceKm || 0).toLocaleString("vi-VN")} km · Chu kỳ ${Number(b.maintenanceIntervalKm || 0).toLocaleString("vi-VN")} km</span></p>
         </div>
         <div class="card"><h3>Hình ảnh xe và giấy tờ</h3>
-          <div class="image-grid">${(b.images || []).map((src, index) => `<img src="${src}" alt="Hình xe ${index + 1}">`).join("") || `<span>Chưa có hình ảnh đính kèm.</span>`}</div>
+          ${imageSourceLinks.length ? `<div class="bike-image-source-links">${imageSourceLinks.map((link, index) => `<a class="bike-image-source-link" href="${escapeHtmlAttribute(link)}" target="_blank" rel="noopener noreferrer">Mở ảnh gốc ${index + 1}</a>`).join("")}</div>` : ""}
+          <div class="image-grid">${imageGallery || `<span>Chưa có hình ảnh đính kèm.</span>`}</div>
         </div>
       </div>
       ${bikeOilHistoryCard(b)}
@@ -6756,6 +6839,21 @@ async function saveModal(event) {
     return;
   }
   if (type === "bike") {
+    const rawImageLinks = Array.from({ length: 4 }, (_, index) => String(data[`imageLink${index + 1}`] || "").trim()).filter(Boolean);
+    const invalidImageLink = rawImageLinks.find((link) => !normalizeExternalImageUrl(link));
+    if (invalidImageLink) {
+      showToast("Có link ảnh không hợp lệ. Hãy dùng đường dẫn bắt đầu bằng http:// hoặc https://.");
+      return;
+    }
+    const normalizedImageLinks = rawImageLinks.map(normalizeExternalImageUrl);
+    const invalidDriveLink = normalizedImageLinks.find((link) => /(^|\.)drive\.google\.com$/i.test(new URL(link).hostname) && !googleDriveImageId(link));
+    if (invalidDriveLink) {
+      showToast("Hãy dán link của từng tệp ảnh Google Drive, không dùng link thư mục.");
+      return;
+    }
+    data.imageLinks = [...new Set(normalizedImageLinks)].slice(0, 4);
+    data.imageLink = data.imageLinks[0] || "";
+    for (let index = 1; index <= 4; index += 1) delete data[`imageLink${index}`];
     data.images = state.bikeImageDraft?.images || await readBikeImages(form, id);
     data.images = await normalizeBikeImages(data.images);
     delete data.bikeImages;
